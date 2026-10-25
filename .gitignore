@@ -1,0 +1,21 @@
+# Godot: generated cache, not source files
+.godot/
+.godot-user/
+*.translation
+export_credentials.cfg
+
+# Build output and local tooling
+builds/
+artifacts/
+.tools/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+
+# Keep .uid and .import sidecars: they are project metadata.
