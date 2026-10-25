@@ -26,5 +26,6 @@ Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--sc
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/navigation_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tools/validate_content.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/dialogue_content_test.gd')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/dialogue_runtime_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--quit-after', '5')
-Write-Output 'PASS: import, smoke, M1 navigation, dialogue content, and startup.'
+Write-Output 'PASS: import, smoke, navigation, content, dialogue runtime, and startup.'

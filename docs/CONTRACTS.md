@@ -1,6 +1,6 @@
 # Контракты интеграции
 
-**Статус:** якоря и взаимодействие реализованы в M1; формат, каталог и валидатор контента — в DA-020. Исполнитель диалогов, дневник и применение эффектов ещё не реализованы. Не считать интерфейсы будущих модулей существующим API.
+**Статус:** навигация M1, контент DA-020, Runner, Journal и модальный UI DA-021 реализованы. Время, обслуживание и завершение смены ещё не реализованы. Не считать интерфейсы будущих модулей существующим API.
 
 ## Якоря — implemented, DA-010–DA-012
 
@@ -56,30 +56,59 @@ func get_dialogue_ids() -> PackedStringArray
 
 Геттеры возвращают глубокие копии, неизвестные ID — пустой Dictionary; списки ID отсортированы. В копии диалога и термина присутствует `test_content` из документа. Для прямой проверки данных без каталога: `DialogueContentValidator.validate(glossary: Variant, documents: Array, glossary_source: String = "glossary", sources: PackedStringArray = []) -> PackedStringArray`; пустой список ошибок означает валидный комплект. Валидатор не меняет входные данные.
 
-## Исполнитель диалогов — proposed, DA-021
+## Исполнитель диалогов — implemented, DA-021
+
+Реализация: [DialogueRunner](../scripts/dialogue/dialogue_runner.gd), RefCounted. Решение ADR-0004, подробная интеграция — [DIALOGUE_RUNTIME](DIALOGUE_RUNTIME.md).
 
 ```gdscript
+func configure(catalog: DialogueCatalog, journal: Journal) -> bool
 func start(dialogue_id: StringName) -> bool
 func choose(choice_id: StringName) -> bool
+func finish() -> bool
+func cancel() -> bool
+func get_current_node() -> Dictionary
+func get_choices() -> Array[Dictionary]
+func get_dialogue_title() -> String
+func is_terminal() -> bool
 signal node_changed(dialogue_id: StringName, node_id: StringName)
 signal dialogue_finished(dialogue_id: StringName)
+signal dialogue_cancelled(dialogue_id: StringName)
 ```
 
 Формат JSON v1 уже принят: разговор с ID и start_node; узел с ID, speaker, text, end, choices и effects; выбор с ID, text, target, required_terms. Подробности — DIALOGUE_CONTENT. Терминальная нода явно завершается, а не ссылается на несуществующий ID. Использовать стабильные ID выбора, не индекс кнопки.
 
-Статические проверки уникальности ID, ссылок, достижимости, пути к завершению и намеренности циклов выполняет DA-020. В DA-021 нужно проверять доступность ответа в текущем состоянии и предотвращать повторное применение grant_term. UI читает представление узла через согласованный метод/модель, не меняет каталог напрямую.
+Статические проверки выполняет DA-020. configure вызывается один раз и копирует определения; Journal уже должен быть настроен и знать термины каталога. На неудачу false, без старта. Новая игровая сессия создаёт новые модели. Каталог после этого можно менять независимо: Runner использует снимок.
 
-Невалидные данные возвращают отказ со списком ошибок до изменения игрового состояния. Завершение диалога испускается один раз. Правила отмены и повторного разговора принимаются до DA-023.
+Поля только для чтения: active, current_dialogue_id, current_node_id. start отклоняет неизвестный ID и параллельный разговор; choose — неизвестный/недоступный выбор. get_choices сохраняет порядок и добавляет available: bool, missing_terms: PackedStringArray. Геттеры возвращают копии; вне разговора узел пуст, варианты пусты, is_terminal=false.
 
-## Дневник — предложение для DA-021
+Эффекты входа применяются до node_changed. grant_term имеет ключ `(dialogue_id, effect_id)` и не повторяется в цикле, при перерисовке или новом начале того же разговора в этой сессии. Команды из обработчиков сигналов во время изменения отклоняются; обработчики могут читать состояние.
+
+Терминальный текст остаётся активным до finish. finish очищает текущее состояние и сигналит один раз; ID берётся из аргумента сигнала, не из уже очищенного current_dialogue_id. cancel очищает состояние с отдельным dialogue_cancelled, без dialogue_finished. Термины сохраняются; start после обоих исходов разрешён. Расход времени пока отсутствует.
+
+## Дневник — implemented, DA-021
+
+Реализация: [Journal](../scripts/journal/journal.gd), RefCounted.
 
 ```gdscript
+func configure(catalog: DialogueCatalog) -> bool
+func is_configured() -> bool
 func add_term(term_id: StringName) -> bool
 func has_term(term_id: StringName) -> bool
+func get_definition(term_id: StringName) -> Dictionary
+func get_known_term_ids() -> PackedStringArray
+func get_entries() -> Array[Dictionary]
 signal term_added(term_id: StringName)
 ```
 
-`add_term` возвращает `true` только при первом добавлении известного ID. Дубликат — `false` без события, неизвестный ID — отказ с диагностикой. Запись словаря содержит ID, название и описание. Видимый список берётся из модели, а не из текста кнопок. Порядок отображения принять в задаче.
+configure вызывается один раз из принятого каталога. add_term возвращает true только при первом добавлении известного ID; неизвестный и повторный ID — false без события. Данные определения копируются, порядок entries и known_term_ids — порядок получения. Неизвестное определение — пустой Dictionary. Записи живут до закрытия сессии, на диск не пишутся.
+
+## Сессия и панели — implemented, DA-021
+
+[NarrativeSession](../scripts/session/narrative_session.gd) предоставляет configure(catalog, dialogue_panel, journal_panel) -> bool, start_dialogue(dialogue_id) -> bool, choose_for_node(dialogue_id, node_id, choice_id) -> bool, finish_for_node(dialogue_id, node_id) -> bool, cancel_dialogue() -> bool, open_journal/close_journal/open_menu/resume_menu() -> bool. Сигналы mode_changed(mode: StringName), journal_changed(count: int). mode, runner, journal предназначены для чтения/привязки, не для перенастройки UI-потребителями.
+
+Все игровые команды UI идут через NarrativeSession: прямой runner.choose обошёл бы модальные блокировки. Команды выбора/завершения допустимы только в dialogue и при совпадении ID текущего узла; старые кнопки безопасно отклоняются. journal и menu хранят режимы возврата, сами не отменяют разговор. Main дополнительно проверяет текущий якорь и переход камеры перед стартом/открытием дневника.
+
+Main.start_test_dialogue() -> bool — проверяемый вход DA-021, доступен только в exploration у DialogueTrigger.required_anchor вне fade. DialogueTrigger наследует Interactable3D, сигналит dialogue_requested(dialogue_id), имеет set_available(bool). Это техническая цель, не NPC DA-022.
 
 ## Время и эффекты — предложение для DA-023
 

@@ -35,7 +35,7 @@ text = "DARK ALONE"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.66, 0.7, 1)
 theme_override_font_sizes/font_size = 14
-text = "ПЕРВЫЙ ПРОТОТИП   /   ПЕРЕМЕЩЕНИЕ ПО БАРУ"
+text = "ПРОТОТИП   /   БАР, РАЗГОВОРЫ И ДНЕВНИК"
 
 [node name="MenuHint" type="Label" parent="Screen"]
 anchor_left = 1.0
@@ -126,6 +126,7 @@ text = "ПКМ + мышь / стрелки — осмотреться     R — 
 
 [node name="Menu" type="Control" parent="Screen"]
 unique_name_in_owner = true
+z_index = 5
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -167,7 +168,7 @@ horizontal_alignment = 1
 
 [node name="Caption" type="Label" parent="Screen/Menu/Center/Content"]
 layout_mode = 2
-text = "Прототип перемещения по бару\nДиалоги и дневник — следующий этап."
+text = "Разговор и дневник\nУ стойки доступен [TEST] разговор."
 horizontal_alignment = 1
 
 [node name="Resume" type="Button" parent="Screen/Menu/Center/Content"]
@@ -181,3 +182,27 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 text = "Выйти из игры"
+
+[node name="Actions" type="HBoxContainer" parent="Screen"]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -470.0
+offset_top = 78.0
+offset_right = -32.0
+offset_bottom = 122.0
+theme_override_constants/separation = 12
+
+[node name="Talk" type="Button" parent="Screen/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(220, 44)
+focus_mode = 0
+text = "T   [TEST] Разговор"
+disabled = true
+
+[node name="Journal" type="Button" parent="Screen/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 44)
+focus_mode = 0
+text = "J   Дневник · 0"

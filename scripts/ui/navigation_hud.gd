@@ -4,6 +4,8 @@ extends CanvasLayer
 signal destination_requested(anchor_id: StringName)
 signal resume_requested
 signal quit_requested
+signal talk_requested
+signal journal_requested
 
 var _buttons: Dictionary = {}
 
@@ -18,6 +20,8 @@ var _buttons: Dictionary = {}
 func _ready() -> void:
 	_resume.pressed.connect(func() -> void: resume_requested.emit())
 	%Quit.pressed.connect(func() -> void: quit_requested.emit())
+	%Talk.pressed.connect(func() -> void: talk_requested.emit())
+	%Journal.pressed.connect(func() -> void: journal_requested.emit())
 
 
 func configure(anchors: Array[AnchorPoint]) -> void:
@@ -73,3 +77,10 @@ func set_menu_visible(value: bool) -> void:
 		_resume.grab_focus()
 	else:
 		_resume.release_focus()
+
+
+func update_narrative(talk_available: bool, journal_available: bool, count: int) -> void:
+	%Talk.disabled = not talk_available
+	%Talk.tooltip_text = "Подойдите к стойке, чтобы начать тестовый разговор." if not talk_available else "Начать тестовый разговор"
+	%Journal.disabled = not journal_available
+	%Journal.text = "J   Дневник · %d" % count
