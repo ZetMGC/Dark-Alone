@@ -1,0 +1,42 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/navigation/anchor_point.gd" id="1"]
+
+[sub_resource type="SphereShape3D" id="Shape"]
+radius = 0.38
+
+[sub_resource type="StandardMaterial3D" id="Material"]
+shading_mode = 0
+albedo_color = Color(0.85, 0.7, 0.4, 1)
+emission_enabled = true
+emission = Color(0.55, 0.35, 0.1, 1)
+
+[sub_resource type="TorusMesh" id="Mesh"]
+material = SubResource("Material")
+inner_radius = 0.15
+outer_radius = 0.19
+rings = 24
+ring_segments = 8
+
+[node name="AnchorPoint" type="Area3D"]
+collision_layer = 2
+collision_mask = 0
+monitoring = false
+script = ExtResource("1")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape")
+
+[node name="Marker" type="Node3D" parent="."]
+
+[node name="Ring" type="MeshInstance3D" parent="Marker"]
+mesh = SubResource("Mesh")
+
+[node name="Label" type="Label3D" parent="Marker"]
+position = Vector3(0, 0.3, 0)
+billboard = 1
+font_size = 40
+outline_size = 8
+modulate = Color(0.95, 0.84, 0.62, 1)
+no_depth_test = false
+text = "Якорь"

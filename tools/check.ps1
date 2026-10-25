@@ -23,5 +23,6 @@ function Invoke-GodotCheck {
 
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--editor', '--import')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/smoke_test.gd')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/navigation_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--quit-after', '5')
-Write-Output 'PASS: import, main scene smoke test, and startup.'
+Write-Output 'PASS: import, main scene smoke test, M1 navigation, and startup.'

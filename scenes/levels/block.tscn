@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3]
+
+[sub_resource type="StandardMaterial3D" id="Material"]
+albedo_color = Color(0.3, 0.31, 0.32, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="Mesh"]
+material = SubResource("Material")
+
+[sub_resource type="BoxShape3D" id="Shape"]
+
+[node name="Block" type="MeshInstance3D"]
+mesh = SubResource("Mesh")
+
+[node name="Body" type="StaticBody3D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Collision" type="CollisionShape3D" parent="Body"]
+shape = SubResource("Shape")
