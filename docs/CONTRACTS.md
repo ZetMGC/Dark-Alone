@@ -1,6 +1,6 @@
 # Контракты интеграции
 
-**Статус:** якоря и взаимодействие реализованы в M1 (DA-010–DA-013). Диалоги, дневник и эффекты — предложения для M2, существующего API у них нет. Не писать потребителя будущих модулей без принятия контракта.
+**Статус:** якоря и взаимодействие реализованы в M1; формат, каталог и валидатор контента — в DA-020. Исполнитель диалогов, дневник и применение эффектов ещё не реализованы. Не считать интерфейсы будущих модулей существующим API.
 
 ## Якоря — implemented, DA-010–DA-012
 
@@ -35,7 +35,28 @@ signal anchor_reached(anchor_id: StringName)
 
 `AnchorPoint.set_available(value: bool)` управляет доступностью, маркером и слоем цели; `move_requested(anchor_id: StringName)` сообщает о действии. Main обновляет доступность по `can_move_to` при смене режима. Для будущего гостя наследовать Interactable3D и подключать событие к координатору, не встраивать знания о диалогах в камеру.
 
-## Диалоги — предложение для DA-020
+## Каталог и валидация — implemented, DA-020
+
+Реализация: [DialogueCatalog](../scripts/dialogue/dialogue_catalog.gd), [DialogueContentValidator](../scripts/dialogue/dialogue_content_validator.gd). Схема данных v1 принята в ADR-0003 и подробно описана в [DIALOGUE_CONTENT](DIALOGUE_CONTENT.md).
+
+```gdscript
+func load_files(glossary_path: String, dialogue_paths: PackedStringArray) -> bool
+func load_data(glossary: Variant, documents: Array, glossary_source: String = "glossary", sources: PackedStringArray = []) -> bool
+func is_loaded() -> bool
+func has_term(term_id: StringName) -> bool
+func has_dialogue(dialogue_id: StringName) -> bool
+func get_term(term_id: StringName) -> Dictionary
+func get_dialogue(dialogue_id: StringName) -> Dictionary
+func get_node(dialogue_id: StringName, node_id: StringName) -> Dictionary
+func get_term_ids() -> PackedStringArray
+func get_dialogue_ids() -> PackedStringArray
+```
+
+`validation_errors: PackedStringArray` — диагностика последней попытки. Загрузка атомарна: false не подменяет прежний успешный снимок. `is_loaded` означает наличие такого снимка, не успех последней попытки. Потребитель обязан проверять bool загрузки. После успеха ошибки очищаются.
+
+Геттеры возвращают глубокие копии, неизвестные ID — пустой Dictionary; списки ID отсортированы. В копии диалога и термина присутствует `test_content` из документа. Для прямой проверки данных без каталога: `DialogueContentValidator.validate(glossary: Variant, documents: Array, glossary_source: String = "glossary", sources: PackedStringArray = []) -> PackedStringArray`; пустой список ошибок означает валидный комплект. Валидатор не меняет входные данные.
+
+## Исполнитель диалогов — proposed, DA-021
 
 ```gdscript
 func start(dialogue_id: StringName) -> bool
@@ -44,9 +65,9 @@ signal node_changed(dialogue_id: StringName, node_id: StringName)
 signal dialogue_finished(dialogue_id: StringName)
 ```
 
-У диалога есть ID и стартовый узел; у узла — ID, говорящий, текст, варианты, эффекты; у варианта — ID, текст, цель и условия. Точный сериализованный формат ещё не выбран. Терминальная нода явно завершается, а не ссылается на несуществующий ID. Использовать стабильные ID выбора, не индекс кнопки.
+Формат JSON v1 уже принят: разговор с ID и start_node; узел с ID, speaker, text, end, choices и effects; выбор с ID, text, target, required_terms. Подробности — DIALOGUE_CONTENT. Терминальная нода явно завершается, а не ссылается на несуществующий ID. Использовать стабильные ID выбора, не индекс кнопки.
 
-Обязательные проверки: уникальность ID, наличие стартового узла и целей, известные термины, отсутствие недостижимого контента без объяснения. Циклы допускаются только намеренно; предотвращать повторные одноразовые эффекты. UI читает представление узла через согласованный метод/модель, не меняет словарь узлов напрямую.
+Статические проверки уникальности ID, ссылок, достижимости, пути к завершению и намеренности циклов выполняет DA-020. В DA-021 нужно проверять доступность ответа в текущем состоянии и предотвращать повторное применение grant_term. UI читает представление узла через согласованный метод/модель, не меняет каталог напрямую.
 
 Невалидные данные возвращают отказ со списком ошибок до изменения игрового состояния. Завершение диалога испускается один раз. Правила отмены и повторного разговора принимаются до DA-023.
 

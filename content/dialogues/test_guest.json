@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "test_content": true,
+  "dialogues": [
+    {
+      "id": "test_guest_intro",
+      "title": "[TEST] Проверка разговора",
+      "start_node": "opening",
+      "allow_cycles": false,
+      "nodes": [
+        {
+          "id": "opening",
+          "speaker": "[TEST] Гость",
+          "text": "Техническая реплика: здесь игрок узнаёт первый тестовый термин.",
+          "end": false,
+          "effects": [
+            {
+              "effect_id": "learn_first_term",
+              "type": "grant_term",
+              "term_id": "test_signal"
+            }
+          ],
+          "choices": [
+            {
+              "id": "ask_more",
+              "text": "[TEST] Спросить подробнее",
+              "target": "explanation",
+              "required_terms": []
+            },
+            {
+              "id": "leave",
+              "text": "[TEST] Закончить разговор",
+              "target": "goodbye",
+              "required_terms": []
+            }
+          ]
+        },
+        {
+          "id": "explanation",
+          "speaker": "[TEST] Гость",
+          "text": "Эта ветка добавит вторую тестовую запись. Игровой сюжет ещё не написан.",
+          "end": false,
+          "effects": [
+            {
+              "effect_id": "learn_second_term",
+              "type": "grant_term",
+              "term_id": "test_marker"
+            }
+          ],
+          "choices": [
+            {
+              "id": "finish",
+              "text": "[TEST] Перейти к завершению",
+              "target": "goodbye",
+              "required_terms": ["test_signal"]
+            }
+          ]
+        },
+        {
+          "id": "goodbye",
+          "speaker": "[TEST] Гость",
+          "text": "Техническое завершение разговора.",
+          "end": true,
+          "effects": [],
+          "choices": []
+        }
+      ]
+    }
+  ]
+}
