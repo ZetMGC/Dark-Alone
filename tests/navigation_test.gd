@@ -25,6 +25,8 @@ func _run() -> void:
 		quit(1)
 	)
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	root.add_child(main)
 	await process_frame
 	var rig := main.get_node("AnchorCamera") as AnchorCamera

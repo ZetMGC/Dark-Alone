@@ -29,6 +29,8 @@ func _capture() -> void:
 	_output = ProjectSettings.globalize_path("res://artifacts/da035-faces")
 	DirAccess.make_dir_recursive_absolute(_output)
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	root.add_child(main)
 	current_scene = main
 	var rig: AnchorCamera = main.get_node("AnchorCamera")

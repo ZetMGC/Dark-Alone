@@ -12,6 +12,8 @@ func _capture() -> void:
 		quit(1)
 		return
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	root.add_child(main)
 	var rig := main.get_node("AnchorCamera") as AnchorCamera
 	var output := ProjectSettings.globalize_path("res://artifacts")

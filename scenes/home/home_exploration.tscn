@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/home/home_exploration.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/levels/block.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/navigation/anchor_point.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://scenes/player/anchor_camera.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/player/free_roam_camera.tscn" id="4"]
 [ext_resource type="Script" path="res://scripts/interaction/interaction_controller.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/home/home_object.gd" id="6"]
 [ext_resource type="Theme" path="res://scenes/ui/prototype_theme.tres" id="7"]
@@ -390,3 +390,26 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 text = "Назад без отметки · Escape"
+
+[node name="LeaveWorkstation" type="Button" parent="HomeHUD/Screen/Bottom/Margin/Content/Actions"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 44)
+text = "Отойти · Esc"
+
+[node name="MovementHint" type="Label" parent="HomeHUD/Screen"]
+unique_name_in_owner = true
+visible = false
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -52.0
+offset_right = -24.0
+offset_bottom = -16.0
+mouse_filter = 2
+autowrap_mode = 3
+text = "WASD — идти · Мышь — обзор · E — осмотр места · J — дневник · Escape — меню"
+theme_override_font_sizes/font_size = 15

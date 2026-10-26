@@ -69,3 +69,35 @@ func resolve_event(id: StringName) -> bool:
 
 func has_resolved(id: StringName) -> bool:
 	return _resolved.has(id)
+
+
+func export_progress() -> Dictionary:
+	var observed: Array[String] = []
+	for id in get_observed_ids():
+		observed.append(str(id))
+	var resolved: Array[String] = []
+	for id in EVENTS:
+		if has_resolved(id):
+			resolved.append(str(id))
+	return {"observed": observed, "resolved": resolved}
+
+
+func restore_progress(data: Dictionary) -> bool:
+	if _changing or not _observed.is_empty() or not _resolved.is_empty() or data.size() != 2 or not data.get("observed") is Array or not data.get("resolved") is Array:
+		return false
+	var observed: Dictionary = {}
+	var resolved: Dictionary = {}
+	for id in data.observed:
+		if not id is String or StringName(id) not in OBJECTS or observed.has(StringName(id)):
+			return false
+		observed[StringName(id)] = true
+	for id in data.resolved:
+		if not id is String or not EVENTS.has(StringName(id)) or resolved.has(StringName(id)):
+			return false
+		for required in EVENTS[StringName(id)].requires:
+			if not observed.has(required):
+				return false
+		resolved[StringName(id)] = true
+	_observed = observed
+	_resolved = resolved
+	return true

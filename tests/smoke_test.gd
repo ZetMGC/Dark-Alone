@@ -9,6 +9,8 @@ func _initialize() -> void:
 		quit(1)
 		return
 	var instance := packed.instantiate()
+	instance.checkpoint_enabled = false
+	instance.free_roam_enabled = false
 	root.add_child.call_deferred(instance)
 	_verify.call_deferred(instance)
 

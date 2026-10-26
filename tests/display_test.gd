@@ -41,6 +41,8 @@ func _run() -> void:
 	)
 	JournalPanel.motion_mode = &"off"
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	get_tree().root.add_child(main)
 	var display: DisplaySettings = main.get_node("DisplaySettings")
 	var hud: NavigationHUD = main.get_node("NavigationHUD")

@@ -1,0 +1,157 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/dialogue_panel.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/dialogue_bubble_panel.gd" id="2"]
+
+[sub_resource type="SystemFont" id="SpeechRegular"]
+font_names = PackedStringArray("Arial", "Noto Sans", "DejaVu Sans")
+multichannel_signed_distance_field = true
+
+[sub_resource type="SystemFont" id="SpeechBold"]
+font_names = PackedStringArray("Arial", "Noto Sans", "DejaVu Sans")
+font_weight = 700
+multichannel_signed_distance_field = true
+
+[sub_resource type="StyleBoxFlat" id="BubbleStyle"]
+bg_color = Color(0.075, 0.085, 0.09, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.64, 0.6, 0.5, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 18.0
+content_margin_right = 18.0
+content_margin_top = 12.0
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxFlat" id="SpeechStyle"]
+bg_color = Color(0.075, 0.085, 0.09, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.64, 0.6, 0.5, 0.55)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+content_margin_left = 18.0
+content_margin_right = 18.0
+content_margin_top = 12.0
+content_margin_bottom = 12.0
+
+[node name="DialoguePanel" instance=ExtResource("1")]
+script = ExtResource("2")
+
+[node name="VoiceBubble" type="PanelContainer" parent="Screen" index="2"]
+unique_name_in_owner = true
+visible = false
+mouse_filter = 2
+theme_override_styles/panel = SubResource("SpeechStyle")
+
+[node name="Content" type="VBoxContainer" parent="Screen/VoiceBubble"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="VoiceDirection" type="Label" parent="Screen/VoiceBubble/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 0.8, 0.46, 1)
+
+[node name="VoiceSpeaker" type="Label" parent="Screen/VoiceBubble/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 17
+theme_override_colors/font_color = Color(0.86, 0.77, 0.59, 1)
+
+[node name="VoiceText" type="RichTextLabel" parent="Screen/VoiceBubble/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 112)
+mouse_filter = 2
+selection_enabled = false
+scroll_active = false
+visible_characters_behavior = 1
+theme_override_fonts/normal_font = SubResource("SpeechRegular")
+theme_override_fonts/bold_font = SubResource("SpeechBold")
+theme_override_font_sizes/normal_font_size = 18
+theme_override_font_sizes/bold_font_size = 18
+
+[node name="VoiceTail" type="Label" parent="Screen/VoiceBubble/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+horizontal_alignment = 1
+text = "▾"
+theme_override_font_sizes/font_size = 18
+
+[node name="VoiceReplies" type="PanelContainer" parent="Screen" index="3"]
+unique_name_in_owner = true
+visible = false
+anchor_left = 0.17
+anchor_right = 0.83
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -220.0
+offset_bottom = -65.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("BubbleStyle")
+
+[node name="Content" type="VBoxContainer" parent="Screen/VoiceReplies"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Scroll" type="ScrollContainer" parent="Screen/VoiceReplies/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+horizontal_scroll_mode = 0
+
+[node name="VoiceChoices" type="VBoxContainer" parent="Screen/VoiceReplies/Content/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="VoiceReplyHelp" type="Label" parent="Screen/VoiceReplies/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="VoiceHint" type="Label" parent="Screen" index="4"]
+unique_name_in_owner = true
+visible = false
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_right = -24.0
+offset_top = -48.0
+offset_bottom = -12.0
+mouse_filter = 2
+autowrap_mode = 3
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="VoicePage" type="Label" parent="Screen/VoiceBubble/Content" index="3"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.67, 1)

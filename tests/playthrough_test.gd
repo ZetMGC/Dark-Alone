@@ -52,6 +52,15 @@ func _wait_book() -> void:
 
 
 func _run() -> void:
+	if "--bubble-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/dialogue_bubble_test.tscn") as PackedScene).instantiate())
+		return
+	if "--free-roam-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/free_roam_test.tscn") as PackedScene).instantiate())
+		return
+	if "--checkpoint-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/checkpoint_test.tscn") as PackedScene).instantiate())
+		return
 	if "--faces-check" in OS.get_cmdline_user_args():
 		get_tree().root.add_child((load("res://tests/faces_test.tscn") as PackedScene).instantiate())
 		return
@@ -69,6 +78,8 @@ func _run() -> void:
 		get_tree().quit(1)
 	)
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	await get_tree().process_frame

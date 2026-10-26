@@ -6,6 +6,9 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export_file("*.json") var glossary_path: String = "res://content/glossary/test_terms.json"
 @export var dialogue_paths: PackedStringArray = ["res://content/dialogues/test_guest.json"]
 @export_range(1, 24) var shift_budget: int = 2
+@export var checkpoint_enabled: bool = true
+@export var free_roam_enabled: bool = true
+var checkpoint_store := CheckpointStore.new()
 @export var drink_options: Array[Dictionary] = [
 	{"id": "test_water", "title": "[TEST] Вода", "description": "Стакан прохладной воды."},
 	{"id": "test_house_drink", "title": "[TEST] Напиток бара", "description": "Напиток бара в простом стакане."}
@@ -23,9 +26,24 @@ var _narrative_ready: bool = false
 var _error_menu: bool = false
 var _restart_pending: bool = false
 var _home: HomeExploration
+var _checkpoint_message: String = ""
 
 
 func _ready() -> void:
+	# Режим перемещения переживает обычную смену и тестовый сброс.
+	if get_tree().has_meta(RUN_HANDOFF):
+		var context: Variant = get_tree().get_meta(RUN_HANDOFF)
+		if context is Dictionary and context.get("scene") == scene_file_path and context.get("free_roam_enabled") is bool:
+			free_roam_enabled = context.free_roam_enabled
+	(_rig as FreeRoamCamera).free_roam_enabled = free_roam_enabled
+	($DialoguePanel as DialogueBubblePanel).bubble_enabled = free_roam_enabled
+	($DialoguePanel as DialogueBubblePanel).configure_speaker(_rig.view, _trigger)
+	(_rig as FreeRoamCamera).focus_anchor_ids = PackedStringArray(["counter"])
+	(_rig as FreeRoamCamera).availability_changed.connect(_refresh_navigation)
+	_hud.leave_workstation_requested.connect(func() -> void:
+		if _session.mode == NarrativeSession.EXPLORATION:
+			(_rig as FreeRoamCamera).leave_focus()
+	)
 	_hud.resume_requested.connect(_resume_menu)
 	_hud.quit_requested.connect(func() -> void: get_tree().quit())
 	if not _rig.configure(_anchors_root, &"entry"):
@@ -53,19 +71,45 @@ func _ready() -> void:
 	var shared_journal: Journal
 	var shared_home: HomeState
 	var number: int = 1
+	var transferred: bool = false
+	var save_on_ready: bool = false
 	if get_tree().has_meta(RUN_HANDOFF):
 		var handoff: Variant = get_tree().get_meta(RUN_HANDOFF)
-		if not handoff is Dictionary or handoff.get("scene") != scene_file_path or not handoff.get("journal") is Journal or not handoff.get("shift") is int or handoff.shift < 2:
+		if not handoff is Dictionary or handoff.get("scene") != scene_file_path:
 			_fail_setup("Не удалось восстановить дневник между сменами.")
 			return
-		shared_journal = handoff.journal
-		if handoff.has("home_state"):
-			if not handoff.home_state is HomeState:
-				_fail_setup("Не удалось восстановить исследование дома.")
+		if handoff.has("fresh") and not handoff.fresh is bool:
+			_fail_setup("Неверный режим новой смены.")
+			return
+		if handoff.has("checkpoint_enabled"):
+			if not handoff.checkpoint_enabled is bool or not handoff.get("checkpoint_store") is CheckpointStore:
+				_fail_setup("Неверная передача хранилища автосохранения.")
 				return
-			shared_home = handoff.home_state
-		number = handoff.shift
+			checkpoint_enabled = handoff.checkpoint_enabled
+			checkpoint_store = handoff.checkpoint_store
+		if handoff.get("fresh", false) != true:
+			if not handoff.get("journal") is Journal or not handoff.get("shift") is int or handoff.shift < 2:
+				_fail_setup("Не удалось восстановить дневник между сменами.")
+				return
+			shared_journal = handoff.journal
+			if handoff.has("home_state"):
+				if not handoff.home_state is HomeState:
+					_fail_setup("Не удалось восстановить исследование дома.")
+					return
+				shared_home = handoff.home_state
+			number = handoff.shift
+			save_on_ready = true
+		transferred = true
 		get_tree().remove_meta(RUN_HANDOFF)
+	if checkpoint_enabled and not transferred:
+		var checkpoint := checkpoint_store.load_checkpoint(catalog)
+		if not checkpoint.is_empty():
+			shared_journal = checkpoint.journal
+			shared_home = checkpoint.home_state
+			number = checkpoint.shift
+			_checkpoint_message = "Продолжена игра с начала смены %d." % number
+		if not checkpoint_store.last_error.is_empty():
+			_checkpoint_message = checkpoint_store.last_error
 	if not _session.configure(catalog, $DialoguePanel, $JournalPanel, $ServicePanel, _trigger.guest_id, drink_options, shared_journal, number):
 		_fail_setup("Не удалось настроить разговор, дневник или меню напитков. " + "; ".join(_session.service.validation_errors))
 		return
@@ -76,7 +120,7 @@ func _ready() -> void:
 	_home.name = "HomeExploration"
 	_home.position = Vector3(32, 0, 0)
 	add_child(_home)
-	if not _home.configure(_session, _hud, shared_home):
+	if not _home.configure(_session, _hud, shared_home, free_roam_enabled):
 		_fail_setup("Не удалось настроить дом.")
 		return
 	_home.work_requested.connect(_session.go_to_work)
@@ -101,6 +145,12 @@ func _ready() -> void:
 	$DisplaySettings.configure_controls(_hud)
 	$DialogueTrigger/Body.configure_controls(_hud)
 	_rig.configure_controls(_hud)
+	_hud.new_game_requested.connect(_new_game_from_menu)
+	if checkpoint_enabled and save_on_ready:
+		_checkpoint_message = "Автосохранение: начало смены %d." % number if checkpoint_store.save_checkpoint(number, _session.journal, _home.state, catalog) else checkpoint_store.last_error
+	_update_checkpoint_label()
+	if not _checkpoint_message.is_empty():
+		_hud.show_notice(_checkpoint_message)
 
 
 func _input(event: InputEvent) -> void:
@@ -111,6 +161,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_menu"):
+		if free_roam_enabled and _narrative_ready and _session.mode == NarrativeSession.EXPLORATION and (_rig as FreeRoamCamera).leave_focus():
+			get_viewport().set_input_as_handled()
+			return
 		if not _narrative_ready:
 			_error_menu = not _error_menu
 			_hud.set_menu_visible(_error_menu)
@@ -138,9 +191,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _narrative_ready or _session.mode != NarrativeSession.EXPLORATION:
 		return
 	if event.is_action_pressed("interact"):
+		if free_roam_enabled and (_rig as FreeRoamCamera).try_focus():
+			get_viewport().set_input_as_handled()
+			return
 		if not _interaction.try_interact() and not _rig.is_transitioning:
-			_hud.show_notice("Наведите прицел на метку или выберите доступную точку внизу.")
+			_hud.show_notice("Подойдите к рабочему месту и посмотрите на его метку." if free_roam_enabled else "Наведите прицел на метку или выберите доступную точку внизу.")
 		get_viewport().set_input_as_handled()
+	if free_roam_enabled:
+		return
 	for index in _rig.get_anchors().size():
 		if event.is_action_pressed("anchor_%d" % [index + 1]):
 			_request_destination(_rig.get_anchors()[index].anchor_id)
@@ -166,15 +224,35 @@ func _restart_after_commute() -> void:
 func _reload_shift(keep_journal: bool = false) -> bool:
 	if get_tree().has_meta(RUN_HANDOFF):
 		return false
+	if not keep_journal and checkpoint_enabled and not checkpoint_store.clear_checkpoint():
+		_checkpoint_message = checkpoint_store.last_error
+		_update_checkpoint_label()
+		_hud.show_notice(checkpoint_store.last_error)
+		return false
 	_restart_pending = true
+	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled}
 	if keep_journal:
-		get_tree().set_meta(RUN_HANDOFF, {"scene": scene_file_path, "journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
+		handoff.merge({"journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
+	get_tree().set_meta(RUN_HANDOFF, handoff)
 	var result := get_tree().reload_current_scene()
 	if result != OK:
-		if keep_journal:
-			get_tree().remove_meta(RUN_HANDOFF)
+		get_tree().remove_meta(RUN_HANDOFF)
 		_restart_pending = false
 	return result == OK
+
+
+func _new_game_from_menu() -> void:
+	if _narrative_ready and not _restart_pending and _session.mode == NarrativeSession.MENU and get_tree().current_scene == self:
+		_reload_shift()
+
+
+func _update_checkpoint_label() -> void:
+	var text := "Автосохранение выполняется между сменами."
+	if not checkpoint_enabled:
+		text = "Автосохранение отключено для проверочного запуска."
+	elif not _checkpoint_message.is_empty():
+		text = _checkpoint_message
+	_hud.set_checkpoint_status(text)
 
 
 func _start_dialogue(dialogue_id: StringName) -> bool:
@@ -247,6 +325,8 @@ func _on_anchor_reached(_anchor_id: StringName) -> void:
 
 
 func _on_mode_changed(mode: StringName) -> void:
+	if free_roam_enabled and mode == NarrativeSession.EXPLORATION and (_rig as FreeRoamCamera).focus_active:
+		_rig.reset_look()
 	$Presentation.set_environment_context(mode)
 	_hud.set_menu_visible(mode == NarrativeSession.MENU)
 	_refresh_navigation()
@@ -256,6 +336,7 @@ func _refresh_navigation() -> void:
 	if not _configured or not _narrative_ready:
 		return
 	var exploration := _session.mode == NarrativeSession.EXPLORATION
+	(_rig as FreeRoamCamera).set_dialogue_look(_session.mode == NarrativeSession.DIALOGUE)
 	_rig.set_controls_enabled(exploration)
 	var enabled := exploration and not _rig.is_transitioning
 	_interaction.set_enabled(enabled)
@@ -265,6 +346,8 @@ func _refresh_navigation() -> void:
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())
 	_hud.update_service(enabled and _rig.current_anchor_id == _trigger.required_anchor and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
+	if free_roam_enabled:
+		_hud.update_workstation(_rig as FreeRoamCamera, exploration)
 
 
 func _fail_setup(message: String) -> void:
