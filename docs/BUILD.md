@@ -4,6 +4,8 @@ DA-024: Windows x86_64, Godot 4.7.2 Standard, Compatibility. Это текуща
 
 ## Подготовка
 
+Для повторяемого комплекта GitHub Pre-release после слияния main использовать [RELEASES](RELEASES.md) и `tools/prepare_release.ps1`. Сначала проверка/сборка из точного commit main, затем draft с ZIP/manifest/SHA256 и публикация отдельным шагом.
+
 Установить export templates **точно 4.7.2 stable** через Godot → Editor → Manage Export Templates либо из [официального архива](https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable). Для Windows нужны `windows_release_x86_64.exe` и `windows_debug_x86_64.exe` в каталоге шаблонов `4.7.2.stable`. При скачивании полного TPZ сверять SHA512 с `SHA512-SUMS.txt` того же релиза. Шаблоны и движок не входят в Git.
 
 Рабочий источник должен быть закоммичен: архив содержит manifest с source_revision и source_dirty. Для передачи коллегам использовать source_dirty=false, чтобы состояние можно было восстановить из Git.

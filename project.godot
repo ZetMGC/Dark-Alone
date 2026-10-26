@@ -15,6 +15,7 @@ window/size/viewport_height=720
 window/size/min_width=960
 window/size/min_height=600
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [editor]
 

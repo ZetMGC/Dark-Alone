@@ -187,6 +187,12 @@ Session добавляет `set_journal_reading_position(term_id: StringName,off
 
 JournalPanel.configure_controls(hud: NavigationHUD) связывает `%BookMotion` (OptionButton full/reduced/off), `%PageVolume` (HSlider), `%PageVolumeLabel`. Методы `set_motion_mode(value: StringName) -> bool`, `set_page_volume(value: float) -> void`: неизвестный режим/нечисловая громкость отклоняются; громкость ограничивается 0…1, ноль останавливает звук. Static motion_mode/page_volume — только предпочтения процесса. Смена режима во время скрытого действия завершает его один раз при возврате. Потребители изменений: Main/Session/JournalPanel, HUD, book_test, journal_core_test, playthrough и инструменты снимков. Старые изолированные проверки используют off, сквозной цикл — полные анимации. JSON/эффекты/часы/Runner не менялись. Решение — ADR-0011, инструкция — JOURNAL_BOOK.
 
+## Экран — implemented, DA-037
+
+DisplaySettings (`scripts/presentation/display_settings.gd`, отдельный Node в Main): `configure_controls(hud: NavigationHUD) -> void`, `is_fullscreen() -> bool`, `set_fullscreen(enabled: bool) -> bool`, `set_monitor(index: int) -> bool`. Смена режима/монитора возвращает false для headless/встроенного окна, повторного значения или неизвестного экрана. Fullscreen использует Window.MODE_FULLSCREEN/native разрешение; возврат восстанавливает окно/развёрнутый режим с ограничением рабочей областью. F11 обрабатывается в контроллере, echo игнорируется; игровые модели/время не меняются. Static-поля содержат только предпочтения окна до закрытия процесса.
+
+NavigationHUD предоставляет `%DisplayMode` (OptionButton: 0 окно, 1 fullscreen), `%DisplayMonitor` (индекс фактического экрана); Main вызывает configure_controls после прочих настроек. Настройки меню помещены в ScrollContainer, `%Resume`/`%Quit` остаются вне него; прежние уникальные имена сохранены. Список/выбор обновляются раз в секунду и по size_changed. `project.godot`: canvas_items/expand от 1280×720, минимум 960×600. Потребители — Main/HUD, display_test, старые проверки и инструменты снимков. Решение — ADR-0012, инструкция — DISPLAY.
+
 ## Как менять контракт
 
 Указать задачу, статус (`proposed` / `implemented`), фактический путь реализации, затронутые системы, совместимость данных и проверку потребителей. Реализованные разделы обязательны для потребителей; предложения принимаются соответствующей задачей. Если реализация отличается, документ обновляется в том же изменении.

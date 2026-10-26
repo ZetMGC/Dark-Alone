@@ -52,6 +52,9 @@ func _wait_book() -> void:
 
 
 func _run() -> void:
+	if "--display-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/display_test.tscn") as PackedScene).instantiate())
+		return
 	if "--book-check" in OS.get_cmdline_user_args():
 		get_tree().root.add_child((load("res://tests/book_test.tscn") as PackedScene).instantiate())
 		return

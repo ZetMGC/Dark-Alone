@@ -81,6 +81,7 @@ func _ready() -> void:
 	_refresh_navigation()
 	$Presentation.configure_controls(_hud)
 	$JournalPanel.configure_controls(_hud)
+	$DisplaySettings.configure_controls(_hud)
 
 
 func _input(event: InputEvent) -> void:

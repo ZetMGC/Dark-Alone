@@ -45,4 +45,5 @@ function Invoke-BuildCheck {
 Invoke-BuildCheck -Executable $executable -Log (Join-Path $validationRoot 'startup.log') -ExtraArguments @('--quit-after', '5') -ExpectPlaythrough $false
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'playthrough.log') -ExtraArguments @() -ExpectPlaythrough $true
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'book.log') -ExtraArguments @('--', '--book-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: journal book,'
+Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'display.log') -ExtraArguments @('--', '--display-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: display settings,'
 Write-Output "PASS: exported startup and full playthrough. Logs: $validationRoot"

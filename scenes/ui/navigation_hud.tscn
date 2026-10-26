@@ -156,7 +156,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Content" type="VBoxContainer" parent="Screen/Menu/Center"]
-custom_minimum_size = Vector2(380, 0)
+custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 theme_override_constants/separation = 14
 
@@ -171,19 +171,64 @@ layout_mode = 2
 text = "ПАУЗА"
 horizontal_alignment = 1
 
-[node name="RetroCheck" type="CheckButton" parent="Screen/Menu/Center/Content"]
+[node name="SettingsScroll" type="ScrollContainer" parent="Screen/Menu/Center/Content"]
+custom_minimum_size = Vector2(0, 340)
+layout_mode = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Settings" type="VBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="DisplayRow" type="HBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/DisplayRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Экран · F11"
+
+[node name="DisplayMode" type="OptionButton" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/DisplayRow"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 2
+selected = 0
+popup/item_0/text = "В окне"
+popup/item_0/id = 0
+popup/item_1/text = "Полный экран"
+popup/item_1/id = 1
+
+[node name="MonitorRow" type="HBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/MonitorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Монитор"
+
+[node name="DisplayMonitor" type="OptionButton" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/MonitorRow"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 1
+selected = 0
+popup/item_0/text = "Текущий монитор"
+popup/item_0/id = 0
+
+[node name="RetroCheck" type="CheckButton" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Ретро-изображение"
 button_pressed = true
 tooltip_text = "Пиксельное изображение и мягкая виньетка. Текст интерфейса остаётся чётким."
 
-[node name="AmbienceLabel" type="Label" parent="Screen/Menu/Center/Content"]
+[node name="AmbienceLabel" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Фоновый звук: 35%"
 
-[node name="AmbienceVolume" type="HSlider" parent="Screen/Menu/Center/Content"]
+[node name="AmbienceVolume" type="HSlider" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
@@ -192,16 +237,16 @@ step = 0.05
 value = 0.35
 tooltip_text = "Громкость фонового гула. Ноль полностью отключает звук."
 
-[node name="BookSettings" type="HBoxContainer" parent="Screen/Menu/Center/Content"]
+[node name="BookSettings" type="HBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="Label" type="Label" parent="Screen/Menu/Center/Content/BookSettings"]
+[node name="Label" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/BookSettings"]
 layout_mode = 2
 text = "Анимации дневника"
 size_flags_horizontal = 3
 
-[node name="BookMotion" type="OptionButton" parent="Screen/Menu/Center/Content/BookSettings"]
+[node name="BookMotion" type="OptionButton" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/BookSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 item_count = 3
@@ -213,16 +258,16 @@ popup/item_1/id = 1
 popup/item_2/text = "Выключены"
 popup/item_2/id = 2
 
-[node name="PageSoundSettings" type="VBoxContainer" parent="Screen/Menu/Center/Content"]
+[node name="PageSoundSettings" type="VBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="PageVolumeLabel" type="Label" parent="Screen/Menu/Center/Content/PageSoundSettings"]
+[node name="PageVolumeLabel" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/PageSoundSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Шелест страниц: 35%"
 
-[node name="PageVolume" type="HSlider" parent="Screen/Menu/Center/Content/PageSoundSettings"]
+[node name="PageVolume" type="HSlider" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/PageSoundSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 28)
