@@ -4,7 +4,9 @@
 
 ## Опубликованные выпуски
 
-[v0.1.0-alpha.1](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.1) — первый Windows Pre-release, source 391dbcb, 2026-10-26. Проверки/передача — [DA-039](worklog/2026-10-26-14-first-alpha-release.md), описание — [заметки выпуска](releases/v0.1.0-alpha.1.md). Для следующего исправленного билда использовать новый номер alpha.2; не заменять опубликованный ZIP.
+[v0.1.0-alpha.2](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.2) — детализация под экран, MSDF-шрифты и временные TEST-лица; source 0dadbdf, 2026-10-26. [Заметки](releases/v0.1.0-alpha.2.md), [протокол](worklog/2026-10-26-17-realism-direction-and-alpha2.md). Следующий исправленный билд — новый номер alpha.3.
+
+[v0.1.0-alpha.1](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.1) — первый Windows Pre-release, source 391dbcb, 2026-10-26. Проверки/передача — [DA-039](worklog/2026-10-26-14-first-alpha-release.md), описание — [заметки выпуска](releases/v0.1.0-alpha.1.md). Исторический первый выпуск; не заменять опубликованный ZIP.
 
 ## Подготовить комплект
 
