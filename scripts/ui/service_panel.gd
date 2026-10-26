@@ -5,6 +5,8 @@ signal drink_requested(drink_id: StringName)
 signal close_requested
 signal menu_requested
 
+var _focus_target: Control
+
 @onready var screen: Control = $Screen
 
 
@@ -14,6 +16,7 @@ func _ready() -> void:
 
 
 func render(service: GuestService) -> void:
+	_focus_target = %Scroll
 	for child in %Options.get_children():
 		%Options.remove_child(child)
 		child.queue_free()
@@ -33,6 +36,10 @@ func render(service: GuestService) -> void:
 
 
 func set_open(value: bool) -> void:
+	if not value and screen.visible:
+		var focused := screen.get_viewport().gui_get_focus_owner()
+		if focused != null and screen.is_ancestor_of(focused):
+			_focus_target = focused
 	screen.visible = value
 	if value:
 		_focus_content.call_deferred()
@@ -40,4 +47,7 @@ func set_open(value: bool) -> void:
 
 func _focus_content() -> void:
 	if is_inside_tree() and screen.is_visible_in_tree():
-		%Scroll.grab_focus()
+		if is_instance_valid(_focus_target) and _focus_target.is_visible_in_tree():
+			_focus_target.grab_focus()
+		else:
+			%Scroll.grab_focus()
