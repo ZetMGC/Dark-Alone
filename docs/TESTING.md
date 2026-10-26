@@ -14,6 +14,7 @@ godot --headless --path . --script res://tests/dialogue_content_test.gd
 godot --headless --path . --script res://tests/dialogue_runtime_test.gd
 godot --headless --path . --script res://tests/guest_service_test.gd
 godot --headless --path . --script res://tests/shift_clock_test.gd
+godot --headless --path . res://tests/playthrough_entry.tscn
 godot --headless --path . --quit-after 5
 git diff --check
 ```
@@ -70,6 +71,8 @@ godot --path . --script tools/capture_shift_preview.gd --resolution 960x600 -- -
 `tests/shift_clock_test.gd` — 63 проверки: ошибочная настройка/события, нулевая стоимость, дубли, превышение бюджета, единственный конец, вложенные команды и копии истории. В настоящем Main проверяются стороны стойки, бесплатные действия/отмена, оба порядка разговора и подачи, повторные разговоры с отдельными ID, блокировка мира на итогах, HUD, дневник/меню и настоящий перезапуск с новыми моделями. Timeout 20 секунд. Ручной маршрут — SHIFT_FLOW; физические нажатия и оценка удобства остаются командной проверкой.
 
 ## Сценарии этапов
+
+DA-024 добавляет сквозной playthrough_entry: 41 проверка маршрута, обеих веток, обоих напитков в разном порядке, дневника, отмен, паузы, итогов и новой смены. События клавиш передаются viewport, кнопки вызываются через их сигналы; это не физический ввод Windows. Истинное прохождение в release template проверяется отдельно через `tools/check_windows_export.ps1` — команды в [BUILD](BUILD.md). Не заменять его обычным запуском исходников: экспорт может менять ресурсы. Ручная инструкция и форма обратной связи — [PLAYTEST](PLAYTEST.md).
 
 M1-01…M1-03, M2-01…M2-03 и M2-07 реализованы, проверены автоматически и просмотрены визуально. Статическая часть M2-06 проверена DA-020. M2-04 и M2-05 проверены в DA-023. M3 остаётся planned. Полноценное игровое тестирование командой, другая машина и экспорт ещё требуются.
 

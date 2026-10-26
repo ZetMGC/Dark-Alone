@@ -29,5 +29,6 @@ Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--sc
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/dialogue_runtime_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/guest_service_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/shift_clock_test.gd')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/playthrough_entry.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--quit-after', '5')
-Write-Output 'PASS: import, smoke, navigation, content, dialogue, service, shift, and startup.'
+Write-Output 'PASS: import, smoke, navigation, content, dialogue, service, shift, playthrough, and startup.'

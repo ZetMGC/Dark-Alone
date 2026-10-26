@@ -131,6 +131,8 @@ NarrativeSession добавляет open_service/close_service() -> bool, serve_
 
 ServiceGuest.guest_id задаётся сценой, show_served(drink_title: String) меняет только представление (стакан и подпись). Main связывает сигнал с этим методом и HUD. Получение терминов, время и JSON v1 не меняются. Подробности — [GUEST_SERVICE](GUEST_SERVICE.md).
 
+При настроенном ShiftClock событие подачи возвращает exploration только если смена не закончена; на последнем делении режим — shift_complete, видимый результат всё равно обновляется.
+
 ## Время и смена — implemented, DA-023
 
 `ShiftClock` ([код](../scripts/session/shift_clock.gd)), RefCounted: configure(time_budget: int) -> bool, apply_completed_event(event_id: StringName, time_cost: int) -> bool, get_events() -> Array[Dictionary]. Поля remaining/budget/finished только для чтения. Сигналы progress_changed(remaining: int, budget: int), shift_finished. Конфигурация один раз, бюджет > 0. Дубликаты/пустые ID, отрицательная стоимость, вложенный вызов и события после конца отклоняются. Ноль допустим, превышение ограничивается остатком 0; событие конца одно, после фиксации состояния. История выдаётся копиями.

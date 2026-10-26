@@ -5,6 +5,7 @@ config_version=5
 config/name="Dark Alone"
 config/description="Narrative first-person bar game. Anchor navigation prototype."
 run/main_scene="res://scenes/main/main.tscn"
+run/main_scene.integration_test="res://tests/playthrough_entry.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]
@@ -14,6 +15,10 @@ window/size/viewport_height=720
 window/size/min_width=960
 window/size/min_height=600
 window/stretch/mode="canvas_items"
+
+[editor]
+
+export/convert_text_resources_to_binary=false
 
 [layer_names]
 

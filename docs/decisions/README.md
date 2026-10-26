@@ -10,5 +10,6 @@ ADR фиксирует контекст, выбор и последствия. �
 | [0004](0004-dialogue-runtime.md) | Runner, дневник сессии, повторные разговоры и модальный ввод | Accepted и implemented для DA-021 |
 | [0005](0005-guest-service.md) | TEST-гость и одноразовая подача из короткого меню | Accepted и implemented для DA-022 |
 | [0006](0006-shift-and-bartender.md) | Стороны стойки, бюджет 2, уникальные события и новая смена | Accepted и implemented для DA-023 |
+| [0007](0007-windows-export.md) | Автономная Windows-сборка и проверка экспортированного цикла | Accepted и implemented для DA-024 |
 
-Шаблон — `docs/templates/ADR.md`. Далее проверка и передача DA-024. Художественный ориентир — VISUAL_DIRECTION, полный проход DA-030.
+Шаблон — `docs/templates/ADR.md`. Далее художественный проход DA-030 по VISUAL_DIRECTION; Q-02 остаётся открытым.
