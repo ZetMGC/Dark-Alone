@@ -216,6 +216,26 @@ selected = 0
 popup/item_0/text = "Текущий монитор"
 popup/item_0/id = 0
 
+[node name="FaceRow" type="HBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/FaceRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "[TEST] Лицо гостя"
+
+[node name="TestFace" type="OptionButton" parent="Screen/Menu/Center/Content/SettingsScroll/Settings/FaceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 3
+selected = 0
+popup/item_0/text = "A · Узкое"
+popup/item_0/id = 0
+popup/item_1/text = "B · Широкое"
+popup/item_1/id = 1
+popup/item_2/text = "C · Угловатое"
+popup/item_2/id = 2
+
 [node name="RetroCheck" type="CheckButton" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 unique_name_in_owner = true
 layout_mode = 2

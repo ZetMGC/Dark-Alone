@@ -82,6 +82,7 @@ func _ready() -> void:
 	$Presentation.configure_controls(_hud)
 	$JournalPanel.configure_controls(_hud)
 	$DisplaySettings.configure_controls(_hud)
+	$DialogueTrigger/Body.configure_controls(_hud)
 
 
 func _input(event: InputEvent) -> void:

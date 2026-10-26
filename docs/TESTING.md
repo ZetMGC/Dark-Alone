@@ -19,6 +19,7 @@ godot --headless --path . --script res://tests/commute_test.gd
 godot --headless --path . --script res://tests/journal_core_test.gd
 godot --headless --path . res://tests/book_test.tscn
 godot --headless --path . res://tests/display_test.tscn
+godot --headless --path . res://tests/faces_test.tscn
 godot --headless --path . res://tests/playthrough_entry.tscn
 godot --headless --path . --quit-after 5
 git diff --check
@@ -76,6 +77,8 @@ godot --path . --script tools/capture_shift_preview.gd --resolution 960x600 -- -
 `tests/shift_clock_test.gd` — 63 проверки: ошибочная настройка/события, нулевая стоимость, дубли, превышение бюджета, единственный конец, вложенные команды и копии истории. В настоящем Main проверяются стороны стойки, бесплатные действия/отмена, оба порядка разговора и подачи, повторные разговоры с отдельными ID, блокировка мира на итогах, HUD, дневник/меню и настоящий перезапуск с новыми моделями. Timeout 20 секунд. Ручной маршрут — SHIFT_FLOW; физические нажатия и оценка удобства остаются командной проверкой.
 
 ## Сценарии этапов
+
+DA-035: faces_test — 22 headless-проверки: валидная геометрия/нормали трёх профилей, отсутствие изменения одежды/позы/коллизии, копии данных/ошибочный ID, реальное меню/цель/разговор/подача/время/замена сцены. Графический запуск — 38, с 12 PNG — 50: разные кадры без HUD/подписей в adaptive/classic при 960×600 и 1920×1080. Хеши не доказывают узнаваемость человеком. Preview — 14 снимков на размер с портретами/нейтральным comparison; TEST_FACES описывает оставшуюся человеческую/каноническую приёмку. check_windows_export добавляет headless faces, с -Graphics — графический faces 38 и прежнюю image detail 18.
 
 DA-042: presentation_test расширен до 20: режимы детализации, невалидный выбор, параметры shader, MSDF обоих шрифтов и перенос настройки без изменения игрового состояния. `godot --path . res://tests/image_detail_test.tscn -- --capture-dir=<path>` — 38 графических проверок с 20 снимками, без capture-dir — 18. Проверяются реальные размеры кадров, GPU-мишень для мелких деталей 4K и изоляция текста над эффектом. Headless пропускает image_detail_test, его запуск не подтверждает резкость. `check_windows_export.ps1 ... -Graphics` дополнительно запускает эту проверку на графическом release template. Команды/оценка — IMAGE_DETAIL.
 

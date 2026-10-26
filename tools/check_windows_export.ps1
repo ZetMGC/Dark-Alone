@@ -48,7 +48,9 @@ Invoke-BuildCheck -Executable $executable -Log (Join-Path $validationRoot 'start
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'playthrough.log') -ExtraArguments @() -ExpectPlaythrough $true
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'book.log') -ExtraArguments @('--', '--book-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: journal book,'
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'display.log') -ExtraArguments @('--', '--display-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: display settings,'
+Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'faces.log') -ExtraArguments @('--', '--faces-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: test faces,'
 if ($Graphics) {
+	Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'faces-graphical.log') -ExtraArguments @('--', '--faces-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: test faces,' -Graphical $true
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'image-detail.log') -ExtraArguments @('--', '--image-detail-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: image detail,' -Graphical $true
 }
 Write-Output "PASS: exported startup and full playthrough. Logs: $validationRoot"

@@ -52,6 +52,9 @@ func _wait_book() -> void:
 
 
 func _run() -> void:
+	if "--faces-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/faces_test.tscn") as PackedScene).instantiate())
+		return
 	if "--image-detail-check" in OS.get_cmdline_user_args():
 		get_tree().root.add_child((load("res://tests/image_detail_test.tscn") as PackedScene).instantiate())
 		return

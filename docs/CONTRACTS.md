@@ -193,10 +193,18 @@ DisplaySettings (`scripts/presentation/display_settings.gd`, отдельный 
 
 NavigationHUD предоставляет `%DisplayMode` (OptionButton: 0 окно, 1 fullscreen), `%DisplayMonitor` (индекс фактического экрана); Main вызывает configure_controls после прочих настроек. Настройки меню помещены в ScrollContainer, `%Resume`/`%Quit` остаются вне него; прежние уникальные имена сохранены. Список/выбор обновляются раз в секунду и по size_changed. `project.godot`: canvas_items/expand от 1280×720, минимум 960×600. Потребители — Main/HUD, display_test, старые проверки и инструменты снимков. Решение — ADR-0012, инструкция — DISPLAY.
 
-## Как менять контракт
+## TEST-внешность гостя — implemented для прототипа DA-035
+
+`TestFace` (Node3D, scripts/presentation/test_face.gd, scenes/characters/test_face.tscn): `static get_appearance_ids() -> Array[StringName]`, `set_appearance(id: StringName) -> bool`, `get_appearance_id() -> StringName`, `get_profile() -> Dictionary`. ID test_face_a/b/c — только визуальные профили TEST, не guest_id/character_id. Неизвестный ID возвращает false без замены; до ready можно выбрать профиль, в дереве он пересобирается сразу. Профиль возвращается глубокой копией. Anatomy одна; предыдущая отсоединяется/queue_free, нет новых коллизий/игровых эффектов. Локальная передняя ось +X, начало в центре головы прежней модели.
+
+GuestArt (`scripts/presentation/guest_art.gd`, Body TEST-гостя) после ready предоставляет `configure_controls(hud: NavigationHUD) -> void`, `set_test_appearance(id: StringName) -> bool`, `get_test_appearance() -> StringName`. Static-предпочтение TEST-варианта переживает смену сцены, не хранит личность NPC. Main связывает `%TestFace` OptionButton HUD (индексы A/B/C). В test_guest.tscn прежние Head/Hair/LeftEye/RightEye/Nose/Mouth заменены вложенной TestFace; потребителей старых путей в коде/тестах не было. ServiceGuest/DialogueTrigger/GuestService API, поза/Target/стакан/guest_id не меняются. Потребители: Main/HUD/GuestArt, faces_test и preview, прочие существующие тесты/экспорт. Финальные appearance/portrait привязки требуют Q-04 и нового решения. ADR-0014, TEST_FACES.
+
+## Детализация — implemented, DA-042
 
 DA-042 добавляет к PresentationController `set_image_detail(value: StringName) -> bool` и `get_image_detail() -> StringName`. Допустимы adaptive/native/classic, неизвестное значение возвращает false без изменения. Static-предпочтение переживает новую сцену в памяти процесса; UI `%ImageDetail` OptionButton с индексами 0/1/2 синхронизируется при configure_controls. Оно не зависит от включения ретро-эффекта, не меняет Session/Journal/время. Shader: adaptive virtual_height=0,pixel_block=2; native 0/1; classic 360/2. SCREEN_PIXEL_SIZE задаёт физическое разрешение; resize не требует команды Session.
 
 MSDF включён для стандартного font в project.godot и отдельно для SystemFont book_theme; другие font-ресурсы требуют своей проверки. Потребители: PresentationController/HUD, presentation_test (20), image_detail_test, validation runner и check_windows_export с новым необязательным -Graphics. Этот флаг добавляет графическую GPU-проверку; прежние вызовы checker остаются headless. Формат JSON/знаний/курсора не менялся. Решение ADR-0013, инструкция IMAGE_DETAIL.
+
+## Как менять контракт
 
 Указать задачу, статус (`proposed` / `implemented`), фактический путь реализации, затронутые системы, совместимость данных и проверку потребителей. Реализованные разделы обязательны для потребителей; предложения принимаются соответствующей задачей. Если реализация отличается, документ обновляется в том же изменении.
