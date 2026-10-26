@@ -56,6 +56,11 @@ func set_look_sensitivity(multiplier: float) -> void:
 		_look_label.text = "Скорость обзора: %d%%" % roundi(_preferred_look * 100.0)
 
 
+func apply_preferences() -> void:
+	set_look_sensitivity(_preferred_look)
+	set_transition_duration(_preferred_duration)
+
+
 func set_transition_duration(seconds: float) -> void:
 	if not is_finite(seconds):
 		return

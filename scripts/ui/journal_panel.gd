@@ -94,7 +94,7 @@ func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool 
 	if return_to_summary:
 		%Close.text = "К итогам смены"
 	if return_to_home:
-		%Close.text = "К паузе между сменами"
+		%Close.text = "Вернуться домой"
 	_refresh()
 
 

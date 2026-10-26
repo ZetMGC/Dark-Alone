@@ -40,6 +40,7 @@ var _summary_panel: ShiftSummaryPanel
 var _run_serial: int = 0
 var _active_run_id: StringName = &""
 var _commute_panel: CommutePanel
+var _explorable_home: bool = false
 
 
 func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_panel: JournalPanel, service_panel: ServicePanel = null, guest_id: StringName = &"", drink_options: Array[Dictionary] = [], shared_journal: Journal = null, number: int = 1) -> bool:
@@ -99,15 +100,17 @@ func configure_shift(time_budget: int, summary_panel: ShiftSummaryPanel) -> bool
 	return true
 
 
-func configure_commute(panel: CommutePanel) -> bool:
+func configure_commute(panel: CommutePanel, explorable_home: bool = false) -> bool:
 	if not _shift_ready or _commute_panel != null or panel == null or _mode != EXPLORATION or _run_serial != 0 or service.served:
 		return false
 	_commute_panel = panel
+	_explorable_home = explorable_home
 	_summary_panel.set_home_available(true)
 	_summary_panel.home_requested.connect(go_home)
 	panel.arrived.connect(finish_commute)
-	panel.work_requested.connect(go_to_work)
-	panel.journal_requested.connect(open_journal)
+	if not explorable_home:
+		panel.work_requested.connect(go_to_work)
+		panel.journal_requested.connect(open_journal)
 	_sync_panels()
 	return true
 
@@ -370,4 +373,5 @@ func _sync_panels() -> void:
 		_summary_panel.set_open(_mode == SHIFT_COMPLETE)
 	if _commute_panel != null:
 		var home_journal := _mode == JOURNAL and _journal_return == HOME
-		_commute_panel.set_open(_mode in [TRAVEL, HOME] or home_journal, _mode == TRAVEL, not home_journal)
+		var show_home_panel := not _explorable_home and (_mode == HOME or home_journal)
+		_commute_panel.set_open(_mode == TRAVEL or show_home_panel, _mode == TRAVEL, not home_journal)

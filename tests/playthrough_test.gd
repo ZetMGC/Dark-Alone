@@ -117,10 +117,10 @@ func _run() -> void:
 			await _key(KEY_ESCAPE)
 			await _press("CommutePanel", "%Skip")
 			_expect(session.mode == NarrativeSession.HOME, "Export arrives home")
-			await _press("CommutePanel", "%Journal")
+			await _press("HomeExploration", "%Journal")
 			await _key(KEY_ESCAPE)
 			_expect(session.mode == NarrativeSession.HOME, "Export diary returns home")
-			await _press("CommutePanel", "%Work")
+			await _press("HomeExploration", "%Work")
 			await _press("CommutePanel", "%Skip")
 		else:
 			await _press("ShiftSummaryPanel", "%Restart")

@@ -58,6 +58,7 @@ func _test_main() -> void:
 	var rig := main.get_node("AnchorCamera") as AnchorCamera
 	var session := main.get_node("NarrativeSession") as NarrativeSession
 	var panel := main.get_node("CommutePanel") as CommutePanel
+	var home := main.get_node("HomeExploration") as HomeExploration
 	var presentation := main.get_node("Presentation") as PresentationController
 	presentation.set_retro_enabled(false)
 	presentation.set_ambience_gain(0)
@@ -90,16 +91,16 @@ func _test_main() -> void:
 	_expect(session.mode == NarrativeSession.HOME and session.commute.state == CommuteFlow.AT_HOME, "Skip arrives home once")
 	_expect(session.shift.remaining == 0 and session.journal.get_entries().size() == 1, "Home retains completed shift and journal")
 	_expect(not session.finish_commute(home_id) and not session.go_home(), "Home rejects repeated departure/completion")
-	panel.get_node("%Journal").pressed.emit()
-	_expect(session.mode == NarrativeSession.JOURNAL and main.get_node("JournalPanel/%Close").text == "К паузе между сменами" and panel.get_node("Screen").visible and not panel.get_node("%Actions").visible, "Home diary has correct return and backdrop without overlapping controls")
+	home.get_node("%Journal").pressed.emit()
+	_expect(session.mode == NarrativeSession.JOURNAL and main.get_node("JournalPanel/%Close").text == "Вернуться домой" and not panel.get_node("Screen").visible and home.visible, "Home diary returns to real room without old backdrop")
 	session.open_menu()
 	session.resume_menu()
 	session.close_journal()
-	_expect(session.mode == NarrativeSession.HOME and panel.get_node("Screen").visible, "Diary and menu return home")
+	_expect(session.mode == NarrativeSession.HOME and home.visible and not panel.get_node("Screen").visible, "Diary and menu return to explorable home")
 	var fresh_requests: Array[bool] = []
 	session.new_shift_requested.connect(func() -> void: fresh_requests.append(true))
 	panel.travel_seconds = 0.1
-	panel.get_node("%Work").pressed.emit()
+	home.get_node("%Work").pressed.emit()
 	_expect(session.mode == NarrativeSession.TRAVEL and not session.go_to_work(), "Return begins and rejects double click")
 	_expect(not session.finish_commute(home_id), "Old home ID cannot finish return")
 	var old_ref: WeakRef = weakref(main)

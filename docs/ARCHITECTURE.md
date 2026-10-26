@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-049: Main динамически создаёт отдельный HomeExploration из scenes/home/; черновая комната изолирована от коллизий бара техническим offset 32 м. В HOME собственные AnchorCamera/InteractionController/HomeHUD, камера применяется и в фоне книги/меню. NarrativeSession по-прежнему владеет режимами/маршрутом; optional configure_commute(...,true) отключает старый плоский HOME. HomeState отделяет наблюдения/события от Journal, передаётся вместе с ним через обычную новую смену. HomeObject использует прежний Interactable3D, HomeExploration координирует локальный осмотр и сигналы команд сессии. Контракты — CONTRACTS/ADR-0018, расширение — HOME.md.
+
 DA-048 в feat/game-improvements: EnvironmentAudio — самостоятельная 3D-сцена внутри Presentation, содержит только новые пространственные звуки улицы/мебели и их расписание. Прежний гул DA-047 сохранён. PresentationController передаёт общий gain/контекст, Main связывает режим с окружением и AnchorCamera с настройками HUD. Камера хранит только предпочтения скорости/fade в памяти процесса; модели прогресса и граф якорей прежние. Контракты/решение — CONTRACTS и ADR-0017.
 
 Статус: все готовые изменения M1 и DA-020–DA-037 объединены в main по поручению владельца (DA-003). DA-022 добавляет обслуживание, DA-023 — ShiftClock, итоги и новую смену. Основа — ADR-0001, навигация — ADR-0002, JSON — ADR-0003, исполнение — ADR-0004, обслуживание — [ADR-0005](decisions/0005-guest-service.md), смена — [ADR-0006](decisions/0006-shift-and-bartender.md). Сохранений пока нет. Художественная цель — VISUAL_DIRECTION.

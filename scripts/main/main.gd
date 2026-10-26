@@ -22,6 +22,7 @@ var _configured: bool = false
 var _narrative_ready: bool = false
 var _error_menu: bool = false
 var _restart_pending: bool = false
+var _home: HomeExploration
 
 
 func _ready() -> void:
@@ -50,6 +51,7 @@ func _ready() -> void:
 		_fail_setup("Ошибка цели разговора: неизвестный диалог или якорь.")
 		return
 	var shared_journal: Journal
+	var shared_home: HomeState
 	var number: int = 1
 	if get_tree().has_meta(RUN_HANDOFF):
 		var handoff: Variant = get_tree().get_meta(RUN_HANDOFF)
@@ -57,6 +59,11 @@ func _ready() -> void:
 			_fail_setup("Не удалось восстановить дневник между сменами.")
 			return
 		shared_journal = handoff.journal
+		if handoff.has("home_state"):
+			if not handoff.home_state is HomeState:
+				_fail_setup("Не удалось восстановить исследование дома.")
+				return
+			shared_home = handoff.home_state
 		number = handoff.shift
 		get_tree().remove_meta(RUN_HANDOFF)
 	if not _session.configure(catalog, $DialoguePanel, $JournalPanel, $ServicePanel, _trigger.guest_id, drink_options, shared_journal, number):
@@ -65,7 +72,17 @@ func _ready() -> void:
 	if not _session.configure_shift(shift_budget, $ShiftSummaryPanel):
 		_fail_setup("Не удалось настроить время смены.")
 		return
-	if not _session.configure_commute($CommutePanel):
+	_home = (load("res://scenes/home/home_exploration.tscn") as PackedScene).instantiate() as HomeExploration
+	_home.name = "HomeExploration"
+	_home.position = Vector3(32, 0, 0)
+	add_child(_home)
+	if not _home.configure(_session, _hud, shared_home):
+		_fail_setup("Не удалось настроить дом.")
+		return
+	_home.work_requested.connect(_session.go_to_work)
+	_home.journal_requested.connect(_session.open_journal)
+	_rig.view.make_current()
+	if not _session.configure_commute($CommutePanel, true):
 		_fail_setup("Не удалось настроить переход между сменами.")
 		return
 	$ShiftSummaryPanel.restart_requested.connect(restart_shift)
@@ -89,6 +106,9 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	# Поиск дневника получает буквы J/T/B, не игровые горячие клавиши.
 	if get_viewport().gui_get_focus_owner() is LineEdit and not event.is_action_pressed("toggle_menu"):
+		return
+	if is_instance_valid(_home) and _home.handle_input(event):
+		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_menu"):
 		if not _narrative_ready:
@@ -148,7 +168,7 @@ func _reload_shift(keep_journal: bool = false) -> bool:
 		return false
 	_restart_pending = true
 	if keep_journal:
-		get_tree().set_meta(RUN_HANDOFF, {"scene": scene_file_path, "journal": _session.journal, "shift": _session.shift_number + 1})
+		get_tree().set_meta(RUN_HANDOFF, {"scene": scene_file_path, "journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
 	var result := get_tree().reload_current_scene()
 	if result != OK:
 		if keep_journal:
