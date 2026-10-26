@@ -141,3 +141,5 @@ check.ps1 включает tests/free_roam_test.tscn с включённым и�
 ## DA-053: пузырьки
 
 check.ps1 включает tests/dialogue_bubble_test.tscn, 40 headless-проверок: набор/первое F, взгляд/угол/ответы, речь за спиной, цифры/колесо/echo, паузы меню/книги, повтор/конец/отмена, длинный текст/ответы/закрытый вариант, PgUp, исчезнувший NPC и точное совпадение старого save hash при оформлении. Graphical capture-dir добавляет 4 PNG (46 проверок: ещё 2 на мышь); --small проверяет 960×600. Набор тестовых Main не использует пользовательское сохранение. Новый экспортный флаг --bubble-check только в Windows Validation, -Graphics включает GPU. Старые fixtures сохраняют прежний интерфейс и отдельные проверки моделей. Фактический протокол — worklog/2026-10-27-05-dialogue-bubbles.md.
+
+Итог DA-053: чистый Git archive/check.ps1 PASS, Windows release-template речь 40/42, прежние наборы PASS; протокол worklog/2026-10-27-05-dialogue-bubbles.md.
