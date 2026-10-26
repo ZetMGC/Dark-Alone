@@ -20,7 +20,14 @@ Godot 4.7.2.stable.official.ed1daf0bf, Windows, Compatibility/RTX 5060.
 | Тот же тест --small, 960×600 | PASS 112/0 до двух последних проверок render/эффектов, artifacts/da054-small.log |
 | Визуальный просмотр | Обычный/минимальный размер: речи без scrollbar, мягкий фон/рамка, меньший текст, счётчик, ответы после последнего |
 
-Чистые исходники/итоговый Windows-билд ещё проверяются, результаты будут добавлены после выполнения.
+Итоговый код: `ae3b0e09ffc59ae370d51ed6e8f2f5575ebb363d`.
+
+- Чистый Git archive без .godot: весь check.ps1 PASS; речь 107/0, остальные наборы прежние; artifacts/da054-clean-source.log.
+- build_windows.ps1 PASS: builds/windows-20261027-020057-932f5787.zip, source_dirty=false; artifacts/da054-build.log.
+- check_windows_export.ps1 -BuildDirectory builds/windows-20261027-020057-932f5787 -Graphics PASS: речь 107/109, пеший цикл 63/64, checkpoint 51/53, процессы 2/5, прежний цикл 50, книга 51, экран 46, лица 22/38, детализация 18. artifacts/da054-export.log, builds/validation-5c9cd25aff034003a63f318d08fc1d49.
+- ZIP распакован отдельно, все SHA256 manifest совпали, EXE стартовал без редактора/ошибок. git diff --check и новые ссылки документации PASS.
+
+Архив локальный/игнорируется Git. Ветка отправляется на origin отдельно, нового GitHub-релиза нет. После ae3b0e0 изменены только результаты и статусы документов.
 
 ## Решения и ограничения
 
@@ -28,4 +35,4 @@ Godot 4.7.2.stable.official.ed1daf0bf, Windows, Compatibility/RTX 5060.
 
 ## Продолжение
 
-Пользователю оценить прозрачность/размер/продолжения в DIALOGUE_BUBBLES/PLAYTEST. Для коллег: чистый clone + check.ps1, новый SpeechPaginator и актуальный dialogue_bubble_test, затем экспорт -Graphics. STATUS/BACKLOG обновлены; до финальных проверок in_progress. Следующий содержательный шаг — согласование Q-04/DA-040, персонажи и концепт записей остаются отложены. Main/релиз не менялись этой веткой.
+Пользователю оценить прозрачность/размер/продолжения в DIALOGUE_BUBBLES/PLAYTEST. Для коллег: чистый clone + check.ps1, новый SpeechPaginator и актуальный dialogue_bubble_test, затем экспорт -Graphics. STATUS/BACKLOG обновлены; техническая задача done. Следующий содержательный шаг — согласование Q-04/DA-040, персонажи и концепт записей остаются отложены. Main/релиз не менялись этой веткой.
