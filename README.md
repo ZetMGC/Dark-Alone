@@ -46,6 +46,7 @@
 | [DISPLAY](docs/DISPLAY.md) | F11, полноэкранный режим, мониторы и разные разрешения |
 | [IMAGE_DETAIL](docs/IMAGE_DETAIL.md) | Детализация мира под экран и чёткие масштабируемые шрифты |
 | [TEST_FACES](docs/TEST_FACES.md) | Три нейтральных варианта лица, меню сравнения и оставшаяся приёмка |
+| [CHARACTER_DIRECTION](docs/CHARACTER_DIRECTION.md) | Уточнённая цель: реалистичные персонажи; текущие лица временные |
 | [PLAYTEST](docs/PLAYTEST.md) | Инструкция игроку и маршрут для обратной связи |
 | [TESTING](docs/TESTING.md) | Команды и ручные сценарии проверки |
 | [STATUS](docs/STATUS.md) | Что действительно готово и что делать следующим |
