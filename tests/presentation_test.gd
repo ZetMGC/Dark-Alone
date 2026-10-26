@@ -32,7 +32,18 @@ func _run() -> void:
 	var state_before := [session.shift.remaining, session.service.served, session.journal.get_entries().size(), rig.current_anchor_id]
 	_expect(presentation.layer < hud.layer and presentation.get_node("Screen").mouse_filter == Control.MOUSE_FILTER_IGNORE, "Effect stays below UI and does not intercept input")
 	_expect(presentation.is_retro_enabled(), "Retro on by default")
+	_expect(presentation.get_image_detail() == &"adaptive", "World detail follows physical pixels by default")
+	var material: ShaderMaterial = presentation.get_node("Screen").material
+	_expect(material.get_shader_parameter("virtual_height") == 0.0 and material.get_shader_parameter("pixel_block") == 2.0, "Adaptive effect does not cap image at 360 lines")
+	_expect(not presentation.set_image_detail(&"bad") and presentation.get_image_detail() == &"adaptive", "Invalid detail cannot change preference")
+	_expect(ProjectSettings.get_setting("gui/theme/default_font_multichannel_signed_distance_field", false), "Default UI and world font use scalable distance fields")
+	var book_font: SystemFont = (load("res://scenes/ui/book_theme.tres") as Theme).default_font
+	_expect(book_font.multichannel_signed_distance_field, "Custom Cyrillic book font also scales sharply")
 	session.open_menu()
+	hud.get_node("%ImageDetail").item_selected.emit(1)
+	_expect(presentation.get_image_detail() == &"native" and material.get_shader_parameter("pixel_block") == 1.0, "Menu selects full pixel detail")
+	presentation.set_image_detail(&"classic")
+	_expect(material.get_shader_parameter("virtual_height") == 360.0, "Classic option preserves old PS1 sampling")
 	hud.get_node("%RetroCheck").button_pressed = false
 	_expect(not presentation.is_retro_enabled() and not presentation.get_node("Screen").visible, "Menu disables entire effect")
 	hud.get_node("%AmbienceVolume").value = 0
@@ -60,6 +71,8 @@ func _run() -> void:
 	presentation = main.get_node("Presentation")
 	_expect(not presentation.is_retro_enabled() and presentation.get_ambience_gain() == 0, "Per-process preferences survive scene replacement")
 	_expect(not main.get_node("NavigationHUD/%RetroCheck").button_pressed and main.get_node("NavigationHUD/%AmbienceVolume").value == 0, "Controls reflect retained preferences")
+	_expect(presentation.get_image_detail() == &"classic" and main.get_node("NavigationHUD/%ImageDetail").selected == 2, "Image detail survives scene replacement")
+	presentation.set_image_detail(&"adaptive")
 	presentation.set_retro_enabled(true)
 	presentation.set_ambience_gain(0.35)
 	main.queue_free()

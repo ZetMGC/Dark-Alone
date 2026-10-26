@@ -195,4 +195,8 @@ NavigationHUD предоставляет `%DisplayMode` (OptionButton: 0 окн�
 
 ## Как менять контракт
 
+DA-042 добавляет к PresentationController `set_image_detail(value: StringName) -> bool` и `get_image_detail() -> StringName`. Допустимы adaptive/native/classic, неизвестное значение возвращает false без изменения. Static-предпочтение переживает новую сцену в памяти процесса; UI `%ImageDetail` OptionButton с индексами 0/1/2 синхронизируется при configure_controls. Оно не зависит от включения ретро-эффекта, не меняет Session/Journal/время. Shader: adaptive virtual_height=0,pixel_block=2; native 0/1; classic 360/2. SCREEN_PIXEL_SIZE задаёт физическое разрешение; resize не требует команды Session.
+
+MSDF включён для стандартного font в project.godot и отдельно для SystemFont book_theme; другие font-ресурсы требуют своей проверки. Потребители: PresentationController/HUD, presentation_test (20), image_detail_test, validation runner и check_windows_export с новым необязательным -Graphics. Этот флаг добавляет графическую GPU-проверку; прежние вызовы checker остаются headless. Формат JSON/знаний/курсора не менялся. Решение ADR-0013, инструкция IMAGE_DETAIL.
+
 Указать задачу, статус (`proposed` / `implemented`), фактический путь реализации, затронутые системы, совместимость данных и проверку потребителей. Реализованные разделы обязательны для потребителей; предложения принимаются соответствующей задачей. Если реализация отличается, документ обновляется в том же изменении.

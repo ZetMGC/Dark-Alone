@@ -2,6 +2,7 @@
 
 [sub_resource type="SystemFont" id="Serif"]
 font_names = PackedStringArray("Georgia", "Noto Serif", "Times New Roman")
+multichannel_signed_distance_field = true
 
 [sub_resource type="StyleBoxFlat" id="PaperButton"]
 bg_color = Color(0.22, 0.17, 0.1, 0.05)

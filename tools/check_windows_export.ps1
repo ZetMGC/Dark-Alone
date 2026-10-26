@@ -1,6 +1,7 @@
 param(
   [string]$Godot = 'godot',
-  [Parameter(Mandatory = $true)][string]$BuildDirectory
+  [Parameter(Mandatory = $true)][string]$BuildDirectory,
+  [switch]$Graphics
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -18,8 +19,9 @@ if ($exportCode -ne 0 -or ($exportLog -match 'SCRIPT ERROR:|ERROR:|Parse Error:'
 }
 
 function Invoke-BuildCheck {
-  param([string]$Executable, [string]$Log, [string[]]$ExtraArguments, [bool]$ExpectPlaythrough, [string]$ExpectedMarker = '')
-  $arguments = @('--headless', '--log-file', ('"' + $Log + '"')) + $ExtraArguments
+  param([string]$Executable, [string]$Log, [string[]]$ExtraArguments, [bool]$ExpectPlaythrough, [string]$ExpectedMarker = '', [bool]$Graphical = $false)
+  $arguments = @('--log-file', ('"' + $Log + '"')) + $ExtraArguments
+  if (-not $Graphical) { $arguments = @('--headless') + $arguments }
   $process = Start-Process -FilePath $Executable -ArgumentList $arguments -WorkingDirectory $validationRoot -WindowStyle Hidden -PassThru
   if (-not $process.WaitForExit(45000)) {
     $process.Kill()
@@ -46,4 +48,7 @@ Invoke-BuildCheck -Executable $executable -Log (Join-Path $validationRoot 'start
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'playthrough.log') -ExtraArguments @() -ExpectPlaythrough $true
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'book.log') -ExtraArguments @('--', '--book-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: journal book,'
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'display.log') -ExtraArguments @('--', '--display-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: display settings,'
+if ($Graphics) {
+  Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'image-detail.log') -ExtraArguments @('--', '--image-detail-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: image detail,' -Graphical $true
+}
 Write-Output "PASS: exported startup and full playthrough. Logs: $validationRoot"

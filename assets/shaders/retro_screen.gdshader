@@ -2,10 +2,15 @@ shader_type canvas_item;
 render_mode unshaded;
 
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
-uniform float virtual_height = 360.0;
+uniform float virtual_height = 0.0;
+uniform float pixel_block = 2.0;
 
 void fragment() {
-	vec2 grid = vec2(virtual_height * SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x, virtual_height);
+	// По умолчанию блок имеет постоянный размер в пикселях реального кадра.
+	vec2 grid = 1.0 / (SCREEN_PIXEL_SIZE * max(pixel_block, 1.0));
+	if (virtual_height > 0.0) {
+		grid = vec2(virtual_height * SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x, virtual_height);
+	}
 	vec2 pixel = floor(SCREEN_UV * grid);
 	vec2 uv = (pixel + 0.5) / grid;
 	vec3 sample_color = textureLod(screen_texture, uv, 0.0).rgb;
