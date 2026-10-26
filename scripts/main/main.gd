@@ -63,6 +63,7 @@ func _ready() -> void:
 	_session.service_completed.connect(_on_service_completed)
 	_trigger.dialogue_requested.connect(_start_dialogue)
 	_refresh_navigation()
+	$Presentation.configure_controls(_hud)
 
 
 func _input(event: InputEvent) -> void:

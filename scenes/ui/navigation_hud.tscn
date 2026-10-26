@@ -171,6 +171,27 @@ layout_mode = 2
 text = "Разговор и дневник\nУ стойки доступен [TEST] разговор."
 horizontal_alignment = 1
 
+[node name="RetroCheck" type="CheckButton" parent="Screen/Menu/Center/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ретро-изображение"
+button_pressed = true
+tooltip_text = "Пиксельное изображение и мягкая виньетка. Текст интерфейса остаётся чётким."
+
+[node name="AmbienceLabel" type="Label" parent="Screen/Menu/Center/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Фоновый звук: 35%"
+
+[node name="AmbienceVolume" type="HSlider" parent="Screen/Menu/Center/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+value = 0.35
+tooltip_text = "Громкость фонового гула. Ноль полностью отключает звук."
+
 [node name="Resume" type="Button" parent="Screen/Menu/Center/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 52)

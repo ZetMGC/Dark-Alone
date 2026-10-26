@@ -145,6 +145,14 @@ JournalPanel.render добавляет необязательный третий
 
 Одноразовые эффекты (термин, изменение флага, время) не запускать из рендера UI. Согласовать порядок применения и защиту от частичного применения: сначала проверить все эффекты, затем изменить состояние. Событие окончания смены испускается ровно один раз.
 
+## Представление — implemented, DA-030
+
+`PresentationController` — CanvasLayer, сцена `scenes/presentation/presentation.tscn`. API: `configure_controls(hud: NavigationHUD) -> void`, `set_retro_enabled(value: bool) -> void`, `is_retro_enabled() -> bool`, `set_ambience_gain(value: float) -> void`, `get_ambience_gain() -> float`. Main вызывает configure_controls один раз после основной настройки.
+
+NavigationHUD предоставляет уникальные узлы `%RetroCheck` (CheckButton), `%AmbienceVolume` (HSlider 0…1) и `%AmbienceLabel` (Label). Контроллер подписывает их и синхронизирует без повторных сигналов. Число громкости ограничивается 0…1, нечисловые/бесконечные значения игнорируются, ноль останавливает AudioStreamPlayer. Предпочтения живут только в памяти процесса и переживают новую смену, игровые модели не затрагиваются. Слой эффекта 2 ниже HUD/панелей и fade, mouse_filter=IGNORE.
+
+BarLevel/Art зависит от существующих Geometry/Props/Lights/WorldEnvironment; GuestArt — от узлов Body. Они не меняют публичные интерфейсы якорей, взаимодействия, гостя и сессии. Потребители новых UI-узлов — Main, PresentationController и presentation_test. Решение — ADR-0008.
+
 ## Как менять контракт
 
 Указать задачу, статус (`proposed` / `implemented`), фактический путь реализации, затронутые системы, совместимость данных и проверку потребителей. Реализованные разделы обязательны для потребителей; предложения принимаются соответствующей задачей. Если реализация отличается, документ обновляется в том же изменении.

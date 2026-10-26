@@ -1,7 +1,8 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/block.tscn" id="1_block"]
 [ext_resource type="PackedScene" path="res://scenes/navigation/anchor_point.tscn" id="2_anchor"]
+[ext_resource type="Script" path="res://scripts/presentation/bar_art.gd" id="3_art"]
 
 [sub_resource type="Environment" id="Environment"]
 background_mode = 1
@@ -63,6 +64,9 @@ radial_segments = 32
 material = SubResource("Counter")
 
 [node name="BarLevel" type="Node3D"]
+
+[node name="Art" type="Node3D" parent="."]
+script = ExtResource("3_art")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment")
