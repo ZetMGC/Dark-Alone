@@ -12,7 +12,11 @@ func content_hash(catalog: DialogueCatalog) -> String:
 	for id in catalog.get_term_ids():
 		terms.append(catalog.get_term(StringName(id)))
 	for id in catalog.get_dialogue_ids():
-		dialogues.append(catalog.get_dialogue(StringName(id)))
+		var dialogue := catalog.get_dialogue(StringName(id))
+		# Чистое оформление речи не меняет совместимость знаний/источников v1.
+		for node in dialogue.nodes:
+			node.text = DialogueText.plain(str(node.text))
+		dialogues.append(dialogue)
 	return JSON.stringify([terms, dialogues, HomeState.OBJECTS, HomeState.EVENTS]).sha256_text()
 
 

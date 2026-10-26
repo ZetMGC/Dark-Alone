@@ -137,3 +137,7 @@ check.ps1 включает tests/free_roam_test.tscn с включённым и�
 Отдельный графический проход: `godot --path . res://tests/free_roam_test.tscn -- --capture-dir=<абсолютная папка>`; `--small` — 960×600. Проверить снимки 01-bar-walk/02-counter/03-home-workstation. Windows Validation запускается с --free-roam-check через check_windows_export.ps1, -Graphics повторяет на GPU. Обычный Desktop EXE тестовый режим не содержит. Человеческий маршрут/комфорт — FREE_ROAM/PLAYTEST.
 
 Фактический итог DA-052: free_roam 63 headless / 64 GPU без снимков, полный набор также из чистого Git archive и Windows release-template PASS; протокол worklog/2026-10-27-04-free-roam.md.
+
+## DA-053: пузырьки
+
+check.ps1 включает tests/dialogue_bubble_test.tscn, 40 headless-проверок: набор/первое F, взгляд/угол/ответы, речь за спиной, цифры/колесо/echo, паузы меню/книги, повтор/конец/отмена, длинный текст/ответы/закрытый вариант, PgUp, исчезнувший NPC и точное совпадение старого save hash при оформлении. Graphical capture-dir добавляет 4 PNG (46 проверок: ещё 2 на мышь); --small проверяет 960×600. Набор тестовых Main не использует пользовательское сохранение. Новый экспортный флаг --bubble-check только в Windows Validation, -Graphics включает GPU. Старые fixtures сохраняют прежний интерфейс и отдельные проверки моделей. Фактический протокол — worklog/2026-10-27-05-dialogue-bubbles.md.

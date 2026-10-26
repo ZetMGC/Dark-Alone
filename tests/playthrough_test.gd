@@ -52,6 +52,9 @@ func _wait_book() -> void:
 
 
 func _run() -> void:
+	if "--bubble-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/dialogue_bubble_test.tscn") as PackedScene).instantiate())
+		return
 	if "--free-roam-check" in OS.get_cmdline_user_args():
 		get_tree().root.add_child((load("res://tests/free_roam_test.tscn") as PackedScene).instantiate())
 		return

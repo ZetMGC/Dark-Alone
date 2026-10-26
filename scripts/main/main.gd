@@ -36,6 +36,8 @@ func _ready() -> void:
 		if context is Dictionary and context.get("scene") == scene_file_path and context.get("free_roam_enabled") is bool:
 			free_roam_enabled = context.free_roam_enabled
 	(_rig as FreeRoamCamera).free_roam_enabled = free_roam_enabled
+	($DialoguePanel as DialogueBubblePanel).bubble_enabled = free_roam_enabled
+	($DialoguePanel as DialogueBubblePanel).configure_speaker(_rig.view, _trigger)
 	(_rig as FreeRoamCamera).focus_anchor_ids = PackedStringArray(["counter"])
 	(_rig as FreeRoamCamera).availability_changed.connect(_refresh_navigation)
 	_hud.leave_workstation_requested.connect(func() -> void:
@@ -323,6 +325,8 @@ func _on_anchor_reached(_anchor_id: StringName) -> void:
 
 
 func _on_mode_changed(mode: StringName) -> void:
+	if free_roam_enabled and mode == NarrativeSession.EXPLORATION and (_rig as FreeRoamCamera).focus_active:
+		_rig.reset_look()
 	$Presentation.set_environment_context(mode)
 	_hud.set_menu_visible(mode == NarrativeSession.MENU)
 	_refresh_navigation()
@@ -332,6 +336,7 @@ func _refresh_navigation() -> void:
 	if not _configured or not _narrative_ready:
 		return
 	var exploration := _session.mode == NarrativeSession.EXPLORATION
+	(_rig as FreeRoamCamera).set_dialogue_look(_session.mode == NarrativeSession.DIALOGUE)
 	_rig.set_controls_enabled(exploration)
 	var enabled := exploration and not _rig.is_transitioning
 	_interaction.set_enabled(enabled)

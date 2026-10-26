@@ -14,6 +14,13 @@ var body: CharacterBody3D
 var focus_active: bool = false
 var _return_basis: Basis
 var _nearby: PackedStringArray = []
+var _dialogue_look: bool = false
+
+
+func set_dialogue_look(enabled: bool) -> void:
+	_dialogue_look = free_roam_enabled and enabled
+	if free_roam_enabled:
+		_update_capture()
 
 
 func configure(anchors_root: Node3D, initial_id: StringName) -> bool:
@@ -111,7 +118,7 @@ func set_controls_enabled(enabled: bool) -> void:
 
 
 func _update_capture() -> void:
-	if _controls_enabled and not focus_active and not is_transitioning and _window_focused and view.current and DisplayServer.get_name() != "headless":
+	if ((_controls_enabled and not focus_active) or _dialogue_look) and not is_transitioning and _window_focused and view.current and DisplayServer.get_name() != "headless":
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	else:
@@ -127,7 +134,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not free_roam_enabled:
 		super._unhandled_input(event)
 		return
-	if not _controls_enabled or focus_active or is_transitioning or not _window_focused or not view.current:
+	if ((not _controls_enabled or focus_active) and not _dialogue_look) or is_transitioning or not _window_focused or not view.current:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		apply_look_delta(-event.screen_relative * mouse_sensitivity)
@@ -138,6 +145,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func apply_look_delta(delta: Vector2) -> void:
+	if _dialogue_look and not is_transitioning and _window_focused:
+		_look.x = wrapf(_look.x + delta.x, -PI, PI)
+		var pitch := clampf(_anchor_pitch + _look.y + delta.y, deg_to_rad(-65), deg_to_rad(65))
+		_look.y = pitch - _anchor_pitch
+		_update_view_basis()
+		return
 	if free_roam_enabled and focus_active:
 		return
 	super.apply_look_delta(delta)
@@ -146,6 +159,11 @@ func apply_look_delta(delta: Vector2) -> void:
 func _process(delta: float) -> void:
 	if not free_roam_enabled:
 		super._process(delta)
+		return
+	if _dialogue_look:
+		if _window_focused:
+			apply_look_delta(Vector2(Input.get_axis("look_right", "look_left"), Input.get_axis("look_down", "look_up")) * keyboard_look_speed * delta)
+		_update_capture()
 		return
 	if _controls_enabled and not focus_active and view.current:
 		super._process(delta)
