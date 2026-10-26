@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/levels/bar_graybox.tscn" id="2"]
@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/service_panel.tscn" id="10"]
 [ext_resource type="PackedScene" path="res://scenes/ui/shift_summary_panel.tscn" id="11"]
 [ext_resource type="PackedScene" path="res://scenes/presentation/presentation.tscn" id="12"]
+[ext_resource type="PackedScene" path="res://scenes/ui/commute_panel.tscn" id="13"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
@@ -41,3 +42,5 @@ rotation_degrees = Vector3(0, 180, 0)
 [node name="ShiftSummaryPanel" parent="." instance=ExtResource("11")]
 
 [node name="Presentation" parent="." instance=ExtResource("12")]
+
+[node name="CommutePanel" parent="." instance=ExtResource("13")]

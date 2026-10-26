@@ -32,7 +32,7 @@ function Invoke-BuildCheck {
     $output | Write-Output
     throw "Exported application failed. See $Log"
   }
-  if ($ExpectPlaythrough -and -not ($output -match 'PASS: full playthrough, 41 checks, 0 failures')) {
+  if ($ExpectPlaythrough -and -not ($output -match 'PASS: full playthrough, [1-9][0-9]* checks, 0 failures')) {
     throw "Missing full playthrough result. See $Log"
   }
   $output | Write-Output

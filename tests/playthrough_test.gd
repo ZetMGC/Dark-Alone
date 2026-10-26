@@ -88,7 +88,20 @@ func _run() -> void:
 		_expect(get_tree().current_scene.get_node("AnchorCamera").current_anchor_id == &"counter", "Ended shift blocks movement")
 		await _press("ShiftSummaryPanel", "%Journal")
 		await _key(KEY_ESCAPE)
-		await _press("ShiftSummaryPanel", "%Restart")
+		if long_branch:
+			await _press("ShiftSummaryPanel", "%GoHome")
+			_expect(session.mode == NarrativeSession.TRAVEL, "Export starts home trip")
+			await _key(KEY_ESCAPE)
+			await _key(KEY_ESCAPE)
+			await _press("CommutePanel", "%Skip")
+			_expect(session.mode == NarrativeSession.HOME, "Export arrives home")
+			await _press("CommutePanel", "%Journal")
+			await _key(KEY_ESCAPE)
+			_expect(session.mode == NarrativeSession.HOME, "Export diary returns home")
+			await _press("CommutePanel", "%Work")
+			await _press("CommutePanel", "%Skip")
+		else:
+			await _press("ShiftSummaryPanel", "%Restart")
 		await get_tree().process_frame
 		_expect(get_tree().current_scene.get_node("AnchorCamera").current_anchor_id == &"entry", "New shift reloads entry")
 	print("%s: full playthrough, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])

@@ -4,12 +4,18 @@ extends CanvasLayer
 signal restart_requested
 signal journal_requested
 signal quit_requested
+signal home_requested
 
 
 func _ready() -> void:
 	%Restart.pressed.connect(func() -> void: restart_requested.emit())
 	%Journal.pressed.connect(func() -> void: journal_requested.emit())
 	%Quit.pressed.connect(func() -> void: quit_requested.emit())
+	%GoHome.pressed.connect(func() -> void: home_requested.emit())
+
+
+func set_home_available(value: bool) -> void:
+	%GoHome.visible = value
 
 
 func render(clock: ShiftClock, journal: Journal, service: GuestService) -> void:

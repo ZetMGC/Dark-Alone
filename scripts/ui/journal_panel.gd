@@ -11,7 +11,7 @@ func _ready() -> void:
 	%Close.pressed.connect(func() -> void: close_requested.emit())
 
 
-func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool = false) -> void:
+func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool = false, return_to_home: bool = false) -> void:
 	for child in _entries.get_children():
 		_entries.remove_child(child)
 		child.queue_free()
@@ -20,6 +20,8 @@ func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool 
 	%Close.text = "Вернуться к разговору" if return_to_dialogue else "Вернуться в бар"
 	if return_to_summary:
 		%Close.text = "К итогам смены"
+	if return_to_home:
+		%Close.text = "К паузе между сменами"
 	if entries.is_empty():
 		var empty := Label.new()
 		empty.text = "Здесь появятся новые слова, которые вы узнаете в разговорах."

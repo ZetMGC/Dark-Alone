@@ -53,7 +53,11 @@ func _ready() -> void:
 	if not _session.configure_shift(shift_budget, $ShiftSummaryPanel):
 		_fail_setup("Не удалось настроить время смены.")
 		return
+	if not _session.configure_commute($CommutePanel):
+		_fail_setup("Не удалось настроить переход между сменами.")
+		return
 	$ShiftSummaryPanel.restart_requested.connect(restart_shift)
+	_session.new_shift_requested.connect(_restart_after_commute)
 	$ShiftSummaryPanel.quit_requested.connect(func() -> void: get_tree().quit())
 	_session.shift_progress_changed.connect(_hud.update_shift)
 	_hud.update_shift(_session.shift.remaining, _session.shift.budget)
@@ -112,6 +116,15 @@ func start_test_dialogue() -> bool:
 func restart_shift() -> bool:
 	if not _narrative_ready or _restart_pending or _session.mode != NarrativeSession.SHIFT_COMPLETE or get_tree().current_scene != self:
 		return false
+	return _reload_shift()
+
+
+func _restart_after_commute() -> void:
+	if _narrative_ready and not _restart_pending and _session.mode == NarrativeSession.TRAVEL and _session.commute.state == CommuteFlow.READY and get_tree().current_scene == self:
+		_reload_shift()
+
+
+func _reload_shift() -> bool:
 	_restart_pending = true
 	var result := get_tree().reload_current_scene()
 	if result != OK:

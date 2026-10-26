@@ -153,6 +153,16 @@ NavigationHUD предоставляет уникальные узлы `%RetroCh
 
 BarLevel/Art зависит от существующих Geometry/Props/Lights/WorldEnvironment; GuestArt — от узлов Body. Они не меняют публичные интерфейсы якорей, взаимодействия, гостя и сессии. Потребители новых UI-узлов — Main, PresentationController и presentation_test. Решение — ADR-0008.
 
+## Переход между сменами — implemented, DA-031
+
+`CommuteFlow` (RefCounted, scripts/session/commute_flow.gd): read-only state: StringName и trip_id: int; start_home/start_work() -> bool, complete(id: int) -> bool, signal state_changed(state: StringName). Порядок at_work → to_home → at_home → to_work → ready. Повторные/неподходящие команды, старый ID и вложенная команда во время сигнала отклоняются. Модель не знает о времени/панелях/ресурсах.
+
+`NarrativeSession.configure_commute(panel: CommutePanel) -> bool` вызывается после configure_shift, до прогресса. Без неё новые действия недоступны, кнопка домой скрыта; прежние потребители работают. go_home() допустим только в shift_complete, go_to_work() — home, finish_commute(trip_id: int) — travel с совпадающим ID. Новые режимы travel/home блокируют мир. Дневник разрешён дома; меню приостанавливает скрытую анимацию, возврат продолжает её. По окончании обратного маршрута испускается new_shift_requested; Main проверяет current_scene, готовность CommuteFlow и защиту от повторной перезагрузки. Прямой restart_shift сохранён.
+
+`CommutePanel`: begin_trip(id: int, to_home: bool), show_home(), stop_trip(), set_open(value: bool, travelling: bool, interactive: bool=true) -> void; сигналы arrived(trip_id: int), work_requested, journal_requested. travel_seconds=3.0. Таймер и пропуск проходят одну защиту _active; фон и управляющие элементы отделяются при чтении дома. Слой 11 ниже дневника, в меню панель скрыта. `ShiftSummaryPanel` добавляет home_requested и set_home_available(value: bool) -> void.
+
+JournalPanel.render получает четвёртый необязательный return_to_home: bool=false; старые вызовы совместимы. Затронуты Main, NarrativeSession, Summary/Journal UI, commute_test, playthrough_test и команды снимков. JSON v1/деньги/сохранения/время не меняются. Будущие журнальные данные DA-033/DA-034 ещё не являются API — JOURNAL_PLAN.
+
 ## Как менять контракт
 
 Указать задачу, статус (`proposed` / `implemented`), фактический путь реализации, затронутые системы, совместимость данных и проверку потребителей. Реализованные разделы обязательны для потребителей; предложения принимаются соответствующей задачей. Если реализация отличается, документ обновляется в том же изменении.
