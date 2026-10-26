@@ -24,6 +24,7 @@ function Invoke-GodotCheck {
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--editor', '--import')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/smoke_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/navigation_test.gd')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/camera_horizon_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tools/validate_content.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/dialogue_content_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/dialogue_runtime_test.gd')

@@ -17,6 +17,8 @@ var validation_errors: PackedStringArray = []
 var _anchors: Dictionary = {}
 var _controls_enabled: bool = true
 var _look: Vector2 = Vector2.ZERO
+var _anchor_yaw: float = 0.0
+var _anchor_pitch: float = 0.0
 var _transition: Tween
 var _window_focused: bool = true
 static var _preferred_look: float = 1.0
@@ -111,8 +113,7 @@ func configure(anchors_root: Node3D, initial_id: StringName) -> bool:
 		return false
 	_anchors = candidates
 	current_anchor_id = initial_id
-	global_transform = get_anchor(initial_id).global_transform
-	reset_look()
+	_place_at(initial_id)
 	_fade.color.a = 0.0
 	return true
 
@@ -153,6 +154,9 @@ func request_move(anchor_id: StringName) -> bool:
 
 func _place_at(anchor_id: StringName) -> void:
 	global_transform = get_anchor(anchor_id).global_transform
+	var forward := -global_basis.z.normalized()
+	_anchor_yaw = atan2(-forward.x, -forward.z)
+	_anchor_pitch = asin(clampf(forward.y, -1.0, 1.0))
 	reset_look()
 
 
@@ -171,7 +175,13 @@ func set_controls_enabled(enabled: bool) -> void:
 func reset_look() -> void:
 	_look = Vector2.ZERO
 	if is_node_ready():
-		view.rotation = Vector3.ZERO
+		_update_view_basis()
+
+
+func _update_view_basis() -> void:
+	# Yaw вокруг вертикали мира, pitch вокруг горизонтальной оси взгляда.
+	# Наклон якоря не должен наклонять ось вращения при осмотре комнаты.
+	view.global_basis = Basis(Vector3.UP, _anchor_yaw + _look.x) * Basis(Vector3.RIGHT, _anchor_pitch + _look.y)
 
 
 func release_look() -> void:
@@ -203,8 +213,9 @@ func apply_look_delta(delta: Vector2) -> void:
 	if not _controls_enabled or is_transitioning:
 		return
 	_look.x = wrapf(_look.x + delta.x, -PI, PI)
-	_look.y = clampf(_look.y + delta.y, deg_to_rad(-65), deg_to_rad(65))
-	view.rotation = Vector3(_look.y, _look.x, 0.0)
+	var pitch := clampf(_anchor_pitch + _look.y + delta.y, deg_to_rad(-65), deg_to_rad(65))
+	_look.y = pitch - _anchor_pitch
+	_update_view_basis()
 
 
 func _process(delta: float) -> void:

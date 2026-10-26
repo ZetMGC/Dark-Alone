@@ -133,6 +133,10 @@ func _run() -> void:
 	home.rig.request_move(&"home_bed")
 	await home.rig.anchor_reached
 	await _save("bed")
+	home.rig.apply_look_delta(Vector2(0.8, -0.1))
+	_expect(absf(home.rig.view.global_basis.x.y) < 0.00001, "Home bed stays level while turning")
+	await _save("bed_look")
+	home.rig.reset_look()
 	_expect(home.inspect(&"home_bed"), "Bed inspection available")
 	home.close_inspection(true)
 	_expect(not home.request_work(), "Leaving for work requires door anchor")
