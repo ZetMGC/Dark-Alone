@@ -1,5 +1,7 @@
 # Текущее состояние
 
+DA-056, 2026-10-27: по поручению владельца удалены слитые codex/da032-shift-autosave, codex/da052-free-roam-workstations, codex/da053-npc-speech-bubbles, codex/da054-paged-speech и удалённая feat/game-improvements. Все вершины предварительно проверены на включение в main bbcce61; осталась только main локально и на GitHub. [Протокол](worklog/2026-10-27-08-branch-cleanup.md).
+
 DA-055, 2026-10-27: разрешённое владельцем слияние origin/codex/da054-paged-speech (b1cce71) в main (7fea832) без конфликтов. Проверено, что эта ветка уже содержит DA-032/052/053 и feat/game-improvements. Игровые файлы/проверки идентичны проверенному DA-054; отличаются только документы передачи. Smoke и штатный headless-запуск PASS, git diff --check PASS; оформлен отдельный коммит слияния для отправки в origin/main. Протокол — worklog/2026-10-27-07-main-integration.md. Новый релиз не создаётся.
 
 DA-054, 2026-10-27, codex/da054-paged-speech: фон речи alpha 0,78, шрифт 18, компактная высота. Длинные реплики идут последовательными пузырьками без прокрутки, F переключает после набора, ответы только после последнего. Модель/контент/сохранения прежние. GPU в обычном/минимальном окне пройден; чистый Git archive/check.ps1 и Windows release-template/GPU PASS (речь 107/109), ZIP builds/windows-20261027-020057-932f5787.zip из ae3b0e0 source_dirty=false, SHA256/распаковка/запуск проверены. [Протокол](worklog/2026-10-27-06-paged-speech.md).
