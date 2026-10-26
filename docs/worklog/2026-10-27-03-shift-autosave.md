@@ -24,7 +24,7 @@
 | Итоговый tools/check.ps1 | PASS: checkpoint 51, процессы 2/5 и все прежние наборы; artifacts/da032-final-check.log |
 | git diff --check | PASS |
 
-Промежуточная сборка выше имеет source_dirty=true; это локальная проверка, не опубликованный релиз. Итоговый чистый Windows-архив и повторная проверка фиксируются отдельной записью ниже после сборки.
+Итоговый коммит кода: `258188e2f51268840e4f5da613b1698aba50a602`. Чистый Git archive без .godot прошёл весь check.ps1: artifacts/da032-clean-source.log. Чистая Windows-сборка `builds/windows-20261027-010603-5f7f61e5.zip`, manifest source_dirty=false. Повтор check_windows_export.ps1 -Graphics PASS: checkpoint 51/53, отдельные процессы 2/5, все остальные экспортные проверки; artifacts/da032-clean-export.log, builds/validation-530b34dae8aa43a1af233e7642793c17. ZIP распакован отдельно, все SHA256 manifest совпали, извлечённый EXE стартовал без редактора и ошибок. Архив локальный и игнорируется Git; новый GitHub-релиз не опубликован. Промежуточная сборка выше source_dirty=true не является итоговой.
 
 ## Решения и ограничения
 
