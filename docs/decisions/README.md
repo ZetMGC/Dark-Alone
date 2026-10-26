@@ -9,5 +9,6 @@ ADR фиксирует контекст, выбор и последствия. �
 | [0003](0003-dialogue-content.md) | JSON v1, атомарный каталог и статическая проверка графа | Accepted и implemented для DA-020 |
 | [0004](0004-dialogue-runtime.md) | Runner, дневник сессии, повторные разговоры и модальный ввод | Accepted и implemented для DA-021 |
 | [0005](0005-guest-service.md) | TEST-гость и одноразовая подача из короткого меню | Accepted и implemented для DA-022 |
+| [0006](0006-shift-and-bartender.md) | Стороны стойки, бюджет 2, уникальные события и новая смена | Accepted и implemented для DA-023 |
 
-Шаблон — `docs/templates/ADR.md`. Следующее решение: стоимость времени Q-05, завершённые события и конец смены в DA-023. Художественный ориентир — VISUAL_DIRECTION, полный проход DA-030.
+Шаблон — `docs/templates/ADR.md`. Далее проверка и передача DA-024. Художественный ориентир — VISUAL_DIRECTION, полный проход DA-030.

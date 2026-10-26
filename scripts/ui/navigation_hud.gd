@@ -92,3 +92,7 @@ func update_service(available: bool, served: bool, drink_title: String) -> void:
 	%Service.disabled = not available
 	%Service.tooltip_text = "Гость уже обслужен." if served else "Подойдите к стойке, чтобы выбрать напиток."
 	%ServiceStatus.text = "Подано: " + drink_title if served else "[TEST] Гость у стойки ждёт напиток"
+
+
+func update_shift(remaining: int, budget: int) -> void:
+	%ShiftTime.text = "Время смены: %d / %d" % [remaining, budget]

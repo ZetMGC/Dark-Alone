@@ -5,18 +5,21 @@ extends Node
 signal mode_changed(mode: StringName)
 signal journal_changed(count: int)
 signal service_completed(event_id: StringName, guest_id: StringName, drink_id: StringName)
+signal shift_progress_changed(remaining: int, budget: int)
 
 const EXPLORATION := &"exploration"
 const DIALOGUE := &"dialogue"
 const JOURNAL := &"journal"
 const MENU := &"menu"
 const SERVICE := &"service"
+const SHIFT_COMPLETE := &"shift_complete"
 
 var mode: StringName:
 	get: return _mode
 var runner := DialogueRunner.new()
 var journal := Journal.new()
 var service := GuestService.new()
+var shift := ShiftClock.new()
 
 var _mode: StringName = EXPLORATION
 var _journal_return: StringName = EXPLORATION
@@ -27,6 +30,10 @@ var _service_panel: ServicePanel
 var _service_ready: bool = false
 var _configured: bool = false
 var _changing: bool = false
+var _shift_ready: bool = false
+var _summary_panel: ShiftSummaryPanel
+var _run_serial: int = 0
+var _active_run_id: StringName = &""
 
 
 func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_panel: JournalPanel, service_panel: ServicePanel = null, guest_id: StringName = &"", drink_options: Array[Dictionary] = []) -> bool:
@@ -51,10 +58,24 @@ func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_
 	_dialogue_panel.journal_requested.connect(open_journal)
 	_journal_panel.close_requested.connect(close_journal)
 	runner.node_changed.connect(_on_node_changed)
-	runner.dialogue_finished.connect(_on_dialogue_closed)
+	runner.dialogue_finished.connect(_on_dialogue_finished)
 	runner.dialogue_cancelled.connect(_on_dialogue_closed)
 	journal.term_added.connect(_on_term_added)
 	_configured = true
+	_sync_panels()
+	return true
+
+
+func configure_shift(time_budget: int, summary_panel: ShiftSummaryPanel) -> bool:
+	if not _configured or _shift_ready or summary_panel == null or _mode != EXPLORATION or runner.active or service.served or not journal.get_entries().is_empty():
+		return false
+	if not shift.configure(time_budget):
+		return false
+	_summary_panel = summary_panel
+	_summary_panel.journal_requested.connect(open_journal)
+	shift.progress_changed.connect(func(left: int, total: int) -> void: shift_progress_changed.emit(left, total))
+	shift.shift_finished.connect(_on_shift_finished)
+	_shift_ready = true
 	_sync_panels()
 	return true
 
@@ -65,6 +86,8 @@ func start_dialogue(dialogue_id: StringName) -> bool:
 	_changing = true
 	var accepted := runner.start(dialogue_id)
 	if accepted:
+		_run_serial += 1
+		_active_run_id = StringName("dialogue:%s:%d" % [dialogue_id, _run_serial])
 		_set_mode(DIALOGUE)
 	_changing = false
 	return accepted
@@ -98,11 +121,11 @@ func cancel_dialogue() -> bool:
 
 
 func open_journal() -> bool:
-	if not _configured or _changing or _mode not in [EXPLORATION, DIALOGUE]:
+	if not _configured or _changing or _mode not in [EXPLORATION, DIALOGUE, SHIFT_COMPLETE]:
 		return false
 	_changing = true
 	_journal_return = _mode
-	_journal_panel.render(journal, _journal_return == DIALOGUE)
+	_journal_panel.render(journal, _journal_return == DIALOGUE, _journal_return == SHIFT_COMPLETE)
 	_journal_panel.reset_scroll()
 	_set_mode(JOURNAL)
 	_changing = false
@@ -157,7 +180,10 @@ func serve_drink(drink_id: StringName) -> bool:
 
 
 func _on_service_completed(event_id: StringName, guest_id: StringName, drink_id: StringName) -> void:
-	_set_mode(EXPLORATION)
+	if _shift_ready:
+		shift.apply_completed_event(event_id, 1)
+	if _mode != SHIFT_COMPLETE:
+		_set_mode(EXPLORATION)
 	service_completed.emit(event_id, guest_id, drink_id)
 
 
@@ -180,12 +206,28 @@ func _on_node_changed(_dialogue_id: StringName, _node_id: StringName) -> void:
 
 
 func _on_dialogue_closed(_dialogue_id: StringName) -> void:
-	_set_mode(EXPLORATION)
+	_active_run_id = &""
+	if _mode != SHIFT_COMPLETE:
+		_set_mode(EXPLORATION)
+
+
+func _on_dialogue_finished(_dialogue_id: StringName) -> void:
+	var completed_id := _active_run_id
+	_active_run_id = &""
+	if _shift_ready and completed_id != &"":
+		shift.apply_completed_event(completed_id, 1)
+	if _mode != SHIFT_COMPLETE:
+		_set_mode(EXPLORATION)
+
+
+func _on_shift_finished() -> void:
+	_summary_panel.render(shift, journal, service)
+	_set_mode(SHIFT_COMPLETE)
 
 
 func _on_term_added(_term_id: StringName) -> void:
 	if _mode == JOURNAL:
-		_journal_panel.render(journal, _journal_return == DIALOGUE)
+		_journal_panel.render(journal, _journal_return == DIALOGUE, _journal_return == SHIFT_COMPLETE)
 	elif _mode == DIALOGUE:
 		_dialogue_panel.render(runner, journal)
 	journal_changed.emit(journal.get_known_term_ids().size())
@@ -202,3 +244,5 @@ func _sync_panels() -> void:
 	_journal_panel.set_open(_mode == JOURNAL)
 	if _service_ready:
 		_service_panel.set_open(_mode == SERVICE)
+	if _shift_ready:
+		_summary_panel.set_open(_mode == SHIFT_COMPLETE)

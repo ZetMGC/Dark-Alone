@@ -39,5 +39,5 @@ func set_open(value: bool) -> void:
 
 
 func _focus_content() -> void:
-	if screen.visible:
+	if is_inside_tree() and screen.is_visible_in_tree():
 		%Scroll.grab_focus()

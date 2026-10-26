@@ -3,6 +3,7 @@ extends Node3D
 
 @export_file("*.json") var glossary_path: String = "res://content/glossary/test_terms.json"
 @export var dialogue_paths: PackedStringArray = ["res://content/dialogues/test_guest.json"]
+@export_range(1, 24) var shift_budget: int = 2
 @export var drink_options: Array[Dictionary] = [
 	{"id": "test_water", "title": "[TEST] Вода", "description": "Стакан прохладной воды."},
 	{"id": "test_house_drink", "title": "[TEST] Напиток бара", "description": "Напиток бара в простом стакане."}
@@ -18,6 +19,7 @@ extends Node3D
 var _configured: bool = false
 var _narrative_ready: bool = false
 var _error_menu: bool = false
+var _restart_pending: bool = false
 
 
 func _ready() -> void:
@@ -48,6 +50,13 @@ func _ready() -> void:
 	if not _session.configure(catalog, $DialoguePanel, $JournalPanel, $ServicePanel, _trigger.guest_id, drink_options):
 		_fail_setup("Не удалось настроить разговор, дневник или меню напитков. " + "; ".join(_session.service.validation_errors))
 		return
+	if not _session.configure_shift(shift_budget, $ShiftSummaryPanel):
+		_fail_setup("Не удалось настроить время смены.")
+		return
+	$ShiftSummaryPanel.restart_requested.connect(restart_shift)
+	$ShiftSummaryPanel.quit_requested.connect(func() -> void: get_tree().quit())
+	_session.shift_progress_changed.connect(_hud.update_shift)
+	_hud.update_shift(_session.shift.remaining, _session.shift.budget)
 	_narrative_ready = true
 	_session.mode_changed.connect(_on_mode_changed)
 	_session.journal_changed.connect(func(_count: int) -> void: _refresh_navigation())
@@ -97,6 +106,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func start_test_dialogue() -> bool:
 	return _start_dialogue(_trigger.dialogue_id)
+
+
+func restart_shift() -> bool:
+	if not _narrative_ready or _restart_pending or _session.mode != NarrativeSession.SHIFT_COMPLETE or get_tree().current_scene != self:
+		return false
+	_restart_pending = true
+	var result := get_tree().reload_current_scene()
+	if result != OK:
+		_restart_pending = false
+	return result == OK
 
 
 func _start_dialogue(dialogue_id: StringName) -> bool:

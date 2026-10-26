@@ -11,13 +11,15 @@ func _ready() -> void:
 	%Close.pressed.connect(func() -> void: close_requested.emit())
 
 
-func render(journal: Journal, return_to_dialogue: bool) -> void:
+func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool = false) -> void:
 	for child in _entries.get_children():
 		_entries.remove_child(child)
 		child.queue_free()
 	var entries := journal.get_entries()
 	%Count.text = "Записей: %d · В порядке получения" % entries.size()
 	%Close.text = "Вернуться к разговору" if return_to_dialogue else "Вернуться в бар"
+	if return_to_summary:
+		%Close.text = "К итогам смены"
 	if entries.is_empty():
 		var empty := Label.new()
 		empty.text = "Здесь появятся новые слова, которые вы узнаете в разговорах."
@@ -48,5 +50,5 @@ func reset_scroll() -> void:
 
 
 func _focus_close() -> void:
-	if screen.visible:
+	if is_inside_tree() and screen.is_visible_in_tree():
 		%Close.grab_focus()
