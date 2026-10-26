@@ -99,7 +99,8 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(310, 50)
 size_flags_horizontal = 3
-text = "Новая тестовая смена"
+text = "Сбросить тестовый прогресс"
+tooltip_text = "Начать заново: очистить дневник, закладки и номер смены."
 
 [node name="Quit" type="Button" parent="Screen/Card/Margin/Content/Buttons"]
 unique_name_in_owner = true

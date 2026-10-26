@@ -61,7 +61,7 @@ func get_dialogue_ids() -> PackedStringArray
 Реализация: [DialogueRunner](../scripts/dialogue/dialogue_runner.gd), RefCounted. Решение ADR-0004, подробная интеграция — [DIALOGUE_RUNTIME](DIALOGUE_RUNTIME.md).
 
 ```gdscript
-func configure(catalog: DialogueCatalog, journal: Journal) -> bool
+func configure(catalog: DialogueCatalog, journal: Journal, shift_number: int = 1) -> bool
 func start(dialogue_id: StringName) -> bool
 func choose(choice_id: StringName) -> bool
 func finish() -> bool
@@ -92,7 +92,7 @@ signal dialogue_cancelled(dialogue_id: StringName)
 ```gdscript
 func configure(catalog: DialogueCatalog) -> bool
 func is_configured() -> bool
-func add_term(term_id: StringName) -> bool
+func add_term(term_id: StringName, source: Dictionary = {}) -> bool
 func has_term(term_id: StringName) -> bool
 func get_definition(term_id: StringName) -> Dictionary
 func get_known_term_ids() -> PackedStringArray
@@ -139,7 +139,7 @@ ServiceGuest.guest_id задаётся сценой, show_served(drink_title: St
 
 NarrativeSession.configure_shift(time_budget: int, summary_panel: ShiftSummaryPanel) -> bool — дополнительная настройка до игрового прогресса. Старый configure без неё сохраняет поведение самостоятельных моделей. shift предназначен для чтения/подписки, не начисления произвольных событий UI. shift_progress_changed(remaining, budget) обновляет HUD. Каждый start получает ID `dialogue:<id>:<serial>`; finish расходует 1, cancel — 0. Подача расходует 1 по прежнему `service:<guest_id>`.
 
-Q-05 принят владельцем: по умолчанию 2 деления, Main.shift_budget экспортируется для тестового баланса. Новый режим shift_complete блокирует мир. Из него разрешён дневник с возвратом к итогам и меню с тем же возвратом. ShiftSummaryPanel сигналит restart_requested/journal_requested/quit_requested. Main.restart_shift() -> bool допускает перезагрузку только законченной текущей сцены, повторный запрос блокируется. Все модели создаются заново, сохранений нет.
+Q-05 принят владельцем: по умолчанию 2 деления, Main.shift_budget экспортируется для тестового баланса. Новый режим shift_complete блокирует мир. Из него разрешён дневник с возвратом к итогам и меню с тем же возвратом. ShiftSummaryPanel сигналит restart_requested/journal_requested/quit_requested. Main.restart_shift() -> bool допускает перезагрузку только законченной текущей сцены, повторный запрос блокируется. При прямом тестовом сбросе все модели создаются заново; обычный возврат DA-033 сохраняет Journal (описано ниже). Дисковых сохранений нет.
 
 JournalPanel.render добавляет необязательный третий аргумент return_to_summary: bool=false для подписи возврата. Отложенные запросы фокуса проверяют присутствие панели в дереве, чтобы пережить перезагрузку.
 
@@ -161,7 +161,19 @@ BarLevel/Art зависит от существующих Geometry/Props/Lights/
 
 `CommutePanel`: begin_trip(id: int, to_home: bool), show_home(), stop_trip(), set_open(value: bool, travelling: bool, interactive: bool=true) -> void; сигналы arrived(trip_id: int), work_requested, journal_requested. travel_seconds=3.0. Таймер и пропуск проходят одну защиту _active; фон и управляющие элементы отделяются при чтении дома. Слой 11 ниже дневника, в меню панель скрыта. `ShiftSummaryPanel` добавляет home_requested и set_home_available(value: bool) -> void.
 
-JournalPanel.render получает четвёртый необязательный return_to_home: bool=false; старые вызовы совместимы. Затронуты Main, NarrativeSession, Summary/Journal UI, commute_test, playthrough_test и команды снимков. JSON v1/деньги/сохранения/время не меняются. Будущие журнальные данные DA-033/DA-034 ещё не являются API — JOURNAL_PLAN.
+JournalPanel.render получает четвёртый необязательный return_to_home: bool=false; старые вызовы совместимы. Затронуты Main, NarrativeSession, Summary/Journal UI, commute_test, playthrough_test и команды снимков. JSON v1/деньги/сохранения/время не меняются. Данные DA-033 теперь реализованы ниже; книжное представление DA-034 остаётся планом — JOURNAL_PLAN.
+
+## Основные механики дневника — implemented, DA-033
+
+Journal дополняет прежние записи полями entry_id=`term:<id>`, learned_order (с 1), source, read, bookmarked. source либо пуст, либо содержит ровно непустые строки dialogue_id/node_id/speaker и положительный int shift. Ссылки поставляет принятый Runner, Journal проверяет структуру. Повторное add_term не меняет первый источник/отметки. get_definition остаётся только определением, get_entries/get_entry возвращают глубокие копии данных и прогресса. JSON v1 не менялся.
+
+API Journal: matches_catalog(catalog: DialogueCatalog) -> bool (полное совпадение словаря); get_entry(term_id: StringName) -> Dictionary; get_filtered_entries(query: String="", section: StringName=&"all") -> Array[Dictionary] с all/new/bookmarks; get_unread_count() -> int; select_entry(term_id: StringName) -> bool; set_bookmarked(term_id: StringName,value: bool) -> bool. Read-only selected_term_id, новые сигналы entry_changed/selection_changed(term_id: StringName). Выбор отмечает прочитанной только эту запись. Неизвестный ID/раздел, невалидный source, повтор той же закладки и вложенные изменения отклоняются; фильтрация не меняет данные.
+
+Runner.configure добавляет третий необязательный shift_number=1 и передаёт контекст узла в add_term. NarrativeSession.configure добавляет в конце shared_journal: Journal=null, number: int=1; старые вызовы совместимы. Shared journal принимается только после matches_catalog; configure_shift теперь допускает непустые знания до начала действий новой смены. Session.shift_number — номер текущей смены. select_journal_entry(term_id) / bookmark_journal_entry(term_id,value) -> bool допустимы только в journal; закладка дополнительно проверяет совпадение с выбранным ID. JournalPanel сигналит entry_requested/bookmark_requested, render только рисует, не выдаёт прогресс.
+
+Обычный возврат из дома переносит Journal и number+1 через одноразовый SceneTree metadata dark_alone_journal_handoff (scene/journal/shift). Main проверяет точный scene_file_path/типы, потребляет передачу, Session проверяет каталог. Отказ настройки не маскируется пустым дневником; при отказе reload временная передача удаляется. Прямой Main.restart_shift по-прежнему полностью сбрасывает знания. Дисковые сохранения отсутствуют, UI/Runner/часы/заказ создаются заново; это не autoload и не общая шина событий.
+
+NavigationHUD.update_narrative получает четвёртый необязательный unread: int=0; update_shift — третий number: int=0 (положительный задаёт номер, ноль сохраняет текущий). Main передаёт начальный номер и непрочитанные записи. При фокусе LineEdit Main не забирает игровые буквы, Escape работает. Затронуты Journal/Runner/Session/Main, JournalPanel/HUD/Commute/Summary и тесты/превью. Решение — ADR-0010, инструкция — JOURNAL_CORE. Физическая книга/страницы/анимации и схема save ещё не реализованы.
 
 ## Как менять контракт
 

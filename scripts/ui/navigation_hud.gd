@@ -9,6 +9,7 @@ signal journal_requested
 signal service_requested
 
 var _buttons: Dictionary = {}
+var _shift_number: int = 1
 
 @onready var _location: Label = %Location
 @onready var _message: Label = %Message
@@ -81,11 +82,13 @@ func set_menu_visible(value: bool) -> void:
 		_resume.release_focus()
 
 
-func update_narrative(talk_available: bool, journal_available: bool, count: int) -> void:
+func update_narrative(talk_available: bool, journal_available: bool, count: int, unread: int = 0) -> void:
 	%Talk.disabled = not talk_available
 	%Talk.tooltip_text = "Подойдите к стойке, чтобы начать тестовый разговор." if not talk_available else "Начать тестовый разговор"
 	%Journal.disabled = not journal_available
 	%Journal.text = "J   Дневник · %d" % count
+	if unread > 0:
+		%Journal.text += " (+%d)" % unread
 
 
 func update_service(available: bool, served: bool, drink_title: String) -> void:
@@ -94,5 +97,7 @@ func update_service(available: bool, served: bool, drink_title: String) -> void:
 	%ServiceStatus.text = "Подано: " + drink_title if served else "[TEST] Гость у стойки ждёт напиток"
 
 
-func update_shift(remaining: int, budget: int) -> void:
-	%ShiftTime.text = "Время смены: %d / %d" % [remaining, budget]
+func update_shift(remaining: int, budget: int, number: int = 0) -> void:
+	if number > 0:
+		_shift_number = number
+	%ShiftTime.text = "Смена %d · Время: %d / %d" % [_shift_number, remaining, budget]

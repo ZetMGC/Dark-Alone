@@ -24,6 +24,7 @@ var journal := Journal.new()
 var service := GuestService.new()
 var shift := ShiftClock.new()
 var commute := CommuteFlow.new()
+var shift_number: int = 1
 
 var _mode: StringName = EXPLORATION
 var _journal_return: StringName = EXPLORATION
@@ -41,12 +42,19 @@ var _active_run_id: StringName = &""
 var _commute_panel: CommutePanel
 
 
-func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_panel: JournalPanel, service_panel: ServicePanel = null, guest_id: StringName = &"", drink_options: Array[Dictionary] = []) -> bool:
-	if _configured or dialogue_panel == null or journal_panel == null or catalog == null or not catalog.is_loaded():
+func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_panel: JournalPanel, service_panel: ServicePanel = null, guest_id: StringName = &"", drink_options: Array[Dictionary] = [], shared_journal: Journal = null, number: int = 1) -> bool:
+	if _configured or dialogue_panel == null or journal_panel == null or catalog == null or not catalog.is_loaded() or number < 1:
+		return false
+	if shared_journal != null and not shared_journal.matches_catalog(catalog):
 		return false
 	if service_panel != null and not service.configure(guest_id, drink_options):
 		return false
-	if not journal.configure(catalog) or not runner.configure(catalog, journal):
+	if shared_journal != null:
+		journal = shared_journal
+	elif not journal.configure(catalog):
+		return false
+	shift_number = number
+	if not runner.configure(catalog, journal, shift_number):
 		return false
 	_dialogue_panel = dialogue_panel
 	_journal_panel = journal_panel
@@ -62,17 +70,20 @@ func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_
 	_dialogue_panel.cancel_requested.connect(cancel_dialogue)
 	_dialogue_panel.journal_requested.connect(open_journal)
 	_journal_panel.close_requested.connect(close_journal)
+	_journal_panel.entry_requested.connect(select_journal_entry)
+	_journal_panel.bookmark_requested.connect(bookmark_journal_entry)
 	runner.node_changed.connect(_on_node_changed)
 	runner.dialogue_finished.connect(_on_dialogue_finished)
 	runner.dialogue_cancelled.connect(_on_dialogue_closed)
 	journal.term_added.connect(_on_term_added)
+	journal.entry_changed.connect(func(_id: StringName) -> void: journal_changed.emit(journal.get_known_term_ids().size()))
 	_configured = true
 	_sync_panels()
 	return true
 
 
 func configure_shift(time_budget: int, summary_panel: ShiftSummaryPanel) -> bool:
-	if not _configured or _shift_ready or summary_panel == null or _mode != EXPLORATION or runner.active or service.served or not journal.get_entries().is_empty():
+	if not _configured or _shift_ready or summary_panel == null or _mode != EXPLORATION or runner.active or service.served or _run_serial != 0:
 		return false
 	if not shift.configure(time_budget):
 		return false
@@ -183,11 +194,39 @@ func open_journal() -> bool:
 		return false
 	_changing = true
 	_journal_return = _mode
+	if journal.selected_term_id != &"":
+		journal.select_entry(journal.selected_term_id)
 	_journal_panel.render(journal, _journal_return == DIALOGUE, _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
 	_journal_panel.reset_scroll()
 	_set_mode(JOURNAL)
 	_changing = false
 	return true
+
+
+func select_journal_entry(term_id: StringName) -> bool:
+	if not _configured or _changing or _mode != JOURNAL:
+		return false
+	_changing = true
+	var accepted := journal.select_entry(term_id)
+	if accepted:
+		_render_journal()
+	_changing = false
+	return accepted
+
+
+func bookmark_journal_entry(term_id: StringName, value: bool) -> bool:
+	if not _configured or _changing or _mode != JOURNAL or term_id != journal.selected_term_id:
+		return false
+	_changing = true
+	var accepted := journal.set_bookmarked(term_id, value)
+	if accepted:
+		_render_journal()
+	_changing = false
+	return accepted
+
+
+func _render_journal() -> void:
+	_journal_panel.render(journal, _journal_return == DIALOGUE, _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
 
 
 func close_journal() -> bool:

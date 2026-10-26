@@ -52,7 +52,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	for long_branch: bool in [true, false]:
 		var session := get_tree().current_scene.get_node("NarrativeSession") as NarrativeSession
-		_expect(session.shift.remaining == 2 and session.journal.get_entries().is_empty(), "Fresh shift at entry")
+		_expect(session.shift.remaining == 2 and session.journal.get_entries().size() == (0 if long_branch else 2), "Fresh clock and retained knowledge after ordinary return")
 		await _move(KEY_2, &"counter")
 		await _move(KEY_3, &"table")
 		await _move(KEY_4, &"corner")
@@ -78,7 +78,7 @@ func _run() -> void:
 			await _key(KEY_ESCAPE)
 			await _press("DialoguePanel", "%Choices/" + str(choices.get_child(0).name))
 		await _press("DialoguePanel", "%Finish")
-		_expect(session.journal.get_entries().size() == (2 if long_branch else 1), "Expected terms from selected branch")
+		_expect(session.journal.get_entries().size() == 2, "Long branch learned and next shift does not duplicate knowledge")
 		if long_branch:
 			await _serve(0)
 		_expect(session.shift.finished and session.mode == NarrativeSession.SHIFT_COMPLETE and session.shift.get_events().size() == 2, "Full cycle ends once at zero")
@@ -104,6 +104,7 @@ func _run() -> void:
 			await _press("ShiftSummaryPanel", "%Restart")
 		await get_tree().process_frame
 		_expect(get_tree().current_scene.get_node("AnchorCamera").current_anchor_id == &"entry", "New shift reloads entry")
+		_expect(get_tree().current_scene.get_node("NarrativeSession").journal.get_entries().size() == (2 if long_branch else 0), "Ordinary return retains knowledge while explicit test reset clears it")
 	print("%s: full playthrough, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])
 	get_tree().quit(0 if _failures == 0 else 1)
 

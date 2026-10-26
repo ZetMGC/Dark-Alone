@@ -1,6 +1,8 @@
 extends Node3D
 ## Композиция мира и нарративной сессии. Правила разговора живут в моделях.
 
+const RUN_HANDOFF := &"dark_alone_journal_handoff"
+
 @export_file("*.json") var glossary_path: String = "res://content/glossary/test_terms.json"
 @export var dialogue_paths: PackedStringArray = ["res://content/dialogues/test_guest.json"]
 @export_range(1, 24) var shift_budget: int = 2
@@ -47,7 +49,17 @@ func _ready() -> void:
 	if not catalog.has_dialogue(_trigger.dialogue_id) or _rig.get_anchor(_trigger.required_anchor) == null:
 		_fail_setup("Ошибка цели разговора: неизвестный диалог или якорь.")
 		return
-	if not _session.configure(catalog, $DialoguePanel, $JournalPanel, $ServicePanel, _trigger.guest_id, drink_options):
+	var shared_journal: Journal
+	var number: int = 1
+	if get_tree().has_meta(RUN_HANDOFF):
+		var handoff: Variant = get_tree().get_meta(RUN_HANDOFF)
+		if not handoff is Dictionary or handoff.get("scene") != scene_file_path or not handoff.get("journal") is Journal or not handoff.get("shift") is int or handoff.shift < 2:
+			_fail_setup("Не удалось восстановить дневник между сменами.")
+			return
+		shared_journal = handoff.journal
+		number = handoff.shift
+		get_tree().remove_meta(RUN_HANDOFF)
+	if not _session.configure(catalog, $DialoguePanel, $JournalPanel, $ServicePanel, _trigger.guest_id, drink_options, shared_journal, number):
 		_fail_setup("Не удалось настроить разговор, дневник или меню напитков. " + "; ".join(_session.service.validation_errors))
 		return
 	if not _session.configure_shift(shift_budget, $ShiftSummaryPanel):
@@ -60,7 +72,7 @@ func _ready() -> void:
 	_session.new_shift_requested.connect(_restart_after_commute)
 	$ShiftSummaryPanel.quit_requested.connect(func() -> void: get_tree().quit())
 	_session.shift_progress_changed.connect(_hud.update_shift)
-	_hud.update_shift(_session.shift.remaining, _session.shift.budget)
+	_hud.update_shift(_session.shift.remaining, _session.shift.budget, _session.shift_number)
 	_narrative_ready = true
 	_session.mode_changed.connect(_on_mode_changed)
 	_session.journal_changed.connect(func(_count: int) -> void: _refresh_navigation())
@@ -71,6 +83,9 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Поиск дневника получает буквы J/T/B, не игровые горячие клавиши.
+	if get_viewport().gui_get_focus_owner() is LineEdit and not event.is_action_pressed("toggle_menu"):
+		return
 	if event.is_action_pressed("toggle_menu"):
 		if not _narrative_ready:
 			_error_menu = not _error_menu
@@ -121,13 +136,19 @@ func restart_shift() -> bool:
 
 func _restart_after_commute() -> void:
 	if _narrative_ready and not _restart_pending and _session.mode == NarrativeSession.TRAVEL and _session.commute.state == CommuteFlow.READY and get_tree().current_scene == self:
-		_reload_shift()
+		_reload_shift(true)
 
 
-func _reload_shift() -> bool:
+func _reload_shift(keep_journal: bool = false) -> bool:
+	if get_tree().has_meta(RUN_HANDOFF):
+		return false
 	_restart_pending = true
+	if keep_journal:
+		get_tree().set_meta(RUN_HANDOFF, {"scene": scene_file_path, "journal": _session.journal, "shift": _session.shift_number + 1})
 	var result := get_tree().reload_current_scene()
 	if result != OK:
+		if keep_journal:
+			get_tree().remove_meta(RUN_HANDOFF)
 		_restart_pending = false
 	return result == OK
 
@@ -217,7 +238,7 @@ func _refresh_navigation() -> void:
 		anchor.set_available(_rig.can_move_to(anchor.anchor_id))
 	_trigger.set_available(enabled and _rig.current_anchor_id == _trigger.required_anchor)
 	_hud.update_navigation(_rig)
-	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size())
+	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())
 	_hud.update_service(enabled and _rig.current_anchor_id == _trigger.required_anchor and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
 
 

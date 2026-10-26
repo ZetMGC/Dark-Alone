@@ -109,7 +109,7 @@ func _test_main() -> void:
 	if fresh != null:
 		var fresh_session := fresh.get_node("NarrativeSession") as NarrativeSession
 		_expect(fresh_session.mode == NarrativeSession.EXPLORATION and fresh_session.shift.remaining == 2 and fresh_session.commute.state == CommuteFlow.AT_WORK, "New test shift is ready")
-		_expect(not fresh_session.service.served and fresh_session.journal.get_entries().is_empty() and fresh.get_node("AnchorCamera").current_anchor_id == &"entry", "Test reset clears old models and starts at entry")
+		_expect(not fresh_session.service.served and fresh_session.journal.get_entries().size() == 1 and fresh_session.shift_number == 2 and fresh.get_node("AnchorCamera").current_anchor_id == &"entry", "Ordinary shift keeps knowledge and resets service at entry")
 		presentation = fresh.get_node("Presentation")
 		_expect(not presentation.is_retro_enabled() and presentation.get_ambience_gain() == 0, "Presentation preferences survive commute")
 		presentation.set_retro_enabled(true)

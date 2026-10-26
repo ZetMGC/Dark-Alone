@@ -22,10 +22,11 @@ var _dialogue_id: StringName = &""
 var _node_id: StringName = &""
 var _nodes: Dictionary = {}
 var _applied: Dictionary = {}
+var _shift_number: int = 1
 
 
-func configure(catalog: DialogueCatalog, journal: Journal) -> bool:
-	if _configured or catalog == null or not catalog.is_loaded() or journal == null or not journal.is_configured():
+func configure(catalog: DialogueCatalog, journal: Journal, shift_number: int = 1) -> bool:
+	if _configured or catalog == null or not catalog.is_loaded() or journal == null or not journal.is_configured() or shift_number < 1:
 		return false
 	for id in catalog.get_term_ids():
 		if journal.get_definition(StringName(id)).is_empty():
@@ -33,6 +34,7 @@ func configure(catalog: DialogueCatalog, journal: Journal) -> bool:
 	for id in catalog.get_dialogue_ids():
 		_dialogues[id] = catalog.get_dialogue(StringName(id))
 	_journal = journal
+	_shift_number = shift_number
 	_configured = true
 	return true
 
@@ -122,7 +124,7 @@ func _enter_node(node_id: StringName) -> void:
 		var key := str(_dialogue_id) + ":" + str(effect.effect_id)
 		if not _applied.has(key):
 			_applied[key] = true
-			_journal.add_term(StringName(effect.term_id))
+			_journal.add_term(StringName(effect.term_id), {"dialogue_id": str(_dialogue_id), "node_id": str(_node_id), "speaker": str(node.speaker), "shift": _shift_number})
 	node_changed.emit(_dialogue_id, _node_id)
 
 

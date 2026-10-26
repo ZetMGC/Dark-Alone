@@ -43,7 +43,7 @@ theme_override_constants/margin_bottom = 22
 
 [node name="Content" type="VBoxContainer" parent="Screen/Card/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="Screen/Card/Margin/Content"]
 layout_mode = 2
@@ -57,7 +57,55 @@ layout_mode = 2
 text = "Записей: 0"
 theme_override_colors/font_color = Color(0.65, 0.72, 0.76, 1)
 
-[node name="Scroll" type="ScrollContainer" parent="Screen/Card/Margin/Content"]
+[node name="Filters" type="HBoxContainer" parent="Screen/Card/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Search" type="LineEdit" parent="Screen/Card/Margin/Content/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 36)
+placeholder_text = "Найти запись"
+clear_button_enabled = true
+
+[node name="Section" type="OptionButton" parent="Screen/Card/Margin/Content/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 3
+selected = 0
+popup/item_0/text = "Все"
+popup/item_0/id = 0
+popup/item_1/text = "Новые"
+popup/item_1/id = 1
+popup/item_2/text = "Закладки"
+popup/item_2/id = 2
+
+[node name="Body" type="HBoxContainer" parent="Screen/Card/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="Index" type="ItemList" parent="Screen/Card/Margin/Content/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 17
+
+[node name="Detail" type="VBoxContainer" parent="Screen/Card/Margin/Content/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Matches" type="Label" parent="Screen/Card/Margin/Content/Body/Detail"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = "Найдено: 0"
+theme_override_font_sizes/font_size = 14
+
+[node name="Scroll" type="ScrollContainer" parent="Screen/Card/Margin/Content/Body/Detail"]
 unique_name_in_owner = true
 focus_mode = 2
 layout_mode = 2
@@ -65,11 +113,58 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 0
 follow_focus = true
 
-[node name="Entries" type="VBoxContainer" parent="Screen/Card/Margin/Content/Scroll"]
+[node name="Entries" type="VBoxContainer" parent="Screen/Card/Margin/Content/Body/Detail/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 18
+
+[node name="EntryTitle" type="Label" parent="Screen/Card/Margin/Content/Body/Detail/Scroll/Entries"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.92, 0.79, 0.56, 1)
+
+[node name="Description" type="Label" parent="Screen/Card/Margin/Content/Body/Detail/Scroll/Entries"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Source" type="Label" parent="Screen/Card/Margin/Content/Body/Detail/Scroll/Entries"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.65, 0.7, 0.71, 1)
+
+[node name="Navigation" type="HBoxContainer" parent="Screen/Card/Margin/Content/Body/Detail"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Previous" type="Button" parent="Screen/Card/Margin/Content/Body/Detail/Navigation"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 36)
+layout_mode = 2
+text = "←"
+
+[node name="Position" type="Label" parent="Screen/Card/Margin/Content/Body/Detail/Navigation"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+
+[node name="Next" type="Button" parent="Screen/Card/Margin/Content/Body/Detail/Navigation"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 36)
+layout_mode = 2
+text = "→"
+
+[node name="Bookmark" type="CheckButton" parent="Screen/Card/Margin/Content/Body/Detail/Navigation"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Закладка"
 
 [node name="Close" type="Button" parent="Screen/Card/Margin/Content"]
 unique_name_in_owner = true
