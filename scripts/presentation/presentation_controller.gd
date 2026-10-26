@@ -98,7 +98,9 @@ func _make_hum() -> AudioStreamWAV:
 	const RATE := 11025
 	const COUNT := RATE * 4
 	var pcm := PackedByteArray()
-	pcm.resize(COUNT * 2)
+	# WAV-микшер 4.7.2 может декодировать loop_end включительно перед возвратом.
+	# Оставить один валидный отсчёт продолжения, не меняя длину самой петли.
+	pcm.resize((COUNT + 1) * 2)
 	var random := RandomNumberGenerator.new()
 	random.seed = 30030
 	var noise: float = 0.0
@@ -109,6 +111,7 @@ func _make_hum() -> AudioStreamWAV:
 		# Огибающая шума с нулём на стыке; синусы укладываются в целые периоды.
 		signal_value += noise * 0.055 * sin(PI * float(frame) / COUNT)
 		pcm.encode_s16(frame * 2, roundi(clampf(signal_value, -1.0, 1.0) * 32767.0))
+	pcm.encode_s16(COUNT * 2, pcm.decode_s16(0))
 	var result := AudioStreamWAV.new()
 	result.format = AudioStreamWAV.FORMAT_16_BITS
 	result.mix_rate = RATE

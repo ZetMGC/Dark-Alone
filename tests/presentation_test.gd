@@ -55,6 +55,27 @@ func _run() -> void:
 	presentation.set_ambience_gain(0.0)
 	var sound: AudioStreamWAV = presentation.get_node("Ambience").stream
 	_expect(sound != null and sound.mix_rate == 11025 and sound.loop_end == 44100, "Loop format and duration stable")
+	_expect(sound.data.size() >= (sound.loop_end + 1) * 2, "Loop end includes a valid guard sample for WAV mixer")
+	if sound.data.size() >= (sound.loop_end + 1) * 2:
+		_expect(sound.data.decode_s16(sound.loop_end * 2) == sound.data.decode_s16(sound.loop_begin * 2), "Loop boundary sample matches beginning")
+	# Проверить реальный ресемплер, а не только крайние отсчёты исходного PCM.
+	for block_size: int in [127, 512, 1024]:
+		var playback := sound.instantiate_playback()
+		playback.start()
+		var previous: float = 0.0
+		var max_step: float = 0.0
+		var frames: int = 0
+		var wanted := int(AudioServer.get_mix_rate() * 12.1)
+		while frames < wanted:
+			var mixed := playback.mix_audio(1.0, mini(block_size, wanted - frames))
+			if mixed.is_empty():
+				break
+			for sample in mixed:
+				max_step = maxf(max_step, absf(sample.x - previous))
+				previous = sample.x
+			frames += mixed.size()
+		playback.stop()
+		_expect(frames >= wanted and max_step < 0.01, "Three real loop boundaries have no spike, block " + str(block_size))
 	var peak: int = 0
 	for index in range(0, sound.data.size(), 2):
 		peak = maxi(peak, absi(sound.data.decode_s16(index)))
