@@ -7,6 +7,7 @@ signal quit_requested
 signal talk_requested
 signal journal_requested
 signal service_requested
+signal new_game_requested
 
 var _buttons: Dictionary = {}
 var _shift_number: int = 1
@@ -25,6 +26,16 @@ func _ready() -> void:
 	%Talk.pressed.connect(func() -> void: talk_requested.emit())
 	%Journal.pressed.connect(func() -> void: journal_requested.emit())
 	%Service.pressed.connect(func() -> void: service_requested.emit())
+	%NewGame.pressed.connect(func() -> void: %ConfirmNewGame.popup_centered())
+	%ConfirmNewGame.confirmed.connect(func() -> void: new_game_requested.emit())
+	%Menu.visibility_changed.connect(func() -> void:
+		if not %Menu.visible:
+			%ConfirmNewGame.hide()
+	)
+
+
+func set_checkpoint_status(text: String) -> void:
+	%CheckpointStatus.text = text
 
 
 func configure(anchors: Array[AnchorPoint]) -> void:

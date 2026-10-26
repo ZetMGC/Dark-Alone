@@ -6,6 +6,8 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export_file("*.json") var glossary_path: String = "res://content/glossary/test_terms.json"
 @export var dialogue_paths: PackedStringArray = ["res://content/dialogues/test_guest.json"]
 @export_range(1, 24) var shift_budget: int = 2
+@export var checkpoint_enabled: bool = true
+var checkpoint_store := CheckpointStore.new()
 @export var drink_options: Array[Dictionary] = [
 	{"id": "test_water", "title": "[TEST] Вода", "description": "Стакан прохладной воды."},
 	{"id": "test_house_drink", "title": "[TEST] Напиток бара", "description": "Напиток бара в простом стакане."}
@@ -23,6 +25,7 @@ var _narrative_ready: bool = false
 var _error_menu: bool = false
 var _restart_pending: bool = false
 var _home: HomeExploration
+var _checkpoint_message: String = ""
 
 
 func _ready() -> void:
@@ -53,19 +56,45 @@ func _ready() -> void:
 	var shared_journal: Journal
 	var shared_home: HomeState
 	var number: int = 1
+	var transferred: bool = false
+	var save_on_ready: bool = false
 	if get_tree().has_meta(RUN_HANDOFF):
 		var handoff: Variant = get_tree().get_meta(RUN_HANDOFF)
-		if not handoff is Dictionary or handoff.get("scene") != scene_file_path or not handoff.get("journal") is Journal or not handoff.get("shift") is int or handoff.shift < 2:
+		if not handoff is Dictionary or handoff.get("scene") != scene_file_path:
 			_fail_setup("Не удалось восстановить дневник между сменами.")
 			return
-		shared_journal = handoff.journal
-		if handoff.has("home_state"):
-			if not handoff.home_state is HomeState:
-				_fail_setup("Не удалось восстановить исследование дома.")
+		if handoff.has("fresh") and not handoff.fresh is bool:
+			_fail_setup("Неверный режим новой смены.")
+			return
+		if handoff.has("checkpoint_enabled"):
+			if not handoff.checkpoint_enabled is bool or not handoff.get("checkpoint_store") is CheckpointStore:
+				_fail_setup("Неверная передача хранилища автосохранения.")
 				return
-			shared_home = handoff.home_state
-		number = handoff.shift
+			checkpoint_enabled = handoff.checkpoint_enabled
+			checkpoint_store = handoff.checkpoint_store
+		if handoff.get("fresh", false) != true:
+			if not handoff.get("journal") is Journal or not handoff.get("shift") is int or handoff.shift < 2:
+				_fail_setup("Не удалось восстановить дневник между сменами.")
+				return
+			shared_journal = handoff.journal
+			if handoff.has("home_state"):
+				if not handoff.home_state is HomeState:
+					_fail_setup("Не удалось восстановить исследование дома.")
+					return
+				shared_home = handoff.home_state
+			number = handoff.shift
+			save_on_ready = true
+		transferred = true
 		get_tree().remove_meta(RUN_HANDOFF)
+	if checkpoint_enabled and not transferred:
+		var checkpoint := checkpoint_store.load_checkpoint(catalog)
+		if not checkpoint.is_empty():
+			shared_journal = checkpoint.journal
+			shared_home = checkpoint.home_state
+			number = checkpoint.shift
+			_checkpoint_message = "Продолжена игра с начала смены %d." % number
+		if not checkpoint_store.last_error.is_empty():
+			_checkpoint_message = checkpoint_store.last_error
 	if not _session.configure(catalog, $DialoguePanel, $JournalPanel, $ServicePanel, _trigger.guest_id, drink_options, shared_journal, number):
 		_fail_setup("Не удалось настроить разговор, дневник или меню напитков. " + "; ".join(_session.service.validation_errors))
 		return
@@ -101,6 +130,12 @@ func _ready() -> void:
 	$DisplaySettings.configure_controls(_hud)
 	$DialogueTrigger/Body.configure_controls(_hud)
 	_rig.configure_controls(_hud)
+	_hud.new_game_requested.connect(_new_game_from_menu)
+	if checkpoint_enabled and save_on_ready:
+		_checkpoint_message = "Автосохранение: начало смены %d." % number if checkpoint_store.save_checkpoint(number, _session.journal, _home.state, catalog) else checkpoint_store.last_error
+	_update_checkpoint_label()
+	if not _checkpoint_message.is_empty():
+		_hud.show_notice(_checkpoint_message)
 
 
 func _input(event: InputEvent) -> void:
@@ -166,15 +201,35 @@ func _restart_after_commute() -> void:
 func _reload_shift(keep_journal: bool = false) -> bool:
 	if get_tree().has_meta(RUN_HANDOFF):
 		return false
+	if not keep_journal and checkpoint_enabled and not checkpoint_store.clear_checkpoint():
+		_checkpoint_message = checkpoint_store.last_error
+		_update_checkpoint_label()
+		_hud.show_notice(checkpoint_store.last_error)
+		return false
 	_restart_pending = true
+	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal}
 	if keep_journal:
-		get_tree().set_meta(RUN_HANDOFF, {"scene": scene_file_path, "journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
+		handoff.merge({"journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
+	get_tree().set_meta(RUN_HANDOFF, handoff)
 	var result := get_tree().reload_current_scene()
 	if result != OK:
-		if keep_journal:
-			get_tree().remove_meta(RUN_HANDOFF)
+		get_tree().remove_meta(RUN_HANDOFF)
 		_restart_pending = false
 	return result == OK
+
+
+func _new_game_from_menu() -> void:
+	if _narrative_ready and not _restart_pending and _session.mode == NarrativeSession.MENU and get_tree().current_scene == self:
+		_reload_shift()
+
+
+func _update_checkpoint_label() -> void:
+	var text := "Автосохранение выполняется между сменами."
+	if not checkpoint_enabled:
+		text = "Автосохранение отключено для проверочного запуска."
+	elif not _checkpoint_message.is_empty():
+		text = _checkpoint_message
+	_hud.set_checkpoint_status(text)
 
 
 func _start_dialogue(dialogue_id: StringName) -> bool:

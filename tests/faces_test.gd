@@ -48,6 +48,7 @@ func _run() -> void:
 	)
 	var scene := load("res://scenes/main/main.tscn") as PackedScene
 	var main := scene.instantiate()
+	main.checkpoint_enabled = false
 	get_tree().root.add_child(main)
 	var art := main.get_node("DialogueTrigger/Body")
 	var face: TestFace = art.get_node("TestFace")
@@ -112,6 +113,7 @@ func _run() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 	main = scene.instantiate()
+	main.checkpoint_enabled = false
 	get_tree().root.add_child(main)
 	art = main.get_node("DialogueTrigger/Body")
 	_expect(art.get_test_appearance() == ids[1] and main.get_node("NavigationHUD/%TestFace").selected == 1, "TEST appearance survives scene replacement")

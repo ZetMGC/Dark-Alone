@@ -21,6 +21,7 @@ func _run() -> void:
 		quit(1)
 	)
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
 	root.add_child(main)
 	current_scene = main
 	await process_frame
@@ -103,6 +104,7 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	main = (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
 	root.add_child(main)
 	current_scene = main
 	await process_frame

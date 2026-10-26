@@ -90,6 +90,7 @@ func _test_model() -> void:
 
 func _test_shifts_and_ui() -> void:
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
 	root.add_child(main)
 	current_scene = main
 	await process_frame

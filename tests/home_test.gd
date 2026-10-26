@@ -50,6 +50,7 @@ func _run() -> void:
 	nested_state.observe(&"home_desk")
 	_expect(nested == [false] and not nested_state.has_observed(&"home_bed"), "Signal callbacks cannot reenter progress mutations")
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.checkpoint_enabled = false
 	root.add_child(main)
 	current_scene = main
 	await process_frame

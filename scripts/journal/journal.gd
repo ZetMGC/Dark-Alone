@@ -148,3 +148,49 @@ func _valid_source(source: Dictionary) -> bool:
 		if not source.get(key) is String or str(source[key]).strip_edges().is_empty():
 			return false
 	return source.get("shift") is int and source.shift > 0
+
+
+func export_progress() -> Dictionary:
+	var entries: Array[Dictionary] = []
+	for id in _order:
+		var item: Dictionary = _known[id].duplicate(true)
+		item.erase("entry_id")
+		item.erase("learned_order")
+		item["id"] = id
+		entries.append(item)
+	return {"entries": entries, "selected": str(_selected)}
+
+
+func restore_progress(data: Dictionary) -> bool:
+	if not _configured or _mutating or not _known.is_empty() or data.size() != 2 or not data.get("entries") is Array or not data.get("selected") is String:
+		return false
+	var known: Dictionary = {}
+	var order := PackedStringArray()
+	for value in data.entries:
+		if not value is Dictionary or value.size() != 5 or not value.get("id") is String or not value.get("source") is Dictionary or not value.get("read") is bool or not value.get("bookmarked") is bool:
+			return false
+		var id: String = value.id
+		if not _definitions.has(id) or known.has(id):
+			return false
+		var offset := _checkpoint_integer(value.get("reading_offset"))
+		if offset < 0 or offset > str(_definitions[id].description).length():
+			return false
+		var source: Dictionary = value.source.duplicate(true)
+		if not source.is_empty():
+			source["shift"] = _checkpoint_integer(source.get("shift"))
+		if not _valid_source(source):
+			return false
+		order.append(id)
+		known[id] = {"entry_id": "term:" + id, "learned_order": order.size(), "source": source, "read": value.read, "bookmarked": value.bookmarked, "reading_offset": offset}
+	if (order.is_empty() and data.selected != "") or (not order.is_empty() and not known.has(data.selected)):
+		return false
+	_known = known
+	_order = order
+	_selected = StringName(data.selected)
+	return true
+
+
+static func _checkpoint_integer(value: Variant) -> int:
+	if (value is int or value is float) and is_finite(float(value)) and float(value) >= 0 and float(value) <= 1000000000 and float(value) == floorf(float(value)):
+		return int(value)
+	return -1
