@@ -157,6 +157,7 @@ func _run() -> void:
 	main.start_test_dialogue()
 	panel.set_open(false)
 	await _test_format_and_long(main, rig)
+	_test_pagination(panel)
 	JournalPanel.motion_mode = &"full"
 	print("%s: dialogue bubbles, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])
 	get_tree().quit(0 if _failures == 0 else 1)
@@ -210,17 +211,62 @@ func _test_format_and_long(main: Node, rig: FreeRoamCamera) -> void:
 	bubble.reveal_text()
 	await get_tree().process_frame
 	_expect(bubble.selected_index == 1 and not bubble.submit_choice(0), "Locked answer cannot be selected")
-	_expect(bubble.select_relative(-1) and bubble.selected_index == 8, "Wheel wraps and skips locked answer")
-	_expect(bubble.get_node("%VoiceText").get_v_scroll_bar().max_value > 112, "Long NPC speech scrolls inside bounded bubble")
+	_expect(bubble.get_page_count() > 1 and bubble.get_page_index() == 0, "Long speech creates sequential bubbles")
+	_expect(not bubble.select_relative(-1) and not bubble.can_answer(), "Earlier bubble cannot select answers")
+	await _snap("05-first-page")
+	var held_page := bubble.get_page_index()
+	var held_text: String = bubble.get_node("%VoiceText").get_parsed_text()
+	bubble.set_open(false)
+	_expect(not bubble.advance_page(), "Paused bubble cannot advance")
+	bubble.set_open(true)
+	_expect(bubble.get_page_index() == held_page and bubble.get_node("%VoiceText").get_parsed_text() == held_text, "Pause restores the current page")
+	rig.apply_look_delta(Vector2(PI, 0))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_expect(bubble.edge_mode and bubble.get_page_index() == held_page, "Turning away keeps the current page")
+	rig.reset_look()
+	var joined := ""
+	var pages_checked := 0
+	var known_before := journal.get_known_term_ids()
+	while true:
+		bubble.reveal_text()
+		var speech: RichTextLabel = bubble.get_node("%VoiceText")
+		joined += speech.get_parsed_text()
+		await get_tree().process_frame
+		_expect(speech.get_content_height() <= speech.size.y and not speech.scroll_active and not speech.get_v_scroll_bar().visible, "Bubble fits without scrollbar")
+		pages_checked += 1
+		if bubble.is_speech_complete():
+			break
+		var page := bubble.get_page_index()
+		_expect(bubble.confirm() and bubble.get_page_index() == page + 1 and not bubble.is_line_complete(), "F starts next bubble with typewriter")
+		_expect(not bubble.submit_choice(1), "No premature reply between bubbles")
+		if page == 0:
+			bubble.render(runner, journal)
+			_expect(bubble.get_page_index() == 1 and not bubble.is_line_complete(), "Repeated render preserves active continuation")
+	_expect(pages_checked == bubble.get_page_count() and joined == DialogueText.plain(document.dialogues[0].nodes[0].text), "All pages preserve exact text without omissions")
+	_expect(runner.current_node_id == &"opening" and journal.get_known_term_ids() == known_before, "Bubble changes do not advance story or grant knowledge")
+	_expect(bubble.select_relative(-1) and bubble.selected_index == 8, "Final bubble unlocks wheel and skips locked answer")
 	var rect: Rect2 = bubble.get_node("%VoiceBubble").get_global_rect()
 	_expect(Rect2(Vector2.ZERO, bubble.screen.size).encloses(rect), "Bubble stays within viewport")
 	await _snap("04-long-conditional")
-	var scroll_before: float = bubble.get_node("%VoiceText").get_v_scroll_bar().value
-	await _key(KEY_PAGEUP)
-	_expect(bubble.get_node("%VoiceText").get_v_scroll_bar().value < scroll_before, "PageUp reviews long speech")
+	_expect(not bubble.advance_page(), "No extra bubble after last")
 	bubble.configure_speaker(rig.view, null)
 	_expect(not bubble.submit_choice(1), "Missing speaker blocks reply")
 	bubble.configure_speaker(rig.view, main.get_node("DialogueTrigger"))
 	bubble.set_open(false)
 	_expect(not bubble.submit_choice(1) and not bubble.confirm(), "Hidden panel rejects input")
 	bubble.queue_free()
+
+
+func _test_pagination(panel: DialogueBubblePanel) -> void:
+	var text: RichTextLabel = panel.get_node("%VoiceText")
+	for source in ["Короткая речь.", "**" + "ОченьДлинноеСлово".repeat(50) + "**", "Первая строка.\n\n**" + "Жирная часть. ".repeat(70) + "**\nКонец.", "Буквальные [b]теги[/b] и непарные **звёзды. ".repeat(25)]:
+		var pages := SpeechPaginator.paginate(source, text.get_theme_font("normal_font"), text.get_theme_font("bold_font"), 18, Vector2(424, 112))
+		var joined := ""
+		var previous := 0
+		for page in pages:
+			_expect(page.start == previous and page.end > page.start, "Paginator has contiguous nonempty ranges")
+			previous = page.end
+			joined += page.text if page.literal else DialogueText.plain(page.text)
+		_expect(joined == DialogueText.plain(source), "Bold, paragraphs and unbroken words roundtrip")
+	_expect(DialogueText.styled_slice("до **важное слово** после", 5, 5) == "**жное **", "Bold span remains balanced across cut")

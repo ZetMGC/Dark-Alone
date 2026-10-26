@@ -98,3 +98,5 @@ DialogueCatalog владеет принятым снимком. Main читае�
 ## Сохранения DA-032
 
 CheckpointCodec сериализует только независимые модели прогресса, CheckpointStore отвечает за user:// и резервную копию. Main — единственная точка загрузки/записи на границе смены, UI показывает результат и запрашивает подтверждённый новый старт. Session/Runner не занимаются файловой системой. [SAVES](SAVES.md), [ADR-0019](decisions/0019-shift-checkpoint.md).
+
+DA-054: SpeechPaginator измеряет normal/bold через TextParagraph и делит plain-диапазоны для отображения. DialogueText.styled_slice сохраняет выделение на границах; literal-флаг сохраняет непарные ** буквально. DialogueBubblePanel хранит номер текущего продолжения, Runner/Journal не изменяются при переходе пузырька.

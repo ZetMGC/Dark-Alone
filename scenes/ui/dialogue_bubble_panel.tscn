@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/dialogue_panel.tscn" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/dialogue_bubble_panel.gd" id="2"]
@@ -28,6 +28,22 @@ content_margin_right = 18.0
 content_margin_top = 12.0
 content_margin_bottom = 12.0
 
+[sub_resource type="StyleBoxFlat" id="SpeechStyle"]
+bg_color = Color(0.075, 0.085, 0.09, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.64, 0.6, 0.5, 0.55)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+content_margin_left = 18.0
+content_margin_right = 18.0
+content_margin_top = 12.0
+content_margin_bottom = 12.0
+
 [node name="DialoguePanel" instance=ExtResource("1")]
 script = ExtResource("2")
 
@@ -35,7 +51,7 @@ script = ExtResource("2")
 unique_name_in_owner = true
 visible = false
 mouse_filter = 2
-theme_override_styles/panel = SubResource("BubbleStyle")
+theme_override_styles/panel = SubResource("SpeechStyle")
 
 [node name="Content" type="VBoxContainer" parent="Screen/VoiceBubble"]
 layout_mode = 2
@@ -64,12 +80,12 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 112)
 mouse_filter = 2
 selection_enabled = false
-scroll_following_visible_characters = true
+scroll_active = false
 visible_characters_behavior = 1
 theme_override_fonts/normal_font = SubResource("SpeechRegular")
 theme_override_fonts/bold_font = SubResource("SpeechBold")
-theme_override_font_sizes/normal_font_size = 22
-theme_override_font_sizes/bold_font_size = 22
+theme_override_font_sizes/normal_font_size = 18
+theme_override_font_sizes/bold_font_size = 18
 
 [node name="VoiceTail" type="Label" parent="Screen/VoiceBubble/Content"]
 unique_name_in_owner = true
@@ -131,3 +147,11 @@ mouse_filter = 2
 autowrap_mode = 3
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 16
+
+[node name="VoicePage" type="Label" parent="Screen/VoiceBubble/Content" index="3"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.67, 1)

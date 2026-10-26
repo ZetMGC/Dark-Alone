@@ -16,6 +16,8 @@ var _typed: float = 0.0
 var _length: int = 0
 var _terminal: bool = false
 var _window_focused: bool = true
+var _pages: Array[Dictionary] = []
+var _page_index: int = 0
 
 
 func configure_speaker(camera: Camera3D, speaker: Node3D) -> void:
@@ -33,12 +35,10 @@ func render(runner: DialogueRunner, journal: Journal) -> void:
 	var fresh := key != _line_key
 	if fresh:
 		_line_key = key
-		_typed = 0.0
 		%VoiceSpeaker.text = node.get("speaker", "")
-		DialogueText.write(%VoiceText, str(node.get("text", "")))
-		_length = %VoiceText.get_total_character_count()
-		%VoiceText.visible_characters = 0
-		%VoiceText.scroll_to_line(0)
+		_pages = SpeechPaginator.paginate(str(node.get("text", "")), %VoiceText.get_theme_font("normal_font"), %VoiceText.get_theme_font("bold_font"), %VoiceText.get_theme_font_size("normal_font_size"), Vector2(minf(460, screen.size.x - 32) - 36, 112))
+		_page_index = 0
+		_show_page()
 	_terminal = runner.is_terminal()
 	_choices_data = runner.get_choices()
 	if fresh or selected_index < 0 or selected_index >= _choices_data.size() or not _choices_data[selected_index].available:
@@ -96,6 +96,40 @@ func is_line_complete() -> bool:
 	return _typed >= _length
 
 
+func get_page_count() -> int:
+	return _pages.size()
+
+
+func get_page_index() -> int:
+	return _page_index
+
+
+func is_speech_complete() -> bool:
+	return is_line_complete() and _page_index == _pages.size() - 1
+
+
+func _show_page() -> void:
+	if _pages[_page_index].literal:
+		%VoiceText.clear()
+		%VoiceText.add_text(_pages[_page_index].text)
+	else:
+		DialogueText.write(%VoiceText, _pages[_page_index].text)
+	_length = %VoiceText.get_total_character_count()
+	_typed = 0
+	%VoiceText.visible_characters = 0
+	%VoicePage.visible = _pages.size() > 1
+	%VoicePage.text = "%d / %d" % [_page_index + 1, _pages.size()]
+
+
+func advance_page() -> bool:
+	if not screen.visible or not _window_focused or not is_line_complete() or _page_index >= _pages.size() - 1:
+		return false
+	_page_index += 1
+	_show_page()
+	_update_layout()
+	return true
+
+
 func reveal_text() -> void:
 	if not screen.visible or not _window_focused:
 		return
@@ -105,7 +139,7 @@ func reveal_text() -> void:
 
 
 func can_answer() -> bool:
-	return bubble_enabled and screen.visible and _window_focused and is_instance_valid(_camera) and is_instance_valid(_speaker) and looking_at_speaker and is_line_complete() and _runner != null and _runner.active and _line_key == str(_runner.current_dialogue_id) + ":" + str(_runner.current_node_id)
+	return bubble_enabled and screen.visible and _window_focused and is_instance_valid(_camera) and is_instance_valid(_speaker) and looking_at_speaker and is_speech_complete() and _runner != null and _runner.active and _line_key == str(_runner.current_dialogue_id) + ":" + str(_runner.current_node_id)
 
 
 func select_relative(direction: int) -> bool:
@@ -135,6 +169,8 @@ func confirm() -> bool:
 		return false
 	if not is_line_complete():
 		reveal_text()
+		return true
+	if advance_page():
 		return true
 	if not can_answer():
 		return false
@@ -182,6 +218,7 @@ func _update_layout() -> void:
 	looking_at_speaker = visible_head and clear and -_camera.global_basis.z.dot((_speaker.global_position - _camera.global_position).normalized()) >= cos(deg_to_rad(20))
 	edge_mode = not visible_head or not clear
 	var width := minf(460, area.x - 32)
+	%VoiceText.custom_minimum_size.y = clampf(%VoiceText.get_content_height(), 24, 112)
 	%VoiceBubble.size = Vector2(width, 0)
 	var height: float = %VoiceBubble.size.y
 	var target := point - Vector2(width * 0.5, height + 12)
@@ -198,8 +235,8 @@ func _update_layout() -> void:
 		(%VoiceChoices.get_parent() as ScrollContainer).ensure_control_visible(%VoiceChoices.get_child(selected_index))
 	%VoiceReplyHelp.text = "F — закончить разговор" if _terminal else "1–9 — ответить · Колесо — выбор · F — подтвердить"
 	%VoiceHint.text = "F — показать реплику целиком · J — дневник · Esc — меню" if not is_line_complete() else ("Посмотрите на говорящего, чтобы ответить" if not looking_at_speaker else "J — дневник · Esc — меню · Backspace — прервать")
-	if %VoiceText.get_content_height() > %VoiceText.size.y:
-		%VoiceHint.text += " · PgUp/PgDn — текст"
+	if is_line_complete() and not is_speech_complete():
+		%VoiceHint.text = "F — следующий пузырёк · J — дневник · Esc — меню"
 
 
 func _input(event: InputEvent) -> void:
@@ -216,8 +253,6 @@ func _input(event: InputEvent) -> void:
 			submit_choice(key - KEY_1)
 		elif key == KEY_BACKSPACE:
 			cancel_requested.emit()
-		elif key in [KEY_PAGEUP, KEY_PAGEDOWN]:
-			%VoiceText.get_v_scroll_bar().value += -80 if key == KEY_PAGEUP else 80
 		else:
 			return
 		get_viewport().set_input_as_handled()
