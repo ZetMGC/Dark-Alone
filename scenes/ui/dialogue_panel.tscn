@@ -89,7 +89,6 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 48)
 text = "Закончить разговор"
-tooltip_text = "Завершить разговор и потратить 1 деление времени."
 
 [node name="Footer" type="HBoxContainer" parent="Screen/Card/Margin/Content"]
 layout_mode = 2
@@ -111,11 +110,10 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(230, 46)
 text = "Прервать разговор"
-tooltip_text = "Вернуться в бар без расхода времени. Изученные термины останутся в дневнике."
 
 [node name="Help" type="Label" parent="Screen/Card/Margin/Content"]
 layout_mode = 2
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.6, 0.66, 0.7, 1)
-text = "Завершение — 1 деление · Прерывание бесплатно\nTab / Enter — выбор     J — дневник     Escape — меню"
+text = "Tab / Enter — выбрать ответ     J — дневник     Escape — меню"

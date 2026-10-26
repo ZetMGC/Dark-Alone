@@ -84,7 +84,7 @@ func set_menu_visible(value: bool) -> void:
 
 func update_narrative(talk_available: bool, journal_available: bool, count: int, unread: int = 0) -> void:
 	%Talk.disabled = not talk_available
-	%Talk.tooltip_text = "Подойдите к стойке, чтобы начать тестовый разговор." if not talk_available else "Начать [TEST] разговор. Завершение стоит 1 деление; прерывание бесплатно."
+	%Talk.tooltip_text = "Подойдите к стойке, чтобы начать тестовый разговор." if not talk_available else "Начать тестовый разговор"
 	%Journal.disabled = not journal_available
 	%Journal.text = "J   Дневник · %d" % count
 	if unread > 0:
@@ -93,12 +93,7 @@ func update_narrative(talk_available: bool, journal_available: bool, count: int,
 
 func update_service(available: bool, served: bool, drink_title: String) -> void:
 	%Service.disabled = not available
-	if served:
-		%Service.tooltip_text = "Гость уже получил: " + drink_title
-	elif available:
-		%Service.tooltip_text = "Выбрать напиток. Подача стоит 1 деление; отмена бесплатна."
-	else:
-		%Service.tooltip_text = "Подойдите к стойке, чтобы выбрать напиток."
+	%Service.tooltip_text = "Гость уже обслужен." if served else "Подойдите к стойке, чтобы выбрать напиток."
 	%ServiceStatus.text = "Подано: " + drink_title if served else "[TEST] Гость у стойки ждёт напиток"
 
 

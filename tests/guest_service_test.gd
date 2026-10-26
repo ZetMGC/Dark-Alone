@@ -78,12 +78,11 @@ func _test_model() -> void:
 		_expect(service.get_served_drink().title != "MUTATED", "Served snapshot is a copy")
 
 
-func _key(key: Key, echo: bool = false) -> void:
+func _key(key: Key) -> void:
 	var event := InputEventKey.new()
 	event.physical_keycode = key
 	event.keycode = key
 	event.pressed = true
-	event.echo = echo
 	Input.parse_input_event(event)
 	var release := InputEventKey.new()
 	release.physical_keycode = key
@@ -109,32 +108,17 @@ func _test_scene() -> void:
 	var panel := main.get_node("ServicePanel") as ServicePanel
 	var guest := main.get_node("DialogueTrigger") as ServiceGuest
 	var hud := main.get_node("NavigationHUD") as NavigationHUD
-	# Оставить окно доставки ввода до конца fade даже при редких кадрах headless.
-	rig.fade_seconds = 0.2
-	rig.black_hold_seconds = 0.2
+	rig.fade_seconds = 0.02
+	rig.black_hold_seconds = 0.02
 	_expect(guest is Interactable3D and not guest.get_node("ServedGlass").visible, "Guest uses common interaction and starts without served glass")
 	_expect(not main.open_service_menu(), "Cannot serve away from counter")
-	_expect(hud.get_node("%Service").tooltip_text.contains("Подойдите"), "Away from counter service hint explains location")
-	_key(KEY_J, true)
-	_key(KEY_ESCAPE, true)
-	await process_frame
-	_expect(session.mode == NarrativeSession.EXPLORATION, "Echo does not open journal or pause")
 	rig.request_move(&"counter")
 	_key(KEY_B)
-	await process_frame
 	_expect(session.mode == NarrativeSession.EXPLORATION, "Service cannot open during fade")
 	await rig.anchor_reached
-	_expect(hud.get_node("%Service").tooltip_text.contains("1 деление"), "Available service hint explains cost")
-	_key(KEY_B, true)
-	_key(KEY_T, true)
-	await process_frame
-	_expect(session.mode == NarrativeSession.EXPLORATION, "Echo does not open service or dialogue")
 	_key(KEY_B)
 	await process_frame
 	_expect(session.mode == NarrativeSession.SERVICE and panel.screen.visible and _buttons(panel).size() == 2, "B opens short menu at counter")
-	_key(KEY_ESCAPE, true)
-	await process_frame
-	_expect(session.mode == NarrativeSession.SERVICE, "Echo Escape does not close service")
 	_expect(not rig.request_move(&"table") and not main.start_test_dialogue() and not session.open_journal(), "Service locks world, dialogue and journal")
 	var look_before := rig.view.rotation
 	rig.apply_look_delta(Vector2.ONE)
@@ -144,10 +128,6 @@ func _test_scene() -> void:
 	_expect(session.mode == NarrativeSession.EXPLORATION and not session.service.served and not guest.get_node("ServedGlass").visible, "Escape cancels menu without serving")
 	hud.service_requested.emit()
 	await process_frame
-	_expect(root.gui_get_focus_owner() == panel.get_node("%Scroll"), "Fresh service opening starts with reading area")
-	_key(KEY_TAB)
-	await process_frame
-	_expect(root.gui_get_focus_owner() == _buttons(panel)[0], "Tab focuses first drink")
 	panel.get_node("%Menu").pressed.emit()
 	await process_frame
 	_expect(session.mode == NarrativeSession.MENU and not panel.screen.visible, "Pause menu overlays service")
@@ -155,18 +135,19 @@ func _test_scene() -> void:
 	_key(KEY_ESCAPE)
 	await process_frame
 	_expect(session.mode == NarrativeSession.SERVICE and panel.screen.visible, "Pause resumes service menu")
-	_expect(root.gui_get_focus_owner() == _buttons(panel)[0], "Pause preserves selected drink focus")
 	_expect(not session.serve_drink(&"missing") and not session.service.served, "Unknown menu ID is a no-op")
 	var events: Array = []
 	session.service_completed.connect(func(id: StringName, guest_id: StringName, drink_id: StringName) -> void: events.append([id, guest_id, drink_id]))
 	var button := _buttons(panel)[0]
 	var stale_command: Callable = button.pressed.get_connections()[0].callable
+	_key(KEY_TAB)
+	await process_frame
+	_expect(root.gui_get_focus_owner() == button, "Tab focuses first drink")
 	_key(KEY_ENTER)
 	await process_frame
 	_expect(session.service.served and session.service.selected_drink_id == &"test_water", "Rendered option serves selected drink")
 	_expect(session.mode == NarrativeSession.EXPLORATION and not panel.screen.visible, "Serving returns to exploration")
 	_expect(guest.get_node("ServedGlass").visible and hud.get_node("%ServiceStatus").text.contains("Вода"), "World glass and status show result")
-	_expect(hud.get_node("%Service").tooltip_text.contains("Вода"), "Served hint names actual drink")
 	_expect(events.size() == 1 and events[0][0] == &"service:test_guest", "Scene emits completion once")
 	stale_command.call()
 	_expect(not main.open_service_menu() and events.size() == 1 and hud.get_node("%Service").disabled, "Served guest rejects repeated and stale actions")

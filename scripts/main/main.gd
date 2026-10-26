@@ -86,9 +86,6 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# Горячие клавиши выполняют одно действие на нажатие, без автоповтора.
-	if event.is_echo():
-		return
 	# Поиск дневника получает буквы J/T/B, не игровые горячие клавиши.
 	if get_viewport().gui_get_focus_owner() is LineEdit and not event.is_action_pressed("toggle_menu"):
 		return
