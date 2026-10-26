@@ -25,6 +25,7 @@ func _key(code: Key) -> void:
 		get_viewport().push_input(event)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	await _wait_book()
 
 
 func _move(code: Key, target: StringName) -> void:
@@ -39,9 +40,21 @@ func _press(panel: String, button: String) -> void:
 	control.pressed.emit()
 	await get_tree().process_frame
 	await get_tree().process_frame
+	await _wait_book()
+
+
+func _wait_book() -> void:
+	while get_tree().current_scene != null and get_tree().current_scene.has_node("JournalPanel"):
+		var main := get_tree().current_scene
+		if main.get_node("NarrativeSession").mode != NarrativeSession.JOURNAL or not main.get_node("JournalPanel").is_transitioning():
+			return
+		await get_tree().process_frame
 
 
 func _run() -> void:
+	if "--book-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/book_test.tscn") as PackedScene).instantiate())
+		return
 	get_tree().create_timer(30).timeout.connect(func() -> void:
 		printerr("FAIL: playthrough timed out")
 		get_tree().quit(1)

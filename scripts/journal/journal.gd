@@ -5,6 +5,7 @@ extends RefCounted
 signal term_added(term_id: StringName)
 signal entry_changed(term_id: StringName)
 signal selection_changed(term_id: StringName)
+signal reading_position_changed(term_id: StringName)
 
 var selected_term_id: StringName:
 	get: return _selected
@@ -44,7 +45,7 @@ func add_term(term_id: StringName, source: Dictionary = {}) -> bool:
 	if _mutating or not _definitions.has(id) or _known.has(id) or not _valid_source(source):
 		return false
 	_mutating = true
-	_known[id] = {"entry_id": "term:" + id, "learned_order": _order.size() + 1, "source": source.duplicate(true), "read": false, "bookmarked": false}
+	_known[id] = {"entry_id": "term:" + id, "learned_order": _order.size() + 1, "source": source.duplicate(true), "read": false, "bookmarked": false, "reading_offset": 0}
 	_order.append(id)
 	if _selected == &"":
 		_selected = term_id
@@ -122,6 +123,18 @@ func set_bookmarked(term_id: StringName, value: bool) -> bool:
 	_mutating = true
 	_known[str(term_id)].bookmarked = value
 	entry_changed.emit(term_id)
+	_mutating = false
+	return true
+
+
+func set_reading_offset(term_id: StringName, offset: int) -> bool:
+	if _mutating or not has_term(term_id) or offset < 0 or offset > str(_definitions[str(term_id)].description).length():
+		return false
+	if _known[str(term_id)].reading_offset == offset:
+		return false
+	_mutating = true
+	_known[str(term_id)].reading_offset = offset
+	reading_position_changed.emit(term_id)
 	_mutating = false
 	return true
 

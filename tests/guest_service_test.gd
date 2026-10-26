@@ -24,6 +24,7 @@ func _options() -> Array[Dictionary]:
 
 
 func _run() -> void:
+	JournalPanel.motion_mode = &"off"
 	create_timer(20).timeout.connect(func() -> void:
 		printerr("FAIL: service test timed out")
 		quit(1)

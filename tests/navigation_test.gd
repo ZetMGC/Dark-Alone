@@ -19,6 +19,7 @@ func _expect(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
+	JournalPanel.motion_mode = &"off"
 	create_timer(20.0).timeout.connect(func() -> void:
 		printerr("FAIL: navigation test timed out")
 		quit(1)

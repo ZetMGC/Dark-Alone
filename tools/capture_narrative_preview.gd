@@ -10,6 +10,7 @@ func _initialize() -> void:
 
 
 func _capture() -> void:
+	JournalPanel.motion_mode = &"off"
 	if DisplayServer.get_name() == "headless":
 		printerr("Narrative preview requires a rendering display driver")
 		quit(1)

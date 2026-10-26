@@ -26,6 +26,8 @@ pwsh -NoProfile -File tools/check_windows_export.ps1 -Godot godot -BuildDirector
 
 ## Что важно не потерять
 
+DA-034: checker дополнительно запускает проверочный EXE с `-- --book-check` и требует строку `PASS: journal book, ...` (51 проверка на этой версии). Лог — `book.log` рядом с playthrough.log. Тот же аргумент без headless проверяет графическую книгу; он доступен только в тестовой стартовой сцене пресета Windows Validation. Обычный игровой Main такой режим не содержит.
+
 - `export_presets.cfg` хранится в Git, секреты и бинарные сборки — нет.
 - В обоих пресетах явно включён `content/**/*.json`: без него FileAccess не найдёт диалоги/словарь.
 - Обычный пресет исключает docs/tools/tests/artifacts/builds. Только Windows Validation включает тесты и feature `integration_test`, выбирающий тестовую начальную сцену через feature override в project.godot. Основной Main не содержит тестовых веток.

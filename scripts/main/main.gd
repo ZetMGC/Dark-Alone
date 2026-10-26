@@ -80,6 +80,7 @@ func _ready() -> void:
 	_trigger.dialogue_requested.connect(_start_dialogue)
 	_refresh_navigation()
 	$Presentation.configure_controls(_hud)
+	$JournalPanel.configure_controls(_hud)
 
 
 func _input(event: InputEvent) -> void:
@@ -93,7 +94,7 @@ func _input(event: InputEvent) -> void:
 		elif _session.mode == NarrativeSession.MENU:
 			_session.resume_menu()
 		elif _session.mode == NarrativeSession.JOURNAL:
-			_session.close_journal()
+			_session.request_close_journal()
 		elif _session.mode == NarrativeSession.SERVICE:
 			_session.close_service()
 		else:
@@ -166,7 +167,7 @@ func _toggle_journal() -> void:
 	if not _narrative_ready or _rig.is_transitioning:
 		return
 	if _session.mode == NarrativeSession.JOURNAL:
-		_session.close_journal()
+		_session.request_close_journal()
 	else:
 		_session.open_journal()
 

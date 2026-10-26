@@ -27,6 +27,7 @@ func _catalog(extra: bool = false) -> DialogueCatalog:
 
 
 func _run() -> void:
+	JournalPanel.motion_mode = &"off"
 	create_timer(20).timeout.connect(func() -> void:
 		printerr("FAIL: journal core timed out")
 		quit(1)
@@ -133,6 +134,7 @@ func _test_shifts_and_ui() -> void:
 			root.push_input(event)
 		_expect(session.mode == NarrativeSession.JOURNAL and panel.get_node("%Search").text == "jtb", "Typing search cannot trigger game shortcuts")
 		_expect(session.shift.remaining == 2 and session.runner.current_node_id == &"goodbye", "Reading/search/bookmarks preserve time and dialogue")
+		session.set_journal_reading_position(session.journal.selected_term_id, 5)
 		session.close_journal()
 		session.finish_for_node(&"test_guest_intro", &"goodbye")
 		main.open_service_menu()
@@ -147,7 +149,7 @@ func _test_shifts_and_ui() -> void:
 		await process_frame
 		main = current_scene
 		var next := main.get_node("NarrativeSession") as NarrativeSession
-		_expect(next.journal == remembered and next.shift_number == number + 1 and next.journal.get_entries().size() == number, "Ordinary shift retains exact journal, bumps shift and keeps terms")
+		_expect(next.journal == remembered and next.shift_number == number + 1 and next.journal.get_entries().size() == number and next.journal.get_entry(next.journal.selected_term_id).reading_offset == 5, "Ordinary shift retains exact journal and reading offset, bumps shift and keeps terms")
 		_expect(next.shift.remaining == 2 and not next.service.served and not has_meta(&"dark_alone_journal_handoff"), "Transient models reset and handoff consumed")
 	var final_session := main.get_node("NarrativeSession") as NarrativeSession
 	_expect(final_session.journal.get_entry(&"test_marker").source.shift == 2 and final_session.journal.selected_term_id == &"test_marker", "Second source and last selected entry survive two returns")

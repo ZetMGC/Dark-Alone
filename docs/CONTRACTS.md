@@ -161,7 +161,7 @@ BarLevel/Art зависит от существующих Geometry/Props/Lights/
 
 `CommutePanel`: begin_trip(id: int, to_home: bool), show_home(), stop_trip(), set_open(value: bool, travelling: bool, interactive: bool=true) -> void; сигналы arrived(trip_id: int), work_requested, journal_requested. travel_seconds=3.0. Таймер и пропуск проходят одну защиту _active; фон и управляющие элементы отделяются при чтении дома. Слой 11 ниже дневника, в меню панель скрыта. `ShiftSummaryPanel` добавляет home_requested и set_home_available(value: bool) -> void.
 
-JournalPanel.render получает четвёртый необязательный return_to_home: bool=false; старые вызовы совместимы. Затронуты Main, NarrativeSession, Summary/Journal UI, commute_test, playthrough_test и команды снимков. JSON v1/деньги/сохранения/время не меняются. Данные DA-033 теперь реализованы ниже; книжное представление DA-034 остаётся планом — JOURNAL_PLAN.
+JournalPanel.render получает четвёртый необязательный return_to_home: bool=false; старые вызовы совместимы. Затронуты Main, NarrativeSession, Summary/Journal UI, commute_test, playthrough_test и команды снимков. JSON v1/деньги/сохранения/время не меняются. Данные DA-033 теперь реализованы ниже; книжное представление DA-034 реализовано ниже — JOURNAL_BOOK.
 
 ## Основные механики дневника — implemented, DA-033
 
@@ -173,7 +173,19 @@ Runner.configure добавляет третий необязательный sh
 
 Обычный возврат из дома переносит Journal и number+1 через одноразовый SceneTree metadata dark_alone_journal_handoff (scene/journal/shift). Main проверяет точный scene_file_path/типы, потребляет передачу, Session проверяет каталог. Отказ настройки не маскируется пустым дневником; при отказе reload временная передача удаляется. Прямой Main.restart_shift по-прежнему полностью сбрасывает знания. Дисковые сохранения отсутствуют, UI/Runner/часы/заказ создаются заново; это не autoload и не общая шина событий.
 
-NavigationHUD.update_narrative получает четвёртый необязательный unread: int=0; update_shift — третий number: int=0 (положительный задаёт номер, ноль сохраняет текущий). Main передаёт начальный номер и непрочитанные записи. При фокусе LineEdit Main не забирает игровые буквы, Escape работает. Затронуты Journal/Runner/Session/Main, JournalPanel/HUD/Commute/Summary и тесты/превью. Решение — ADR-0010, инструкция — JOURNAL_CORE. Физическая книга/страницы/анимации и схема save ещё не реализованы.
+NavigationHUD.update_narrative получает четвёртый необязательный unread: int=0; update_shift — третий number: int=0 (положительный задаёт номер, ноль сохраняет текущий). Main передаёт начальный номер и непрочитанные записи. При фокусе LineEdit Main не забирает игровые буквы, Escape работает. Затронуты Journal/Runner/Session/Main, JournalPanel/HUD/Commute/Summary и тесты/превью. Решение — ADR-0010, инструкция — JOURNAL_CORE. Книга/страницы/анимации реализованы DA-034 ниже; схема save ещё не принята.
+
+## Книга — implemented, DA-034
+
+Journal добавляет `reading_offset: int=0` к каждой записи; `set_reading_offset(term_id: StringName, offset: int) -> bool`, сигнал `reading_position_changed(term_id: StringName)`. Допустимы известный ID и смещение 0…description.length() включительно; дубликат/вложенный вызов отклоняется. Смещение — позиция символа исходной строки, не байт и не номер страницы. Оно переносится с тем же Journal между обычными сменами.
+
+BookPaginator (RefCounted): статические `paginate(text: String,font: Font,font_size: int,area: Vector2) -> Array[Dictionary]` возвращает непрерывные диапазоны `{start,end,text}`; `page_for_offset(pages: Array[Dictionary],offset: int) -> int` выбирает содержащую позицию страницу. Пустой текст даёт одну страницу; EOF относится к последней. Это чистое представление, модель не меняется.
+
+JournalPanel сохраняет прежнюю сигнатуру render. Новые сигналы `opened`, `close_completed`, `reading_position_requested(term_id: StringName,offset: int)`; методы `request_page(direction: int) -> bool` (только -1/1), `begin_close() -> bool`, `force_closed() -> void`, `is_transitioning/is_closing() -> bool`, `get_page_count/get_page_index() -> int` (индекс с 0). `set_open(false)` скрывает/приостанавливает, `force_closed` отменяет/сбрасывает. Чтение выставляет Session после opened или завершённого выбора, render не меняет Journal. Во время анимации выбор/закладки/повторное листание блокируются; закрытие отменяет незавершённый переход.
+
+Session добавляет `set_journal_reading_position(term_id: StringName,offset: int) -> bool`, допустимый только в journal для выбранного ID вне анимации; `request_close_journal() -> bool` запускает закрытие, до конца сохраняет режим journal. Прежний `close_journal() -> bool` синхронно отменяет анимации/закрывает панель и возвращает прежний режим. Main и пользовательская кнопка используют request_close_journal; close_completed вызывает close_journal. Меню скрывает и приостанавливает книгу.
+
+JournalPanel.configure_controls(hud: NavigationHUD) связывает `%BookMotion` (OptionButton full/reduced/off), `%PageVolume` (HSlider), `%PageVolumeLabel`. Методы `set_motion_mode(value: StringName) -> bool`, `set_page_volume(value: float) -> void`: неизвестный режим/нечисловая громкость отклоняются; громкость ограничивается 0…1, ноль останавливает звук. Static motion_mode/page_volume — только предпочтения процесса. Смена режима во время скрытого действия завершает его один раз при возврате. Потребители изменений: Main/Session/JournalPanel, HUD, book_test, journal_core_test, playthrough и инструменты снимков. Старые изолированные проверки используют off, сквозной цикл — полные анимации. JSON/эффекты/часы/Runner не менялись. Решение — ADR-0011, инструкция — JOURNAL_BOOK.
 
 ## Как менять контракт
 

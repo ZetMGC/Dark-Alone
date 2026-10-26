@@ -27,6 +27,7 @@ func _catalog(document: Dictionary = {}) -> DialogueCatalog:
 
 
 func _run() -> void:
+	JournalPanel.motion_mode = &"off"
 	create_timer(20).timeout.connect(func() -> void:
 		printerr("FAIL: runtime test timed out")
 		quit(1)

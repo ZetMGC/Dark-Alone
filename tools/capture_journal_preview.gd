@@ -9,6 +9,7 @@ func _initialize() -> void:
 
 
 func _capture() -> void:
+	JournalPanel.motion_mode = &"off"
 	if DisplayServer.get_name() == "headless":
 		quit(1)
 		return
