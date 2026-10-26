@@ -205,16 +205,8 @@ DA-042 добавляет к PresentationController `set_image_detail(value: Str
 
 MSDF включён для стандартного font в project.godot и отдельно для SystemFont book_theme; другие font-ресурсы требуют своей проверки. Потребители: PresentationController/HUD, presentation_test (20), image_detail_test, validation runner и check_windows_export с новым необязательным -Graphics. Этот флаг добавляет графическую GPU-проверку; прежние вызовы checker остаются headless. Формат JSON/знаний/курсора не менялся. Решение ADR-0013, инструкция IMAGE_DETAIL.
 
-## Полировка интерфейса — implemented, DA-045–DA-046
-
-DA-046, ADR-0016: NavigationHUD добавляет `set_context(mode: StringName) -> void`, `update_objective(at_counter: bool,talked: bool,served: bool,transitioning: bool,counter_available: bool=true) -> void`, `show_journal_notice(title: String) -> void`. Main вызывает их при обновлении режима/навигации и Journal.term_added. Цель рекомендательная. Уведомления (слой 18, mouse_filter=IGNORE, без фокуса) видны в exploration/dialogue/service/shift_complete; в menu/travel/home таймер стоит, journal очищает накопление. После 5 секунд уведомление очищается. Подробные клавиши доступны в меню, HUD мира скрыт под модальными экранами.
-
-ShiftSummaryPanel добавляет `is_reset_confirmation_open() -> bool`, `cancel_reset_confirmation() -> void`. Restart показывает встроенное подтверждение, скрывает прежние действия, фокус на отмене. ConfirmReset испускает restart_requested только при открытой панели. При скрытии запрос сбрасывается. Main блокирует J/T/B и отменяет Escape без меню. Программный Main.restart_shift сохраняет прежние проверки/контракт.
-
-DA-046 меняет срок остановки звука: setters обновляют предпочтения сразу, но нулевой гул останавливается через 0,18 с, шелест через 0,04 с. Проверки ожидают 0,25/0,08 с. Новые звуковые tweens отменяют устаревшие; выход из дерева освобождает tween, быстрое листание не перезапускает уже звучащую страницу. Потребители: Main/HUD/Summary, PresentationController/JournalPanel, shift_clock/playthrough/book/presentation/guest_service/ui_polish_test и check.ps1. JSON и модели не менялись.
+## Как менять контракт
 
 DA-045 уточняет только представление, без новых API: ServicePanel.render сбрасывает фокус на область чтения нового заказа, set_open(false/true) запоминает и возвращает действительный видимый Control после паузы. Скрытая панель не перезаписывает запомненный фокус повторным скрытием. Main явно игнорирует echo в _input; буквы поиска, обычные нажатия и непрерывный обзор остаются прежними. Потребители: Main, ServicePanel, NavigationHUD и guest_service_test. Стоимость в подсказках соответствует принятому прототипу DA-023 (1 деление); при будущем изменении стоимости обновить тексты вместе с моделью.
-
-## Как менять контракт
 
 Указать задачу, статус (`proposed` / `implemented`), фактический путь реализации, затронутые системы, совместимость данных и проверку потребителей. Реализованные разделы обязательны для потребителей; предложения принимаются соответствующей задачей. Если реализация отличается, документ обновляется в том же изменении.

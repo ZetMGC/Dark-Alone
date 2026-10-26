@@ -124,8 +124,6 @@ func _run() -> void:
 			await _press("CommutePanel", "%Skip")
 		else:
 			await _press("ShiftSummaryPanel", "%Restart")
-			_expect(get_tree().current_scene.get_node("ShiftSummaryPanel").is_reset_confirmation_open(), "Reset waits for explicit approval")
-			await _press("ShiftSummaryPanel", "%ConfirmReset")
 		await get_tree().process_frame
 		_expect(get_tree().current_scene.get_node("AnchorCamera").current_anchor_id == &"entry", "New shift reloads entry")
 		_expect(get_tree().current_scene.get_node("NarrativeSession").journal.get_entries().size() == (2 if long_branch else 0), "Ordinary return retains knowledge while explicit test reset clears it")

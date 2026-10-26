@@ -8,9 +8,7 @@ signal home_requested
 
 
 func _ready() -> void:
-	%Restart.pressed.connect(_request_reset)
-	%CancelReset.pressed.connect(cancel_reset_confirmation)
-	%ConfirmReset.pressed.connect(_confirm_reset)
+	%Restart.pressed.connect(func() -> void: restart_requested.emit())
 	%Journal.pressed.connect(func() -> void: journal_requested.emit())
 	%Quit.pressed.connect(func() -> void: quit_requested.emit())
 	%GoHome.pressed.connect(func() -> void: home_requested.emit())
@@ -35,8 +33,6 @@ func render(clock: ShiftClock, journal: Journal, service: GuestService) -> void:
 
 
 func set_open(value: bool) -> void:
-	if not value:
-		cancel_reset_confirmation()
 	$Screen.visible = value
 	if value:
 		_focus_content.call_deferred()
@@ -45,30 +41,3 @@ func set_open(value: bool) -> void:
 func _focus_content() -> void:
 	if is_inside_tree() and $Screen.is_visible_in_tree():
 		%Scroll.grab_focus()
-
-
-func is_reset_confirmation_open() -> bool:
-	return $Screen.visible and %ResetConfirmation.visible
-
-
-func _request_reset() -> void:
-	if not $Screen.visible or is_reset_confirmation_open():
-		return
-	%ResetConfirmation.show()
-	$Screen/Card.hide()
-	%CancelReset.grab_focus()
-
-
-func cancel_reset_confirmation() -> void:
-	var was_open: bool = %ResetConfirmation.visible
-	%ResetConfirmation.hide()
-	$Screen/Card.show()
-	if was_open and $Screen.visible:
-		%Restart.grab_focus()
-
-
-func _confirm_reset() -> void:
-	if not is_reset_confirmation_open():
-		return
-	cancel_reset_confirmation()
-	restart_requested.emit()

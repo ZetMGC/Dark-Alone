@@ -112,7 +112,6 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.64, 0.69, 0.72, 1)
 theme_override_font_sizes/font_size = 15
 text = "Выберите доступную точку."
-autowrap_mode = 3
 
 [node name="Destinations" type="HBoxContainer" parent="Screen/Bottom/Margin/Content"]
 unique_name_in_owner = true
@@ -182,12 +181,6 @@ follow_focus = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
-
-[node name="ControlsHelp" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
-layout_mode = 2
-text = "УПРАВЛЕНИЕ\nПКМ + мышь / стрелки — обзор · R — вернуть взгляд\n1–4 — точки · E — взаимодействовать\nT — разговор · B — напиток · J — дневник\nTab / Enter — выбор · Escape — назад / меню"
-autowrap_mode = 3
-theme_override_font_sizes/font_size = 16
 
 [node name="DisplayRow" type="HBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 layout_mode = 2
@@ -389,33 +382,3 @@ offset_bottom = 158.0
 theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0.88, 0.78, 0.55, 1)
 text = "Время смены: 2 / 2"
-
-[node name="Notifications" type="CanvasLayer" parent="."]
-layer = 18
-
-[node name="JournalNotice" type="PanelContainer" parent="Notifications"]
-unique_name_in_owner = true
-visible = false
-anchor_left = 0.25
-anchor_right = 0.75
-offset_top = 16.0
-offset_bottom = 60.0
-mouse_filter = 2
-theme = ExtResource("2")
-
-[node name="Margin" type="MarginContainer" parent="Notifications/JournalNotice"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_bottom = 8
-
-[node name="JournalNoticeText" type="Label" parent="Notifications/JournalNotice/Margin"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(0.92, 0.79, 0.56, 1)
-text_overrun_behavior = 3
-horizontal_alignment = 1

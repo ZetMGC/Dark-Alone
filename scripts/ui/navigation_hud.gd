@@ -10,9 +10,6 @@ signal service_requested
 
 var _buttons: Dictionary = {}
 var _shift_number: int = 1
-var _notice_titles: PackedStringArray = []
-var _notice_seconds: float = 0.0
-var _notice_allowed: bool = true
 
 @onready var _location: Label = %Location
 @onready var _message: Label = %Message
@@ -109,46 +106,3 @@ func update_shift(remaining: int, budget: int, number: int = 0) -> void:
 	if number > 0:
 		_shift_number = number
 	%ShiftTime.text = "Смена %d · Время: %d / %d" % [_shift_number, remaining, budget]
-
-
-func set_context(mode: StringName) -> void:
-	var world := mode == &"exploration"
-	for path: String in ["Heading", "MenuHint", "Reticle", "Prompt", "Bottom", "Actions", "ServiceStatus", "ShiftTime"]:
-		get_node("Screen/" + path).visible = world
-	_notice_allowed = mode in [&"exploration", &"dialogue", &"service", &"shift_complete"]
-	if mode == &"journal":
-		_notice_titles.clear()
-		_notice_seconds = 0.0
-	%JournalNotice.visible = _notice_allowed and _notice_seconds > 0.0
-
-
-func update_objective(at_counter: bool, talked: bool, served: bool, transitioning: bool, counter_available: bool = true) -> void:
-	if transitioning:
-		return
-	var goal := "Поговорите с гостем и подайте напиток."
-	if talked and not served:
-		goal = "Подайте гостю напиток, чтобы закончить смену."
-	elif served and not talked:
-		goal = "Поговорите с гостем, чтобы закончить смену."
-	elif talked and served:
-		goal = "Смена завершена."
-	var route := "2 — за стойку. " if counter_available else "Пройдите к стойке через соседнюю точку. "
-	_message.text = goal if at_counter else route + goal
-	$Screen/Bottom/Margin/Content/Help.text = "T — разговор · B — напиток · J — дневник · Escape — меню" if at_counter else "ПКМ / стрелки — обзор · 1–4 — точки · Escape — управление и настройки"
-
-
-func show_journal_notice(title: String) -> void:
-	if title not in _notice_titles:
-		_notice_titles.append(title)
-	%JournalNoticeText.text = "Новая запись в дневнике · J — открыть" if _notice_titles.size() == 1 else "Новые записи: %d · J — открыть дневник" % _notice_titles.size()
-	_notice_seconds = 5.0
-	%JournalNotice.visible = _notice_allowed
-
-
-func _process(delta: float) -> void:
-	if not _notice_allowed or _notice_seconds <= 0.0:
-		return
-	_notice_seconds = maxf(0.0, _notice_seconds - delta)
-	if _notice_seconds == 0.0:
-		%JournalNotice.hide()
-		_notice_titles.clear()

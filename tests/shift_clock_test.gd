@@ -145,22 +145,6 @@ func _test_repeat_dialogues_and_restart() -> void:
 	_expect(session.shift.finished and not session.service.served, "Two conversations can exhaust budget without service")
 	var old_ref: WeakRef = weakref(main)
 	main.get_node("ShiftSummaryPanel/%Restart").pressed.emit()
-	var summary: ShiftSummaryPanel = main.get_node("ShiftSummaryPanel")
-	_expect(summary.is_reset_confirmation_open() and current_scene == main, "Reset requires confirmation")
-	_expect(root.gui_get_focus_owner() == summary.get_node("%CancelReset"), "Reset defaults to safe cancellation")
-	summary.get_node("%CancelReset").pressed.emit()
-	_expect(not summary.is_reset_confirmation_open() and current_scene == main and not session.journal.get_entries().is_empty(), "Cancel preserves actual progress")
-	summary.get_node("%ConfirmReset").pressed.emit()
-	_expect(current_scene == main, "Hidden confirmation cannot reset")
-	summary.get_node("%Restart").pressed.emit()
-	var cancel_key := InputEventKey.new()
-	cancel_key.keycode = KEY_ESCAPE
-	cancel_key.physical_keycode = KEY_ESCAPE
-	cancel_key.pressed = true
-	main._input(cancel_key)
-	_expect(not summary.is_reset_confirmation_open() and session.mode == NarrativeSession.SHIFT_COMPLETE, "Escape cancels confirmation without opening pause")
-	summary.get_node("%Restart").pressed.emit()
-	summary.get_node("%ConfirmReset").pressed.emit()
 	await process_frame
 	await process_frame
 	var fresh: Node = current_scene

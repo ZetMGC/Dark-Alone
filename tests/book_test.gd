@@ -130,7 +130,6 @@ func _test_book() -> void:
 	_expect(not panel.is_transitioning() and panel.get_page_index() == before + 1, "Off mode turns instantly")
 	_expect(not panel.set_motion_mode(&"bad"), "Unknown motion mode rejected")
 	panel.set_page_volume(0)
-	await get_tree().create_timer(0.08).timeout
 	_expect(not panel.get_node("PageSound").playing and JournalPanel.page_volume == 0, "Zero volume stops page sound")
 	panel.set_page_volume(INF)
 	_expect(JournalPanel.page_volume == 0, "Invalid volume ignored")

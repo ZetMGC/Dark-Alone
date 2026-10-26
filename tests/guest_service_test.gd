@@ -155,7 +155,6 @@ func _test_scene() -> void:
 	_key(KEY_ESCAPE)
 	await process_frame
 	_expect(session.mode == NarrativeSession.SERVICE and panel.screen.visible, "Pause resumes service menu")
-	await process_frame
 	_expect(root.gui_get_focus_owner() == _buttons(panel)[0], "Pause preserves selected drink focus")
 	_expect(not session.serve_drink(&"missing") and not session.service.served, "Unknown menu ID is a no-op")
 	var events: Array = []
