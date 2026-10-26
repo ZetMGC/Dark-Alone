@@ -30,6 +30,7 @@ var _open_start: float = 0.0
 var _motion_control: OptionButton
 var _sound_control: HSlider
 var _sound_label: Label
+var _sound_tween: Tween
 
 
 func _ready() -> void:
@@ -77,7 +78,9 @@ func set_page_volume(value: float) -> void:
 		return
 	page_volume = clampf(value, 0.0, 1.0)
 	if page_volume == 0.0:
-		$PageSound.stop()
+		_fade_page_sound(true)
+	elif $PageSound.playing:
+		_fade_page_sound(false)
 	if is_instance_valid(_sound_control):
 		_sound_control.set_value_no_signal(page_volume)
 	_update_sound_label()
@@ -244,7 +247,7 @@ func set_open(value: bool) -> void:
 	if not value:
 		if _tween != null and _tween.is_valid():
 			_tween.pause()
-		$PageSound.stop()
+		_fade_page_sound(true)
 		return
 	if _finish_on_resume:
 		_complete_motion.bind(_motion_serial).call_deferred()
@@ -269,7 +272,7 @@ func force_closed() -> void:
 	_opened = false
 	%BookArt.open_amount = 0.0
 	screen.visible = false
-	$PageSound.stop()
+	_fade_page_sound(true)
 
 
 func reset_scroll() -> void:
@@ -284,8 +287,10 @@ func _play_motion(kind: StringName, completion: Callable) -> void:
 	_open_start = %BookArt.open_amount
 	_update_controls()
 	if page_volume > 0 and AudioServer.get_driver_name() != "Dummy":
-		$PageSound.volume_db = linear_to_db(page_volume)
-		$PageSound.play()
+		if not $PageSound.playing:
+			$PageSound.volume_db = -80.0
+			$PageSound.play()
+		_fade_page_sound(false)
 	if motion_mode == &"off":
 		_complete_motion()
 		return
@@ -346,6 +351,24 @@ func _cancel_motion() -> void:
 func _focus_close() -> void:
 	if is_inside_tree() and screen.is_visible_in_tree():
 		%Close.grab_focus()
+
+
+func _fade_page_sound(stop_after: bool) -> void:
+	if _sound_tween != null and _sound_tween.is_valid():
+		_sound_tween.kill()
+	if stop_after and not $PageSound.playing:
+		$PageSound.volume_db = -80.0
+		return
+	_sound_tween = create_tween()
+	var target := -80.0 if stop_after else linear_to_db(maxf(page_volume, 0.0001))
+	_sound_tween.tween_property($PageSound, "volume_db", target, 0.04)
+	if stop_after:
+		_sound_tween.tween_callback($PageSound.stop)
+
+
+func _exit_tree() -> void:
+	if _sound_tween != null and _sound_tween.is_valid():
+		_sound_tween.kill()
 
 
 func _make_rustle() -> AudioStreamWAV:

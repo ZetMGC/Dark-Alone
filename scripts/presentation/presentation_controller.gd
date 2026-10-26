@@ -11,6 +11,7 @@ var _retro_control: CheckButton
 var _volume_control: HSlider
 var _volume_label: Label
 var _detail_control: OptionButton
+var _volume_tween: Tween
 
 
 func _ready() -> void:
@@ -19,6 +20,7 @@ func _ready() -> void:
 	if _hum == null:
 		_hum = _make_hum()
 	$Ambience.stream = _hum
+	$Ambience.volume_db = -80.0
 	_apply_volume()
 
 
@@ -82,16 +84,25 @@ func get_ambience_gain() -> float:
 
 
 func _apply_volume() -> void:
-	$Ambience.volume_db = linear_to_db(maxf(_ambience_gain, 0.0001))
-	if _ambience_gain == 0.0:
-		$Ambience.stop()
-	elif not $Ambience.playing and AudioServer.get_driver_name() != "Dummy":
+	if _volume_tween != null and _volume_tween.is_valid():
+		_volume_tween.kill()
+	if _ambience_gain > 0.0 and not $Ambience.playing and AudioServer.get_driver_name() != "Dummy":
+		$Ambience.volume_db = -80.0
 		$Ambience.play()
+	_volume_tween = create_tween()
+	_volume_tween.tween_property($Ambience, "volume_db", linear_to_db(maxf(_ambience_gain, 0.0001)), 0.18)
+	if _ambience_gain == 0.0:
+		_volume_tween.tween_callback($Ambience.stop)
 
 
 func _update_label() -> void:
 	if is_instance_valid(_volume_label):
 		_volume_label.text = "Фоновый звук: %d%%" % roundi(_ambience_gain * 100.0)
+
+
+func _exit_tree() -> void:
+	if _volume_tween != null and _volume_tween.is_valid():
+		_volume_tween.kill()
 
 
 func _make_hum() -> AudioStreamWAV:

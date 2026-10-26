@@ -47,12 +47,14 @@ func _run() -> void:
 	hud.get_node("%RetroCheck").button_pressed = false
 	_expect(not presentation.is_retro_enabled() and not presentation.get_node("Screen").visible, "Menu disables entire effect")
 	hud.get_node("%AmbienceVolume").value = 0
+	await create_timer(0.25).timeout
 	_expect(presentation.get_ambience_gain() == 0 and not presentation.get_node("Ambience").playing, "Zero volume silences ambience")
 	presentation.set_ambience_gain(INF)
 	_expect(presentation.get_ambience_gain() == 0, "Non-finite volume ignored")
 	presentation.set_ambience_gain(2.0)
 	_expect(presentation.get_ambience_gain() == 1.0, "Volume bounded")
 	presentation.set_ambience_gain(0.0)
+	await create_timer(0.25).timeout
 	var sound: AudioStreamWAV = presentation.get_node("Ambience").stream
 	_expect(sound != null and sound.mix_rate == 11025 and sound.loop_end == 44100, "Loop format and duration stable")
 	var peak: int = 0

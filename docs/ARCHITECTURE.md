@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-046 в `feat/game-improvements`: Main передаёт контекстную цель и Journal.term_added в HUD; уведомление — отдельный CanvasLayer 18 внутри NavigationHUD, без прогресса/перехвата ввода. ShiftSummaryPanel владеет встроенным подтверждением сброса, Main маршрутизирует Escape и блокирует J/T/B. Звуковые затухания принадлежат PresentationController/JournalPanel. CONTRACTS/ADR-0016 описывают асинхронную остановку при нулевой громкости. Доменные модели прежние.
+
 Статус: все готовые изменения M1 и DA-020–DA-037 объединены в main по поручению владельца (DA-003). DA-022 добавляет обслуживание, DA-023 — ShiftClock, итоги и новую смену. Основа — ADR-0001, навигация — ADR-0002, JSON — ADR-0003, исполнение — ADR-0004, обслуживание — [ADR-0005](decisions/0005-guest-service.md), смена — [ADR-0006](decisions/0006-shift-and-bartender.md). Сохранений пока нет. Художественная цель — VISUAL_DIRECTION.
 
 ## Техническая основа

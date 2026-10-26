@@ -77,6 +77,9 @@ func _ready() -> void:
 	_session.mode_changed.connect(_on_mode_changed)
 	_session.journal_changed.connect(func(_count: int) -> void: _refresh_navigation())
 	_session.service_completed.connect(_on_service_completed)
+	_session.journal.term_added.connect(func(id: StringName) -> void:
+		_hud.show_journal_notice(str(_session.journal.get_definition(id).get("title", id)))
+	)
 	_trigger.dialogue_requested.connect(_start_dialogue)
 	_refresh_navigation()
 	$Presentation.configure_controls(_hud)
@@ -88,6 +91,13 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	# Горячие клавиши выполняют одно действие на нажатие, без автоповтора.
 	if event.is_echo():
+		return
+	if $ShiftSummaryPanel.is_reset_confirmation_open():
+		if event.is_action_pressed("toggle_menu"):
+			$ShiftSummaryPanel.cancel_reset_confirmation()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("toggle_journal") or event.is_action_pressed("talk") or event.is_action_pressed("serve"):
+			get_viewport().set_input_as_handled()
 		return
 	# Поиск дневника получает буквы J/T/B, не игровые горячие клавиши.
 	if get_viewport().gui_get_focus_owner() is LineEdit and not event.is_action_pressed("toggle_menu"):
@@ -237,6 +247,7 @@ func _refresh_navigation() -> void:
 	if not _configured or not _narrative_ready:
 		return
 	var exploration := _session.mode == NarrativeSession.EXPLORATION
+	_hud.set_context(_session.mode)
 	_rig.set_controls_enabled(exploration)
 	var enabled := exploration and not _rig.is_transitioning
 	_interaction.set_enabled(enabled)
@@ -246,6 +257,11 @@ func _refresh_navigation() -> void:
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())
 	_hud.update_service(enabled and _rig.current_anchor_id == _trigger.required_anchor and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
+	var talked := false
+	for event in _session.shift.get_events():
+		if str(event.id).begins_with("dialogue:"):
+			talked = true
+	_hud.update_objective(_rig.current_anchor_id == _trigger.required_anchor, talked, _session.service.served, _rig.is_transitioning, _rig.can_move_to(_trigger.required_anchor))
 
 
 func _fail_setup(message: String) -> void:
