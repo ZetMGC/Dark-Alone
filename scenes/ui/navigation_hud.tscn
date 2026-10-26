@@ -435,3 +435,24 @@ title = "Начать заново?"
 dialog_text = "Прогресс и автосохранение будут удалены. Начать с первой смены?"
 ok_button_text = "Начать заново"
 cancel_button_text = "Отмена"
+
+[node name="LeaveWorkstation" type="Button" parent="Screen/Actions"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(120, 44)
+text = "Отойти · Esc"
+
+[node name="MovementHint" type="Label" parent="Screen"]
+unique_name_in_owner = true
+visible = false
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -52.0
+offset_right = -24.0
+offset_bottom = -16.0
+mouse_filter = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 15

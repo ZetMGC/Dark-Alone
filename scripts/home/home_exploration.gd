@@ -15,9 +15,11 @@ var _event: StringName = &""
 @onready var interaction: InteractionController = $InteractionController
 
 
-func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: HomeState = null) -> bool:
+func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: HomeState = null, free_roam: bool = false) -> bool:
 	if _session != null or session == null or hud == null:
 		return false
+	(rig as FreeRoamCamera).free_roam_enabled = free_roam
+	(rig as FreeRoamCamera).availability_changed.connect(_refresh)
 	if not rig.configure($Anchors, &"home_entry"):
 		return false
 	_session = session
@@ -41,6 +43,10 @@ func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: Home
 		object.inspect_requested.connect(inspect)
 	%Read.pressed.connect(func() -> void: close_inspection(true))
 	%Cancel.pressed.connect(func() -> void: close_inspection(false))
+	%LeaveWorkstation.pressed.connect(func() -> void:
+		if _session.mode == NarrativeSession.HOME and not _has_inspection():
+			(rig as FreeRoamCamera).leave_focus()
+	)
 	%Journal.pressed.connect(func() -> void: journal_requested.emit())
 	%Work.pressed.connect(request_work)
 	%Event.pressed.connect(open_event)
@@ -93,7 +99,8 @@ func _refresh() -> void:
 		(%Destinations.get_child(index) as Button).disabled = not rig.can_move_to(anchors[index].anchor_id)
 	for object: HomeObject in $Objects.get_children():
 		object.set_available(enabled and not rig.is_transitioning and rig.current_anchor_id == object.required_anchor)
-	%Location.text = "ДОМ · " + rig.get_anchor(rig.current_anchor_id).display_name
+	var anchor := rig.get_anchor(rig.current_anchor_id)
+	%Location.text = "ДОМ · " + anchor.display_name if anchor != null else "ДОМ"
 	%Observed.text = "[TEST] Осмотрено: %d / 4" % state.get_observed_ids().size()
 	%Work.disabled = not enabled or rig.is_transitioning or rig.current_anchor_id != &"home_entry"
 	%Work.tooltip_text = "Вернитесь к двери (1), чтобы выйти на работу."
@@ -101,6 +108,18 @@ func _refresh() -> void:
 	%Event.disabled = not enabled or rig.is_transitioning
 	%Journal.disabled = not enabled or rig.is_transitioning
 	%InspectCurrent.disabled = not enabled or rig.is_transitioning
+	if (rig as FreeRoamCamera).free_roam_enabled:
+		var focused := (rig as FreeRoamCamera).focus_active
+		$HomeHUD/Screen/Bottom.visible = focused and not _has_inspection()
+		$HomeHUD/Screen/Bottom.offset_top = -178
+		%Destinations.hide()
+		$HomeHUD/Screen/Bottom/Margin/Content/Help.hide()
+		%LeaveWorkstation.visible = focused
+		%Work.visible = rig.current_anchor_id == &"home_entry"
+		%Event.visible = focused and not state.get_available_events().is_empty()
+		$HomeHUD/Screen/Reticle.visible = not focused and not _has_inspection()
+		%Prompt.visible = not focused and not _has_inspection()
+		%MovementHint.visible = not focused and not _has_inspection()
 
 
 func _move(id: StringName) -> void:
@@ -123,6 +142,8 @@ func inspect(id: StringName) -> bool:
 
 func open_event() -> bool:
 	if _session.mode != NarrativeSession.HOME or rig.is_transitioning or _has_inspection():
+		return false
+	if (rig as FreeRoamCamera).free_roam_enabled and not (rig as FreeRoamCamera).focus_active:
 		return false
 	var events := state.get_available_events()
 	if events.is_empty():
@@ -170,10 +191,15 @@ func handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("toggle_menu") and _has_inspection():
 		close_inspection(false)
 		return true
+	if event.is_action_pressed("toggle_menu") and (rig as FreeRoamCamera).leave_focus():
+		return true
 	if event.is_action_pressed("interact"):
 		if not _has_inspection():
-			interaction.try_interact()
+			if not (rig as FreeRoamCamera).try_focus():
+				interaction.try_interact()
 		return true
+	if (rig as FreeRoamCamera).free_roam_enabled:
+		return false
 	for index in rig.get_anchors().size():
 		if event.is_action_pressed("anchor_%d" % [index + 1]):
 			_move(rig.get_anchors()[index].anchor_id)

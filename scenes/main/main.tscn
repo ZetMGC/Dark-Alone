@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/levels/bar_graybox.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://scenes/player/anchor_camera.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/player/free_roam_camera.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/ui/navigation_hud.tscn" id="4"]
 [ext_resource type="Script" path="res://scripts/interaction/interaction_controller.gd" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/dialogue_panel.tscn" id="6"]

@@ -7,6 +7,7 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export var dialogue_paths: PackedStringArray = ["res://content/dialogues/test_guest.json"]
 @export_range(1, 24) var shift_budget: int = 2
 @export var checkpoint_enabled: bool = true
+@export var free_roam_enabled: bool = true
 var checkpoint_store := CheckpointStore.new()
 @export var drink_options: Array[Dictionary] = [
 	{"id": "test_water", "title": "[TEST] Вода", "description": "Стакан прохладной воды."},
@@ -29,6 +30,18 @@ var _checkpoint_message: String = ""
 
 
 func _ready() -> void:
+	# Режим перемещения переживает обычную смену и тестовый сброс.
+	if get_tree().has_meta(RUN_HANDOFF):
+		var context: Variant = get_tree().get_meta(RUN_HANDOFF)
+		if context is Dictionary and context.get("scene") == scene_file_path and context.get("free_roam_enabled") is bool:
+			free_roam_enabled = context.free_roam_enabled
+	(_rig as FreeRoamCamera).free_roam_enabled = free_roam_enabled
+	(_rig as FreeRoamCamera).focus_anchor_ids = PackedStringArray(["counter"])
+	(_rig as FreeRoamCamera).availability_changed.connect(_refresh_navigation)
+	_hud.leave_workstation_requested.connect(func() -> void:
+		if _session.mode == NarrativeSession.EXPLORATION:
+			(_rig as FreeRoamCamera).leave_focus()
+	)
 	_hud.resume_requested.connect(_resume_menu)
 	_hud.quit_requested.connect(func() -> void: get_tree().quit())
 	if not _rig.configure(_anchors_root, &"entry"):
@@ -105,7 +118,7 @@ func _ready() -> void:
 	_home.name = "HomeExploration"
 	_home.position = Vector3(32, 0, 0)
 	add_child(_home)
-	if not _home.configure(_session, _hud, shared_home):
+	if not _home.configure(_session, _hud, shared_home, free_roam_enabled):
 		_fail_setup("Не удалось настроить дом.")
 		return
 	_home.work_requested.connect(_session.go_to_work)
@@ -146,6 +159,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_menu"):
+		if free_roam_enabled and _narrative_ready and _session.mode == NarrativeSession.EXPLORATION and (_rig as FreeRoamCamera).leave_focus():
+			get_viewport().set_input_as_handled()
+			return
 		if not _narrative_ready:
 			_error_menu = not _error_menu
 			_hud.set_menu_visible(_error_menu)
@@ -173,9 +189,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _narrative_ready or _session.mode != NarrativeSession.EXPLORATION:
 		return
 	if event.is_action_pressed("interact"):
+		if free_roam_enabled and (_rig as FreeRoamCamera).try_focus():
+			get_viewport().set_input_as_handled()
+			return
 		if not _interaction.try_interact() and not _rig.is_transitioning:
-			_hud.show_notice("Наведите прицел на метку или выберите доступную точку внизу.")
+			_hud.show_notice("Подойдите к рабочему месту и посмотрите на его метку." if free_roam_enabled else "Наведите прицел на метку или выберите доступную точку внизу.")
 		get_viewport().set_input_as_handled()
+	if free_roam_enabled:
+		return
 	for index in _rig.get_anchors().size():
 		if event.is_action_pressed("anchor_%d" % [index + 1]):
 			_request_destination(_rig.get_anchors()[index].anchor_id)
@@ -207,7 +228,7 @@ func _reload_shift(keep_journal: bool = false) -> bool:
 		_hud.show_notice(checkpoint_store.last_error)
 		return false
 	_restart_pending = true
-	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal}
+	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled}
 	if keep_journal:
 		handoff.merge({"journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
 	get_tree().set_meta(RUN_HANDOFF, handoff)
@@ -320,6 +341,8 @@ func _refresh_navigation() -> void:
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())
 	_hud.update_service(enabled and _rig.current_anchor_id == _trigger.required_anchor and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
+	if free_roam_enabled:
+		_hud.update_workstation(_rig as FreeRoamCamera, exploration)
 
 
 func _fail_setup(message: String) -> void:

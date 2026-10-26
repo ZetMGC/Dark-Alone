@@ -27,6 +27,7 @@ func _capture() -> void:
 		_suffix = "_small"
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	root.add_child(main)
 	var rig := main.get_node("AnchorCamera") as AnchorCamera
 	var session := main.get_node("NarrativeSession") as NarrativeSession

@@ -47,6 +47,7 @@ func _probe(mode: String, directory: String) -> void:
 				_expect(result.journal.get_entry(&"test_signal").reading_offset == 5 and result.journal.get_entry(&"test_signal").bookmarked, "New process restores journal position/bookmark")
 				_expect(result.home_state.has_resolved(&"test_home_observation"), "New process restores home event")
 				var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+				main.free_roam_enabled = false
 				main.checkpoint_store = store
 				get_tree().root.add_child(main)
 				_expect(main.get_node("NarrativeSession").shift_number == 2 and main.get_node("HomeExploration").state.has_resolved(&"test_home_observation"), "New process boots the real game from disk")
@@ -165,6 +166,7 @@ func _test_application() -> void:
 	store.save_checkpoint(2, fixture.journal, fixture.home, _catalog)
 	var scene := load("res://scenes/main/main.tscn") as PackedScene
 	var main := scene.instantiate()
+	main.free_roam_enabled = false
 	main.checkpoint_store = store
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
@@ -208,6 +210,7 @@ func _test_application() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 	main = scene.instantiate()
+	main.free_roam_enabled = false
 	main.checkpoint_store = CheckpointStore.new(directory)
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
@@ -241,6 +244,7 @@ func _test_application() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 	main = scene.instantiate()
+	main.free_roam_enabled = false
 	main.checkpoint_store = CheckpointStore.new(directory)
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
@@ -254,6 +258,7 @@ func _test_application() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 	main = scene.instantiate()
+	main.free_roam_enabled = false
 	main.checkpoint_store = CheckpointStore.new(directory)
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main

@@ -8,9 +8,11 @@ signal talk_requested
 signal journal_requested
 signal service_requested
 signal new_game_requested
+signal leave_workstation_requested
 
 var _buttons: Dictionary = {}
 var _shift_number: int = 1
+var _free_roam: bool = false
 
 @onready var _location: Label = %Location
 @onready var _message: Label = %Message
@@ -21,6 +23,7 @@ var _shift_number: int = 1
 
 
 func _ready() -> void:
+	%LeaveWorkstation.pressed.connect(func() -> void: leave_workstation_requested.emit())
 	_resume.pressed.connect(func() -> void: resume_requested.emit())
 	%Quit.pressed.connect(func() -> void: quit_requested.emit())
 	%Talk.pressed.connect(func() -> void: talk_requested.emit())
@@ -83,6 +86,30 @@ func set_prompt(prompt: String) -> void:
 
 func show_notice(message: String) -> void:
 	_message.text = message
+	if _free_roam:
+		%MovementHint.text = message
+
+
+func update_workstation(rig: FreeRoamCamera, exploration: bool) -> void:
+	_free_roam = true
+	$Screen/Actions.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	$Screen/Actions.offset_left = 24
+	$Screen/Actions.offset_right = -24
+	$Screen/Actions.offset_top = -105
+	$Screen/Actions.offset_bottom = -61
+	%ServiceStatus.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	%ServiceStatus.offset_left = 24
+	%ServiceStatus.offset_right = -24
+	%ServiceStatus.offset_top = -140
+	%ServiceStatus.offset_bottom = -112
+	$Screen/Bottom.hide()
+	$Screen/Reticle.visible = exploration and not rig.focus_active
+	%Prompt.visible = exploration and not rig.focus_active
+	$Screen/Actions.visible = exploration and rig.focus_active and not rig.is_transitioning
+	%ServiceStatus.visible = $Screen/Actions.visible
+	%LeaveWorkstation.visible = $Screen/Actions.visible
+	%MovementHint.visible = exploration
+	%MovementHint.text = "Escape — отойти от стойки" if rig.focus_active else "WASD — идти · Мышь — обзор · E — рабочее место · J — дневник · Escape — меню"
 
 
 func set_menu_visible(value: bool) -> void:

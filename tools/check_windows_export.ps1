@@ -50,11 +50,13 @@ Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'bo
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'display.log') -ExtraArguments @('--', '--display-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: display settings,'
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'faces.log') -ExtraArguments @('--', '--faces-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: test faces,'
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'checkpoint.log') -ExtraArguments @('--', '--checkpoint-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: shift checkpoint,'
+Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'free-roam.log') -ExtraArguments @('--', '--free-roam-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: free roam,'
 $checkpointDirectory = 'user://checkpoint_tests/process_export_' + [guid]::NewGuid().ToString('N')
 foreach ($phase in @('write', 'read')) {
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot ('checkpoint-' + $phase + '.log')) -ExtraArguments @('--', '--checkpoint-check', ('--checkpoint-probe=' + $phase), ('--checkpoint-directory=' + $checkpointDirectory)) -ExpectPlaythrough $false -ExpectedMarker ('PASS: checkpoint probe ' + $phase)
 }
 if ($Graphics) {
+  Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'free-roam-graphical.log') -ExtraArguments @('--', '--free-roam-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: free roam,' -Graphical $true
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'checkpoint-graphical.log') -ExtraArguments @('--', '--checkpoint-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: shift checkpoint,' -Graphical $true
 	Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'faces-graphical.log') -ExtraArguments @('--', '--faces-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: test faces,' -Graphical $true
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'image-detail.log') -ExtraArguments @('--', '--image-detail-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: image detail,' -Graphical $true

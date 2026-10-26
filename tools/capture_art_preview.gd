@@ -23,6 +23,7 @@ func _capture() -> void:
 		DisplayServer.window_set_size(Vector2i(960, 600))
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	root.add_child(main)
 	current_scene = main
 	var rig := main.get_node("AnchorCamera") as AnchorCamera

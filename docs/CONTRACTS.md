@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-052 заменяет игровое перемещение по графу ходьбой/локальным фокусом. API AnchorCamera ниже сохранён для старого контракта; новые типы/потребители описаны в разделе DA-052 в конце. [FREE_ROAM](FREE_ROAM.md).
+
 **Статус:** навигация M1, контент/исполнение DA-020–DA-021, обслуживание DA-022 и смена DA-023 реализованы. Не считать интерфейсы будущих модулей существующим API.
 
 ## Якоря — implemented, DA-010–DA-012
@@ -241,3 +243,15 @@ CheckpointStore (RefCounted): конструктор `directory: String="user://
 Main экспортирует `checkpoint_enabled: bool=true`, принимает `checkpoint_store: CheckpointStore` до добавления в дерево. Тесты/превью отключают checkpoint; новые интеграционные тесты подставляют отдельный каталог. RUN_HANDOFF теперь передаёт также checkpoint_enabled/checkpoint_store/fresh; fresh=true пропускает автозагрузку после явного сброса. Обычная передача Journal/HomeState приоритетна; запись выполняется только после полной настройки новой смены. Старые данные передачи без новых полей по-прежнему допускаются.
 
 NavigationHUD добавляет `new_game_requested`, `set_checkpoint_status(text: String) -> void`, уникальные CheckpointStatus/NewGame/ConfirmNewGame. Подтверждение скрывается при закрытии меню; Main отвергает устаревший запрос вне MENU. Потребители: Main, Journal, HomeState, HUD, checkpoint_test, все Main-fixtures прежних тестов и команды снимков, check.ps1/check_windows_export.ps1. Форматы контента v1 и публичные API прежних действий не изменены.
+
+## DA-052: ходьба и рабочие места
+
+FreeRoamCamera extends AnchorCamera, отдельные scripts/player и scenes/player. До configure задаются `free_roam_enabled: bool=false` и `focus_anchor_ids: PackedStringArray=[]` (пусто — все); в игровом Main default true, список [counter], дома true/все. Публичные `body: CharacterBody3D`, `focus_active: bool` — для чтения, `walk_speed=2.6`, `focus_distance=1.35` — параметры первоначального плейтеста. Сигнал `availability_changed` требует обновить доступность/локальный UI.
+
+При включённой ходьбе `current_anchor_id` пуст вне рабочего места; `can_move_to/request_move` означают локальное занятие рабочего места, проверяют controls/transition/focus/ID/радиус/преграду, не neighbours. `try_focus() -> bool` дополнительно выбирает ближайшее место в направлении взгляда, `leave_focus() -> bool` возвращает к телу/прежнему взгляду только из немодального состояния после fade. Прежние transition_started/anchor_reached сохраняются при входе; при выходе обновление через availability_changed. Старый режим false использует все прежние контракты AnchorCamera. configure создаёт дочерний top_level CharacterBody3D, не внешний singleton.
+
+Main.free_roam_enabled по умолчанию true, передаётся через RUN_HANDOFF вместе с прежним checkpoint-контекстом; игровые клавиши anchor_1…4 отключены. HomeExploration.configure получает четвёртый необязательный free_roam: bool=false; прежние вызовы совместимы. Включённый режим требует занятого места для осмотров/события/выхода на работу; ходьба доступна только в HOME без осмотра. Main разрешает разговор/обслуживание только у counter после завершения входа.
+
+NavigationHUD добавляет `update_workstation(rig: FreeRoamCamera, exploration: bool) -> void`, `leave_workstation_requested`, уникальные LeaveWorkstation/MovementHint. Направления и старый Bottom скрыты в ходьбе, Actions видны только у рабочего места, у дома свой условный Bottom. HUD/модели не задают положение физического тела. InputMap добавляет move_forward/back/left/right (W/S/A/D), mouse захвачен при активной ходьбе и освобождён в рабочих/модальных режимах и при потере фокуса.
+
+Потребители: Main, HomeExploration, NavigationHUD, сцены Main/Home/HUD/player, StaticBody гостя на слое 3; прежние Main-fixtures/команды снимков явно задают free_roam_enabled=false для старых контрактов; free_roam_test и проверочный экспорт проходят настоящий новый цикл. Сохранения v1, Dialogue/Journal/HomeState/ShiftClock не менялись. Новое решение ADR-0020, инструкция FREE_ROAM.

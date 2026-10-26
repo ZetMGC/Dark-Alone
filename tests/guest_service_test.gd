@@ -102,6 +102,7 @@ func _test_scene() -> void:
 	var scene := load("res://scenes/main/main.tscn") as PackedScene
 	var main := scene.instantiate()
 	main.checkpoint_enabled = false
+	main.free_roam_enabled = false
 	root.add_child(main)
 	await process_frame
 	var rig := main.get_node("AnchorCamera") as AnchorCamera
@@ -171,6 +172,7 @@ func _test_scene() -> void:
 	await process_frame
 	var fresh := scene.instantiate()
 	fresh.checkpoint_enabled = false
+	fresh.free_roam_enabled = false
 	root.add_child(fresh)
 	await process_frame
 	_expect(not fresh.get_node("NarrativeSession").service.served and not fresh.get_node("DialogueTrigger/ServedGlass").visible, "Fresh session resets order")
