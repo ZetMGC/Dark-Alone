@@ -83,6 +83,7 @@ func _ready() -> void:
 	$JournalPanel.configure_controls(_hud)
 	$DisplaySettings.configure_controls(_hud)
 	$DialogueTrigger/Body.configure_controls(_hud)
+	_rig.configure_controls(_hud)
 
 
 func _input(event: InputEvent) -> void:
@@ -226,6 +227,7 @@ func _on_anchor_reached(_anchor_id: StringName) -> void:
 
 
 func _on_mode_changed(mode: StringName) -> void:
+	$Presentation.set_environment_context(mode)
 	_hud.set_menu_visible(mode == NarrativeSession.MENU)
 	_refresh_navigation()
 

@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/presentation_controller.gd" id="1"]
 [ext_resource type="Shader" path="res://assets/shaders/retro_screen.gdshader" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/presentation/environment_audio.tscn" id="3"]
 
 [sub_resource type="ShaderMaterial" id="Retro"]
 shader = ExtResource("2")
@@ -21,3 +22,5 @@ material = SubResource("Retro")
 
 [node name="Ambience" type="AudioStreamPlayer" parent="."]
 volume_db = -9.0
+
+[node name="EnvironmentAudio" parent="." instance=ExtResource("3")]

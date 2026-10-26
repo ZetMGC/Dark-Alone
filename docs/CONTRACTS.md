@@ -205,6 +205,15 @@ DA-042 добавляет к PresentationController `set_image_detail(value: Str
 
 MSDF включён для стандартного font в project.godot и отдельно для SystemFont book_theme; другие font-ресурсы требуют своей проверки. Потребители: PresentationController/HUD, presentation_test (20), image_detail_test, validation runner и check_windows_export с новым необязательным -Graphics. Этот флаг добавляет графическую GPU-проверку; прежние вызовы checker остаются headless. Формат JSON/знаний/курсора не менялся. Решение ADR-0013, инструкция IMAGE_DETAIL.
 
+## Окружение и камера — implemented, DA-048
+
+
+AnchorCamera добавляет `configure_controls(hud: NavigationHUD) -> void`, `set_look_sensitivity(multiplier: float) -> void`, `set_transition_duration(seconds: float) -> void`. Конечные значения ограничиваются 0,5…2 и 0,2…1 соответственно, NaN/INF игнорируются. Полная длительность=2*fade_seconds+black_hold_seconds, hold=0,06. Static-предпочтения процесса применяются только при связывании UI, не отменяют configure графа. Изменение длительности не перезапускает активный Tween. HUD предоставляет `%LookSensitivity`, `%LookSensitivityLabel`, `%TransitionDuration`, `%TransitionDurationLabel`, `%ResetCamera`; reset=100%/0,5 с. Прежние API/сигналы движения не менялись.
+
+EnvironmentAudio (scripts/presentation/environment_audio.gd, scenes/presentation/environment_audio.tscn) — Node3D с дочерними Street/Furniture AudioStreamPlayer3D; находится в Presentation. API `set_gain(value: float) -> void` (0…1, нечисловое отклоняется), `set_context(mode: StringName) -> void`. Контекст travel/home выключает новые источники; exploration/dialogue/service/shift_complete возвращает бар, menu/journal сохраняют место. Редкие события только в exploration, при положительной громкости и фокусе; новый интервал после события 18…38 с. Spatial-позиции относятся к текущей сцене бара, без коллизий.
+
+PresentationController добавляет `set_environment_context(mode: StringName) -> void`, пересылает контекст и общий ambience_gain в EnvironmentAudio. Main вызывает его при смене режима, а configure_controls камеры — после остальных настроек. Новые звуки не затрагивают Journal/ShiftClock. Потребители — Main, AnchorCamera/HUD, PresentationController/EnvironmentAudio, environment_camera_test и tools/check.ps1. ADR-0017. Данные/баланс/модели прежние.
+
 ## Как менять контракт
 
 Указать задачу, статус (`proposed` / `implemented`), фактический путь реализации, затронутые системы, совместимость данных и проверку потребителей. Реализованные разделы обязательны для потребителей; предложения принимаются соответствующей задачей. Если реализация отличается, документ обновляется в том же изменении.

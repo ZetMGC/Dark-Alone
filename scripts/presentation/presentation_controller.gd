@@ -82,6 +82,7 @@ func get_ambience_gain() -> float:
 
 
 func _apply_volume() -> void:
+	$EnvironmentAudio.set_gain(_ambience_gain)
 	$Ambience.volume_db = linear_to_db(maxf(_ambience_gain, 0.0001))
 	if _ambience_gain == 0.0:
 		$Ambience.stop()
@@ -92,6 +93,10 @@ func _apply_volume() -> void:
 func _update_label() -> void:
 	if is_instance_valid(_volume_label):
 		_volume_label.text = "Фоновый звук: %d%%" % roundi(_ambience_gain * 100.0)
+
+
+func set_environment_context(mode: StringName) -> void:
+	$EnvironmentAudio.set_context(mode)
 
 
 func _make_hum() -> AudioStreamWAV:

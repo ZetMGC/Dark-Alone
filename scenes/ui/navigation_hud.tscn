@@ -276,7 +276,42 @@ layout_mode = 2
 max_value = 1.0
 step = 0.05
 value = 0.35
-tooltip_text = "Громкость фонового гула. Ноль полностью отключает звук."
+tooltip_text = "Общая громкость вентиляции, далёкой улицы и редких скрипов мебели. Ноль отключает все звуки окружения."
+
+[node name="LookSensitivityLabel" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Скорость обзора: 100%"
+
+[node name="LookSensitivity" type="HSlider" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+min_value = 0.5
+max_value = 2.0
+step = 0.1
+value = 1.0
+tooltip_text = "Скорость мыши и стрелок. 100% — прежняя чувствительность."
+
+[node name="TransitionDurationLabel" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Переход между точками: 0.50 с"
+
+[node name="TransitionDuration" type="HSlider" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+min_value = 0.2
+max_value = 1.0
+step = 0.05
+value = 0.5
+tooltip_text = "Полная длительность затемнения. Начатый переход завершится с прежней скоростью."
+
+[node name="ResetCamera" type="Button" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Исходные настройки камеры"
 
 [node name="BookSettings" type="HBoxContainer" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 layout_mode = 2

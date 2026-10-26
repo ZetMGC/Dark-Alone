@@ -19,9 +19,52 @@ var _controls_enabled: bool = true
 var _look: Vector2 = Vector2.ZERO
 var _transition: Tween
 var _window_focused: bool = true
+static var _preferred_look: float = 1.0
+static var _preferred_duration: float = 0.5
+var _look_control: HSlider
+var _duration_control: HSlider
+var _look_label: Label
+var _duration_label: Label
 
 @onready var view: Camera3D = $View
 @onready var _fade: ColorRect = $FadeLayer/Fade
+
+
+func configure_controls(hud: NavigationHUD) -> void:
+	_look_control = hud.get_node("%LookSensitivity")
+	_duration_control = hud.get_node("%TransitionDuration")
+	_look_label = hud.get_node("%LookSensitivityLabel")
+	_duration_label = hud.get_node("%TransitionDurationLabel")
+	_look_control.value_changed.connect(set_look_sensitivity)
+	_duration_control.value_changed.connect(set_transition_duration)
+	hud.get_node("%ResetCamera").pressed.connect(func() -> void:
+		set_look_sensitivity(1.0)
+		set_transition_duration(0.5)
+	)
+	set_look_sensitivity(_preferred_look)
+	set_transition_duration(_preferred_duration)
+
+
+func set_look_sensitivity(multiplier: float) -> void:
+	if not is_finite(multiplier):
+		return
+	_preferred_look = clampf(multiplier, 0.5, 2.0)
+	mouse_sensitivity = 0.003 * _preferred_look
+	keyboard_look_speed = 1.5 * _preferred_look
+	if is_instance_valid(_look_control):
+		_look_control.set_value_no_signal(_preferred_look)
+		_look_label.text = "Скорость обзора: %d%%" % roundi(_preferred_look * 100.0)
+
+
+func set_transition_duration(seconds: float) -> void:
+	if not is_finite(seconds):
+		return
+	_preferred_duration = clampf(seconds, 0.2, 1.0)
+	black_hold_seconds = 0.06
+	fade_seconds = (_preferred_duration - black_hold_seconds) * 0.5
+	if is_instance_valid(_duration_control):
+		_duration_control.set_value_no_signal(_preferred_duration)
+		_duration_label.text = "Переход между точками: %.2f с" % _preferred_duration
 
 
 func configure(anchors_root: Node3D, initial_id: StringName) -> bool:
