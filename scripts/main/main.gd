@@ -3,13 +3,17 @@ extends Node3D
 
 @export_file("*.json") var glossary_path: String = "res://content/glossary/test_terms.json"
 @export var dialogue_paths: PackedStringArray = ["res://content/dialogues/test_guest.json"]
+@export var drink_options: Array[Dictionary] = [
+	{"id": "test_water", "title": "[TEST] Вода", "description": "Стакан прохладной воды."},
+	{"id": "test_house_drink", "title": "[TEST] Напиток бара", "description": "Напиток бара в простом стакане."}
+]
 
 @onready var _rig: AnchorCamera = $AnchorCamera
 @onready var _interaction: InteractionController = $InteractionController
 @onready var _hud: NavigationHUD = $NavigationHUD
 @onready var _anchors_root: Node3D = $BarLevel/Anchors
 @onready var _session: NarrativeSession = $NarrativeSession
-@onready var _trigger: DialogueTrigger = $DialogueTrigger
+@onready var _trigger: ServiceGuest = $DialogueTrigger
 
 var _configured: bool = false
 var _narrative_ready: bool = false
@@ -29,6 +33,7 @@ func _ready() -> void:
 	_hud.destination_requested.connect(_request_destination)
 	_hud.talk_requested.connect(start_test_dialogue)
 	_hud.journal_requested.connect(_toggle_journal)
+	_hud.service_requested.connect(open_service_menu)
 	_rig.transition_started.connect(_on_transition_started)
 	_rig.anchor_reached.connect(_on_anchor_reached)
 	for anchor in _rig.get_anchors():
@@ -40,12 +45,13 @@ func _ready() -> void:
 	if not catalog.has_dialogue(_trigger.dialogue_id) or _rig.get_anchor(_trigger.required_anchor) == null:
 		_fail_setup("Ошибка цели разговора: неизвестный диалог или якорь.")
 		return
-	if not _session.configure(catalog, $DialoguePanel, $JournalPanel):
-		_fail_setup("Не удалось настроить разговор и дневник.")
+	if not _session.configure(catalog, $DialoguePanel, $JournalPanel, $ServicePanel, _trigger.guest_id, drink_options):
+		_fail_setup("Не удалось настроить разговор, дневник или меню напитков. " + "; ".join(_session.service.validation_errors))
 		return
 	_narrative_ready = true
 	_session.mode_changed.connect(_on_mode_changed)
 	_session.journal_changed.connect(func(_count: int) -> void: _refresh_navigation())
+	_session.service_completed.connect(_on_service_completed)
 	_trigger.dialogue_requested.connect(_start_dialogue)
 	_refresh_navigation()
 
@@ -59,6 +65,8 @@ func _input(event: InputEvent) -> void:
 			_session.resume_menu()
 		elif _session.mode == NarrativeSession.JOURNAL:
 			_session.close_journal()
+		elif _session.mode == NarrativeSession.SERVICE:
+			_session.close_service()
 		else:
 			_session.open_menu()
 		get_viewport().set_input_as_handled()
@@ -67,6 +75,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("talk"):
 		start_test_dialogue()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("serve"):
+		open_service_menu()
 		get_viewport().set_input_as_handled()
 
 
@@ -104,6 +115,25 @@ func _toggle_journal() -> void:
 		_session.close_journal()
 	else:
 		_session.open_journal()
+
+
+func open_service_menu() -> bool:
+	if not _narrative_ready or _rig.is_transitioning or _session.mode != NarrativeSession.EXPLORATION:
+		return false
+	if _rig.current_anchor_id != _trigger.required_anchor:
+		_hud.show_notice("Подойдите к стойке, чтобы обслужить гостя.")
+		return false
+	if _session.service.served:
+		_hud.show_notice("Гость уже получил напиток.")
+		return false
+	return _session.open_service()
+
+
+func _on_service_completed(_event_id: StringName, _guest_id: StringName, _drink_id: StringName) -> void:
+	var title := str(_session.service.get_served_drink().get("title", ""))
+	_trigger.show_served(title)
+	_refresh_navigation()
+	_hud.show_notice("Гость получил: " + title)
 
 
 func _resume_menu() -> void:
@@ -155,6 +185,7 @@ func _refresh_navigation() -> void:
 	_trigger.set_available(enabled and _rig.current_anchor_id == _trigger.required_anchor)
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size())
+	_hud.update_service(enabled and _rig.current_anchor_id == _trigger.required_anchor and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
 
 
 func _fail_setup(message: String) -> void:
@@ -162,5 +193,6 @@ func _fail_setup(message: String) -> void:
 	_interaction.set_enabled(false)
 	_trigger.set_available(false)
 	_hud.update_narrative(false, false, 0)
+	_hud.update_service(false, false, "")
 	_hud.show_notice(message)
 	push_error(message)

@@ -6,6 +6,7 @@ signal resume_requested
 signal quit_requested
 signal talk_requested
 signal journal_requested
+signal service_requested
 
 var _buttons: Dictionary = {}
 
@@ -22,6 +23,7 @@ func _ready() -> void:
 	%Quit.pressed.connect(func() -> void: quit_requested.emit())
 	%Talk.pressed.connect(func() -> void: talk_requested.emit())
 	%Journal.pressed.connect(func() -> void: journal_requested.emit())
+	%Service.pressed.connect(func() -> void: service_requested.emit())
 
 
 func configure(anchors: Array[AnchorPoint]) -> void:
@@ -84,3 +86,9 @@ func update_narrative(talk_available: bool, journal_available: bool, count: int)
 	%Talk.tooltip_text = "Подойдите к стойке, чтобы начать тестовый разговор." if not talk_available else "Начать тестовый разговор"
 	%Journal.disabled = not journal_available
 	%Journal.text = "J   Дневник · %d" % count
+
+
+func update_service(available: bool, served: bool, drink_title: String) -> void:
+	%Service.disabled = not available
+	%Service.tooltip_text = "Гость уже обслужен." if served else "Подойдите к стойке, чтобы выбрать напиток."
+	%ServiceStatus.text = "Подано: " + drink_title if served else "[TEST] Гость у стойки ждёт напиток"

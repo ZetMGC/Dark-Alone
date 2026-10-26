@@ -212,11 +212,11 @@ text = "B A R   /   G R A Y B O X"
 [node name="Props" type="Node3D" parent="."]
 
 [node name="BottleOne" type="MeshInstance3D" parent="Props"]
-position = Vector3(-5.4, 1.72, -1)
+position = Vector3(-5.4, 1.72, -3.5)
 mesh = SubResource("Bottle")
 
 [node name="BottleTwo" type="MeshInstance3D" parent="Props"]
-position = Vector3(-5.4, 1.72, -1.35)
+position = Vector3(-5.4, 1.72, -3.85)
 mesh = SubResource("Bottle")
 
 [node name="BottleThree" type="MeshInstance3D" parent="Props"]

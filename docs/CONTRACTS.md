@@ -1,6 +1,6 @@
 # Контракты интеграции
 
-**Статус:** навигация M1, контент DA-020, Runner, Journal и модальный UI DA-021 реализованы. Время, обслуживание и завершение смены ещё не реализованы. Не считать интерфейсы будущих модулей существующим API.
+**Статус:** навигация M1, контент/исполнение DA-020–DA-021 и гость/обслуживание DA-022 реализованы. Время и завершение смены ещё не реализованы. Не считать интерфейсы будущих модулей существующим API.
 
 ## Якоря — implemented, DA-010–DA-012
 
@@ -104,11 +104,32 @@ configure вызывается один раз из принятого ката�
 
 ## Сессия и панели — implemented, DA-021
 
-[NarrativeSession](../scripts/session/narrative_session.gd) предоставляет configure(catalog, dialogue_panel, journal_panel) -> bool, start_dialogue(dialogue_id) -> bool, choose_for_node(dialogue_id, node_id, choice_id) -> bool, finish_for_node(dialogue_id, node_id) -> bool, cancel_dialogue() -> bool, open_journal/close_journal/open_menu/resume_menu() -> bool. Сигналы mode_changed(mode: StringName), journal_changed(count: int). mode, runner, journal предназначены для чтения/привязки, не для перенастройки UI-потребителями.
+[NarrativeSession](../scripts/session/narrative_session.gd) предоставляет configure(catalog, dialogue_panel, journal_panel, service_panel=null, guest_id=&"", drink_options=[]) -> bool, start_dialogue(dialogue_id) -> bool, choose_for_node(dialogue_id, node_id, choice_id) -> bool, finish_for_node(dialogue_id, node_id) -> bool, cancel_dialogue() -> bool, open_journal/close_journal/open_menu/resume_menu() -> bool. Новые необязательные параметры DA-022 сохраняют прежние трёхаргументные вызовы без сервиса. Сигналы mode_changed(mode: StringName), journal_changed(count: int). mode, runner, journal и service предназначены для чтения/привязки, не для перенастройки UI-потребителями.
 
 Все игровые команды UI идут через NarrativeSession: прямой runner.choose обошёл бы модальные блокировки. Команды выбора/завершения допустимы только в dialogue и при совпадении ID текущего узла; старые кнопки безопасно отклоняются. journal и menu хранят режимы возврата, сами не отменяют разговор. Main дополнительно проверяет текущий якорь и переход камеры перед стартом/открытием дневника.
 
-Main.start_test_dialogue() -> bool — проверяемый вход DA-021, доступен только в exploration у DialogueTrigger.required_anchor вне fade. DialogueTrigger наследует Interactable3D, сигналит dialogue_requested(dialogue_id), имеет set_available(bool). Это техническая цель, не NPC DA-022.
+Main.start_test_dialogue() -> bool — общий вход разговора, доступен только в exploration у DialogueTrigger.required_anchor вне fade. DialogueTrigger наследует Interactable3D, сигналит dialogue_requested(dialogue_id), имеет set_available(bool). В DA-022 корневой узел с прежним именем DialogueTrigger стал экземпляром [ServiceGuest](../scripts/characters/service_guest.gd), который наследует этот контракт. Самостоятельная прежняя сцена сферы сохранена для технических проверок.
+
+## Гость и обслуживание — implemented, DA-022
+
+[GuestService](../scripts/service/guest_service.gd), RefCounted:
+
+```gdscript
+func configure(id: StringName, options: Array[Dictionary]) -> bool
+func is_configured() -> bool
+func get_options() -> Array[Dictionary]
+func get_served_drink() -> Dictionary
+func serve(drink_id: StringName) -> bool
+signal service_completed(event_id: StringName, guest_id: StringName, drink_id: StringName)
+```
+
+Первый аргумент configure задаёт ID гостя. Каждый option содержит только id/title/description, непустые строки. ID — snake_case, без дублей. Ошибки — validation_errors; ошибочная первоначальная конфигурация не раскрывает меню. Настройка один раз, getters возвращают копии. Поля served, guest_id, selected_drink_id — только для чтения. serve известного ID допустим один раз; состояние фиксируется до события. ID события `service:<guest_id>` уникален в пределах одного заказа гостя текущей сессии; при множестве заказов нужен новый контракт ID.
+
+NarrativeSession добавляет open_service/close_service() -> bool, serve_drink(drink_id: StringName) -> bool и relay service_completed с теми же тремя аргументами. Сервис настраивается только при передаче ServicePanel и непустого валидного меню в configure. Вызов без панели сохраняет поведение DA-021.
+
+Режим service блокирует мир, разговор и journal. Escape/close_service возвращают exploration без подачи. open_menu запоминает service, resume_menu возвращает его. serve_drink допустим только в service; событие возвращает exploration. Main.open_service_menu() дополнительно проверяет якорь/отсутствие fade и served=false.
+
+ServiceGuest.guest_id задаётся сценой, show_served(drink_title: String) меняет только представление (стакан и подпись). Main связывает сигнал с этим методом и HUD. Получение терминов, время и JSON v1 не меняются. Подробности — [GUEST_SERVICE](GUEST_SERVICE.md).
 
 ## Время и эффекты — предложение для DA-023
 

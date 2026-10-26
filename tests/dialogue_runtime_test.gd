@@ -217,13 +217,14 @@ func _test_scene() -> void:
 	_key(KEY_3)
 	_expect(not rig.is_transitioning, "Dialogue blocks HUD and shortcut navigation")
 	var old_button := panel.get_node("%Choices").get_child(0) as Button
+	var stale_command: Callable = old_button.pressed.get_connections()[0].callable
 	_key(KEY_TAB)
 	await process_frame
 	_expect(root.gui_get_focus_owner() == old_button, "Tab focuses first answer")
 	_key(KEY_ENTER)
 	await process_frame
 	_expect(session.runner.current_node_id == &"explanation" and session.journal.get_entries().size() == 2, "Rendered choice takes long branch")
-	old_button.pressed.emit()
+	stale_command.call()
 	_expect(session.runner.current_node_id == &"explanation", "Stale node button is rejected")
 	_key(KEY_J)
 	await process_frame

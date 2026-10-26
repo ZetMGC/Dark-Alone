@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/levels/bar_graybox.tscn" id="2"]
@@ -8,7 +8,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/dialogue_panel.tscn" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/ui/journal_panel.tscn" id="7"]
 [ext_resource type="Script" path="res://scripts/session/narrative_session.gd" id="8"]
-[ext_resource type="PackedScene" path="res://scenes/interaction/dialogue_trigger.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/characters/test_guest.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/ui/service_panel.tscn" id="10"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
@@ -30,4 +31,6 @@ script = ExtResource("5")
 script = ExtResource("8")
 
 [node name="DialogueTrigger" parent="." instance=ExtResource("9")]
-position = Vector3(-4.1, 1.65, -1.2)
+position = Vector3(-5.35, 1.65, -1.2)
+
+[node name="ServicePanel" parent="." instance=ExtResource("10")]

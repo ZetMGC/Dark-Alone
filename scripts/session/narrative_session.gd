@@ -4,33 +4,47 @@ extends Node
 
 signal mode_changed(mode: StringName)
 signal journal_changed(count: int)
+signal service_completed(event_id: StringName, guest_id: StringName, drink_id: StringName)
 
 const EXPLORATION := &"exploration"
 const DIALOGUE := &"dialogue"
 const JOURNAL := &"journal"
 const MENU := &"menu"
+const SERVICE := &"service"
 
 var mode: StringName:
 	get: return _mode
 var runner := DialogueRunner.new()
 var journal := Journal.new()
+var service := GuestService.new()
 
 var _mode: StringName = EXPLORATION
 var _journal_return: StringName = EXPLORATION
 var _menu_return: StringName = EXPLORATION
 var _dialogue_panel: DialoguePanel
 var _journal_panel: JournalPanel
+var _service_panel: ServicePanel
+var _service_ready: bool = false
 var _configured: bool = false
 var _changing: bool = false
 
 
-func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_panel: JournalPanel) -> bool:
-	if _configured or dialogue_panel == null or journal_panel == null:
+func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_panel: JournalPanel, service_panel: ServicePanel = null, guest_id: StringName = &"", drink_options: Array[Dictionary] = []) -> bool:
+	if _configured or dialogue_panel == null or journal_panel == null or catalog == null or not catalog.is_loaded():
+		return false
+	if service_panel != null and not service.configure(guest_id, drink_options):
 		return false
 	if not journal.configure(catalog) or not runner.configure(catalog, journal):
 		return false
 	_dialogue_panel = dialogue_panel
 	_journal_panel = journal_panel
+	_service_panel = service_panel
+	_service_ready = service_panel != null
+	if _service_ready:
+		_service_panel.drink_requested.connect(serve_drink)
+		_service_panel.close_requested.connect(close_service)
+		_service_panel.menu_requested.connect(open_menu)
+		service.service_completed.connect(_on_service_completed)
 	_dialogue_panel.choice_requested.connect(choose_for_node)
 	_dialogue_panel.finish_requested.connect(finish_for_node)
 	_dialogue_panel.cancel_requested.connect(cancel_dialogue)
@@ -114,6 +128,39 @@ func open_menu() -> bool:
 	return true
 
 
+func open_service() -> bool:
+	if not _configured or not _service_ready or _changing or _mode != EXPLORATION or service.served:
+		return false
+	_changing = true
+	_service_panel.render(service)
+	_set_mode(SERVICE)
+	_changing = false
+	return true
+
+
+func close_service() -> bool:
+	if not _configured or _changing or _mode != SERVICE:
+		return false
+	_changing = true
+	_set_mode(EXPLORATION)
+	_changing = false
+	return true
+
+
+func serve_drink(drink_id: StringName) -> bool:
+	if not _configured or not _service_ready or _changing or _mode != SERVICE:
+		return false
+	_changing = true
+	var accepted := service.serve(drink_id)
+	_changing = false
+	return accepted
+
+
+func _on_service_completed(event_id: StringName, guest_id: StringName, drink_id: StringName) -> void:
+	_set_mode(EXPLORATION)
+	service_completed.emit(event_id, guest_id, drink_id)
+
+
 func resume_menu() -> bool:
 	if not _configured or _changing or _mode != MENU:
 		return false
@@ -153,3 +200,5 @@ func _set_mode(value: StringName) -> void:
 func _sync_panels() -> void:
 	_dialogue_panel.set_open(_mode == DIALOGUE)
 	_journal_panel.set_open(_mode == JOURNAL)
+	if _service_ready:
+		_service_panel.set_open(_mode == SERVICE)

@@ -186,7 +186,7 @@ text = "Выйти из игры"
 [node name="Actions" type="HBoxContainer" parent="Screen"]
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -470.0
+offset_left = -690.0
 offset_top = 78.0
 offset_right = -32.0
 offset_bottom = 122.0
@@ -206,3 +206,24 @@ layout_mode = 2
 custom_minimum_size = Vector2(200, 44)
 focus_mode = 0
 text = "J   Дневник · 0"
+
+[node name="Service" type="Button" parent="Screen/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 44)
+focus_mode = 0
+text = "B   Обслужить"
+disabled = true
+
+[node name="ServiceStatus" type="Label" parent="Screen"]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -690.0
+offset_top = 132.0
+offset_right = -32.0
+offset_bottom = 160.0
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.65, 0.7, 0.72, 1)
+horizontal_alignment = 2
+text = "[TEST] Гость у стойки ждёт напиток"

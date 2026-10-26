@@ -1,6 +1,6 @@
 # Архитектура
 
-Статус: M1 и DA-020 слиты владельцем. DA-021 добавляет DialogueRunner, Journal, NarrativeSession, две панели и техническую цель разговора. Основа — ADR-0001, навигация — ADR-0002, JSON — ADR-0003, исполнение и модальный ввод — [ADR-0004](decisions/0004-dialogue-runtime.md). Смены, обслуживание и сохранения пока запланированы.
+Статус: M1 и DA-020–DA-021 слиты владельцем. DA-022 добавляет GuestService, ServiceGuest, ServicePanel и связь с NarrativeSession. Основа — ADR-0001, навигация — ADR-0002, JSON — ADR-0003, исполнение — ADR-0004, обслуживание — [ADR-0005](decisions/0005-guest-service.md). Время, конец смены и сохранения ещё не реализованы. Художественная цель — VISUAL_DIRECTION.
 
 ## Техническая основа
 
@@ -20,6 +20,8 @@ Godot 4.7.2 Standard, GDScript, текстовые `.tscn`/`.tres`. Проект
 | `DialogueRunner` | Снимок определений, текущий узел, допустимые ответы, одноразовый grant_term | Рисовать UI, читать файлы, писать сохранения |
 | `Journal` | Набор известных терминов и уведомление об изменении | Самостоятельно менять реплики |
 | `NarrativeSession` | Режимы экранов, модели Runner/Journal, безопасные команды UI | Управлять камерой напрямую или начислять время |
+| `GuestService` | Проверенное меню, выбранный напиток и одноразовая подача | Знать о мешах, UI, деньгах или времени |
+| `ServiceGuest` | Общая цель разговора и видимый результат подачи | Хранить заказ вместо модели |
 | `ShiftSession` (план) | Прогресс смены и эффекты завершённых событий | Зависеть от пути до кнопки UI |
 | `HUD` / `DialoguePanel` / `JournalPanel` | Отображение и команды пользователя | Быть единственным хранилищем прогресса |
 | `SaveService` (если принят) | Версионированный снимок и восстановление | Сериализовать дерево узлов |
@@ -49,9 +51,9 @@ Runner применяет grant_term при входе в узел один ра
 
 ## Ввод
 
-NarrativeSession владеет режимами exploration, dialogue, journal, menu, а AnchorCamera — состоянием перехода. Main блокирует камеру и InteractionController во всех модальных режимах, обновляет доступность маркеров и действий HUD. Во время fade дневник и новый разговор не открываются, меню допустимо. Fade заканчивается штатно и не снимает модальную блокировку. Это не глобальная пауза SceneTree.
+NarrativeSession владеет exploration, dialogue, journal, menu, service, а AnchorCamera — переходом. Main блокирует мир во всех модальных режимах. Во время fade дневник, разговор и обслуживание не открываются, меню допустимо. Fade заканчивается штатно и не снимает блокировку. Это не глобальная пауза SceneTree.
 
-InputMap: look (ПКМ), look_left/right/up/down (стрелки), reset_look (R), interact (E), anchor_1…4, toggle_menu (Escape), toggle_journal (J), talk (T). Удержание ПКМ захватывает мышь; отпускание, переход, модальный экран и потеря фокуса освобождают её. Вертикаль ±65°. Физические E/R/J/T не зависят от русской раскладки. Tab/Enter обрабатываются UI Godot, не навигацией.
+InputMap: look (ПКМ), look_left/right/up/down (стрелки), reset_look (R), interact (E), anchor_1…4, toggle_menu (Escape), toggle_journal (J), talk (T), serve (B). Удержание ПКМ захватывает мышь; отпускание, переход, модальный экран и потеря фокуса освобождают её. Вертикаль ±65°. Физические буквы не зависят от русской раскладки. Tab/Enter обрабатываются UI Godot.
 
 Journal хранит режим возврата exploration/dialogue; меню — любой предыдущий режим, включая journal поверх dialogue. Escape закрывает журнал, но из разговора открывает меню. Прерывание разговора — явная кнопка. Подробности — DIALOGUE_RUNTIME. shift_complete ещё не реализован.
 
@@ -61,7 +63,7 @@ Journal хранит режим возврата exploration/dialogue; меню 
 
 DialogueCatalog владеет принятым снимком. Main читает экспортированные glossary_path и dialogue_paths, проверяет загрузку и настраивает NarrativeSession. Runner и Journal (RefCounted) копируют определения один раз; текущая реплика и изученные термины живут в моделях, исходные JSON не меняются. UI получает копии. Сохранений и горячего изменения сессии нет; новая игра создаёт новые модели.
 
-Новые файлы DA-021: `scripts/dialogue/dialogue_runner.gd`, `scripts/journal/journal.gd`, `scripts/session/narrative_session.gd`, `scenes/ui/dialogue_panel.tscn`, `journal_panel.tscn` и их скрипты. `scenes/interaction/dialogue_trigger.tscn` — техническая цель в Main, не полноценный NPC.
+Файлы исполнения: `scripts/dialogue/dialogue_runner.gd`, `scripts/journal/journal.gd`, `scripts/session/narrative_session.gd`, две панели и их скрипты. В DA-022 Main использует `scenes/characters/test_guest.tscn` вместо сферы: ServiceGuest наследует DialogueTrigger, прежнее имя узла сохранено. Модель — `scripts/service/guest_service.gd`, меню — `scenes/ui/service_panel.tscn`. Настройки двух напитков пока экспортируются в Main, отдельно от JSON v1. Сервис и разговор не меняют состояние друг друга скрытым образом.
 
 Примеры тестового контента должны быть помечены TEST. Постоянные ID сохранять при изменении текста. Эффекты узлов должны иметь стабильный ключ, чтобы повторная отрисовка не повторяла награду и расход времени.
 
