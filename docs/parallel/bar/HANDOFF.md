@@ -2,7 +2,7 @@
 
 ## Актуальная доработка: WORKBENCH-02
 
-Агент владельца, codex/workbench-physics от 49ab5d5, карточка WORKBENCH_02.md, пока in_progress до чистой проверки. Новые физика/запасы и исправление стакана описаны в WORKBENCH.md; новые API в CONTRACTS, решение в DECISIONS. Файлы: DrinkWorkbench, отдельный DrinkBottleStock (+uid), workbench_test и свои документы. Main/сцены/дом/журнал/сохранения/общие runner не менялись. Проверки уже PASS: 78 headless/82 GPU в каждом окне и весь tools/check.ps1; итоговая проверка чистого коммита/Windows следует в WORKLOG. Продолжение после приёмки — TEST-рецепты/допуски поверх реального состава; расход бутылок отделён от него и не требует правок домашней дорожки.
+Агент владельца, codex/workbench-physics от 49ab5d5, карточка WORKBENCH_02.md, done. Код 5c41a2b. Новые физика/запасы и исправление стакана описаны в WORKBENCH.md; новые API в CONTRACTS, решение в DECISIONS. Файлы: DrinkWorkbench, отдельный DrinkBottleStock (+uid), workbench_test и свои документы. Main/сцены/дом/журнал/сохранения/общие runner не менялись. Профиль PASS: 78 headless/82 GPU в каждом окне, весь tools/check.ps1 PASS, оба headless-набора из чистого коммита PASS. Windows Validation 78/82/82 PASS; Desktop builds/windows-20261027-175232-28b58ab1.zip (source_dirty=false) распакован, хеши/запуск PASS. Подробности временной смены тестовой entry-сцены только в копии — WORKLOG. Итоговый коммит после кода меняет только документы. Продолжение — TEST-рецепты/допуски поверх реального состава; расход бутылок отделён от него и не требует правок домашней дорожки. Общие реестры и подключение профиля в общий runner сводит координатор, как в предыдущей передаче.
 
 ## Актуальная передача: WORKBENCH-01
 

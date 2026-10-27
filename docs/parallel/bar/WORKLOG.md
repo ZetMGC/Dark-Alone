@@ -98,3 +98,15 @@ WORKBENCH-01 done, готово к ревью. Известные огранич
 - git diff --check: PASS. Чистая копия и Windows ещё проверяются, не объявлять промежуточный коммит окончательной приёмкой.
 
 Следующий шаг: после чистой проверки закончить передачу, затем проектировать рецепты/допуски и визуальные подсказки. Общие STATUS/BACKLOG/ADR не менялись согласно исключению AGENTS/PARALLEL_WORK.
+
+## WORKBENCH-02: итоговая проверка и передача
+
+Код 5c41a2b8bf260a1639699dacf231487b86010248, done. Чистый git archive распакован без .godot в artifacts/workbench-physics-clean-5c41a2b. В нём tools/check.ps1 и tools/check_workbench.ps1 прошли (78/0); логи artifacts/workbench-physics-clean-regression.log и workbench-physics-clean-profile.log.
+
+Desktop tools/build_windows.ps1: builds/windows-20261027-175232-28b58ab1.zip, source_revision=5c41a2b, source_dirty=false. Распаковка artifacts/workbench-physics-unpacked-5c41a2b: все SHA256 сверены с manifest; обычный EXE --headless --quit-after 5 завершился без ошибок.
+
+После чистых проверок только в временной копии изменён run/main_scene.integration_test на res://tests/parallel/bar/workbench_test.tscn и выполнен export-release Windows Validation. Причина — штатный release-template запрещает path overrides, общий project.godot/runner не менялись. EXE запущен с --headless, затем с -- --capture-dir=<папка> в обычном окне, затем с --small: PASS 78/82/82, все 0 failures. Логи и PNG artifacts/workbench-physics-validation-5c41a2b. Изображение пролива/уровня из малой экспортированной версии просмотрено.
+
+git diff --check PASS. Все 11 изменённых путей внутри барной области; центральные документы/runner, Main/сцены, камера, дом, журнал, checkpoint/preferences не менялись. Новый .uid включён. Финальный коммит — только карточка/статусы/передача/результаты. Ветка отправляется для ревью, main и релизы не меняются.
+
+Известные ограничения: физика 2.5D с пружиной/плоскостью, не rigid-body/гидродинамика; TEST-запас возобновляется с новой сменой и не хранится на диске; шейкер по-прежнему переносит всю порцию. Рецепты/допуски/реакции/склад и пополнение ещё впереди. Следующий конкретный шаг — TEST-рецепты поверх запечатанного состава и истории приготовления; WORKBENCH.md объясняет управление/границы, CONTRACTS/DECISIONS фиксируют изменение правил.
