@@ -17,6 +17,10 @@ var _bar_hud: NavigationHUD
 var _at_home: bool = false
 var _inspection: StringName = &""
 var _event: StringName = &""
+var house: Node3D
+var _house_inspection: bool = false
+var _feedback: Label
+var _feedback_remaining: float = 0
 
 @onready var rig: AnchorCamera = $AnchorCamera
 @onready var interaction: InteractionController = $InteractionController
@@ -26,6 +30,16 @@ func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: Home
 	if _session != null or session == null or hud == null:
 		return false
 	(rig as FreeRoamCamera).free_roam_enabled = free_roam
+	if free_roam:
+		house = (load("res://scenes/home/house_interior.tscn") as PackedScene).instantiate()
+		add_child(house)
+		house.build(self)
+		_feedback = Label.new()
+		_feedback.name = "HouseFeedback"
+		_feedback.position = Vector2(24, 76)
+		_feedback.add_theme_font_size_override("font_size", 18)
+		_feedback.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		$HomeHUD/Screen.add_child(_feedback)
 	(rig as FreeRoamCamera).availability_changed.connect(_refresh)
 	if not rig.configure($Anchors, &"home_entry"):
 		return false
@@ -77,6 +91,7 @@ func set_context(mode: StringName) -> void:
 		_at_home = false
 		_inspection = &""
 		_event = &""
+		_house_inspection = false
 	visible = _at_home
 	if _at_home:
 		rig.view.make_current()
@@ -93,7 +108,26 @@ func set_context(mode: StringName) -> void:
 
 
 func _has_inspection() -> bool:
-	return _inspection != &"" or _event != &""
+	return _inspection != &"" or _event != &"" or _house_inspection
+
+
+func house_actions_allowed() -> bool:
+	return _world_enabled() and not (rig as FreeRoamCamera).focus_active
+
+
+func show_house_inspection(title: String, text: String) -> void:
+	if not house_actions_allowed():
+		return
+	_house_inspection = true
+	%InspectionTitle.text = title
+	%Description.text = text
+	_show_inspection()
+
+
+func house_feedback(text: String) -> void:
+	if is_instance_valid(_feedback):
+		_feedback.text = text
+		_feedback_remaining = 4.0
 
 
 func _world_enabled() -> bool:
@@ -104,6 +138,13 @@ func _process(_delta: float) -> void:
 	if _session == null or not (rig as FreeRoamCamera).free_roam_enabled:
 		return
 	interaction.set_enabled(_world_enabled())
+	if house != null:
+		var presentation := get_parent().get_node_or_null("Presentation") as PresentationController
+		house.tick(_delta, _world_enabled(), presentation.get_ambience_gain() if presentation != null else 0.0)
+		$HomeHUD/Screen/Heading.text = "ДОМ · " + house.room_at(to_local(rig.view.global_position))
+		if _feedback_remaining > 0 and _world_enabled():
+			_feedback_remaining = maxf(0, _feedback_remaining - _delta)
+		_feedback.visible = _feedback_remaining > 0
 	if interaction.pointer_mode:
 		%Prompt.position = (get_viewport().get_mouse_position() + Vector2(16, 20)).clamp(Vector2.ZERO, get_viewport().get_visible_rect().size - %Prompt.size)
 
@@ -170,6 +211,7 @@ func _refresh() -> void:
 	%Event.disabled = not enabled or rig.is_transitioning
 	%Journal.disabled = not enabled or rig.is_transitioning
 	%InspectCurrent.disabled = not enabled or rig.is_transitioning
+	%InspectCurrent.visible = not walking or not str(rig.current_anchor_id).begins_with("seat_")
 	if (rig as FreeRoamCamera).free_roam_enabled:
 		var focused := (rig as FreeRoamCamera).focus_active
 		$HomeHUD/Screen/Bottom.visible = focused and not _has_inspection()
@@ -222,7 +264,7 @@ func open_event() -> bool:
 
 func _show_inspection() -> void:
 	%Inspection.show()
-	%Read.text = "Завершить событие" if _event != &"" else "Завершить осмотр"
+	%Read.text = "Закрыть" if _house_inspection else ("Завершить событие" if _event != &"" else "Завершить осмотр")
 	%DescriptionScroll.scroll_vertical = 0
 	_refresh()
 	%Cancel.grab_focus.call_deferred()
@@ -234,10 +276,11 @@ func close_inspection(commit: bool) -> bool:
 	if commit:
 		if _inspection != &"":
 			state.observe(_inspection)
-		else:
+		elif _event != &"":
 			state.resolve_event(_event)
 	_inspection = &""
 	_event = &""
+	_house_inspection = false
 	%Inspection.hide()
 	_refresh()
 	return true

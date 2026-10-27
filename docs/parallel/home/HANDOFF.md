@@ -1,5 +1,13 @@
 # DA-062: передача
 
+Последнее продолжение — HOME-02: по прямому запросу второго участника реализован [небольшой дом](HOUSE_PLAN.md) поверх d4e4de1. Рабочая ветка прежняя; история DA-062 ниже остаётся протоколом предыдущего результата. Новые файлы: scenes/home/house_interior.tscn, scripts/home/house_interior.gd/.uid, scripts/home/targets/house_action_target.gd/.uid, tests/parallel/home/house_layout_test.gd/.uid/.tscn, HOUSE_PLAN.md. Изменены домашний контроллер, профильный runner и домашние документы. Бар/общие файлы/project.godot в коммит не входят.
+
+Итог HOME-02: общий check.ps1 PASS; wrapper check_home_targets.ps1 -Graphics проверяет home_target 96/108, legacy 43 и house_layout 99/104 в двух размерах (1280×720, 960×600). Лог .tools/house-profile-verified.log, общий .tools/house-full-check.log. Визуально просмотрены все комнаты; снимки artifacts/house/{normal,small}. Новые осмотры модальны, J возвращает тот же экран; чай/радио/свет и двери локальны, не меняют сохранения. Зеркало без отражения героя, душ и кровать без перехода времени, радио с процедурным сигналом. Полный список — HOUSE_PLAN/CONTRACTS/WORKLOG.
+
+Координатору принять обе части домашней ветки; новый общий runner/Windows Validation должны запускать и res://tests/home_target_test.tscn, и res://tests/parallel/home/house_layout_test.tscn. Перед интеграцией пройти настоящий дом и после неё общий цикл/Windows-экспорт. Общие реестры не менялись по PARALLEL_WORK; прямой запрос участника разрешил расширение дома после прежней DA-062, барная дорожка не затронута.
+
+## Прежний результат DA-062
+
 2026-10-27. Исполнители: второй участник и Codex. Ветка codex/da062-home-object-targets, база 9303616. Реализация done, main не объединялся. Итоговый SHA смотреть в `git log -1` этой ветки; данная запись входит в коммит результата.
 
 ## Выполнено
