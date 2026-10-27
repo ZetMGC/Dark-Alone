@@ -161,3 +161,5 @@ Windows Validation --preference-check повторяет набор, --preferenc
 ## DA-058
 
 world_target_test.tscn включён в check.ps1 и Windows Validation --world-target-check/-Graphics. Проверяются реальные физические лучи по голове/торсу и дереву/корпусу стойки, разговор без телепорта/якоря, свежий E против устаревшего попадания, стена/дальность/сторона стойки, курсор и его переключение, блокировки меню/напитка. В capture-dir три PNG, --small даёт 960×600. checkpoint/preferences отключены; число/протокол — worklog/2026-10-27-10-world-targets.md. Старый free_roam_test теперь целится в поверхность, а не в метку.
+
+Итог DA-058: наведение 26 headless/26 GPU, чистый Git archive и весь Windows-регрессионный набор PASS; capture-dir добавляет 3 PNG. Протокол worklog/2026-10-27-10-world-targets.md.

@@ -22,7 +22,14 @@ Godot 4.7.2.stable.official.ed1daf0bf, Windows, Compatibility/RTX 5060.
 | GPU --small, 960×600 с capture-dir | PASS 29/0, включая корпус и 3 PNG, artifacts/da058-targets-small.log |
 | Визуальный просмотр | Гость/стойка из зала/курсор у стойки просмотрены в обоих размерах, подсказки читаемы, метки не видны |
 
-Итоговые чистые исходники/Windows release-template ещё проверяются; результат будет записан после завершения.
+Итоговый код: `3a806b8a42fd42f5af93c8b2e5d7d832a32af002`.
+
+- Чистый Git archive без .godot: весь check.ps1 PASS, включая наведение 26 и все прежние наборы; artifacts/da058-clean-source.log.
+- build_windows.ps1 PASS: builds/windows-20261027-143952-22e55c7b.zip, manifest source_dirty=false, artifacts/da058-build.log.
+- check_windows_export.ps1 -BuildDirectory builds/windows-20261027-143952-22e55c7b -Graphics PASS. Наведение 26/26, настройки 30/34 и процессы 2/3 + GPU read 4, речь 107/109, пеший цикл 63/64, checkpoint 51/53 и процессы 2/5, прежний цикл 50, книга 51, экран 46, лица 22/38, детализация 18. artifacts/da058-export.log, builds/validation-94549c86148e4e5c8fc05e5a2d4a8fc0.
+- ZIP распакован отдельно: SHA256 manifest совпали, EXE стартовал без редактора/ошибок. git diff --check и ссылки новых документов PASS.
+
+Архив локальный/игнорируется Git, ветка отправляется на origin отдельно от main. После 3a806b8 меняются только документы результатов. Нового GitHub-релиза нет.
 
 ## Решения и ограничения
 
@@ -30,4 +37,4 @@ Godot 4.7.2.stable.official.ed1daf0bf, Windows, Compatibility/RTX 5060.
 
 ## Продолжение
 
-Пользователю пройти WORLD_INTERACTION/PLAYTEST: подойти из зала к гостю, E поговорить, обойти стойку, E по дереву занять место, курсором выбрать посетителя/напиток, Esc выйти. Коллегам: чистый clone/check.ps1 и world_target_test; пользовательские checkpoint/preferences в тесте отключены. STATUS/BACKLOG/HANDOFF обновлены, до итоговых проверок in_progress. Публикация релиза/слияние этой задачей не поручены.
+Пользователю пройти WORLD_INTERACTION/PLAYTEST: подойти из зала к гостю, E поговорить, обойти стойку, E по дереву занять место, курсором выбрать посетителя/напиток, Esc выйти. Коллегам: чистый clone/check.ps1 и world_target_test; пользовательские checkpoint/preferences в тесте отключены. STATUS/BACKLOG/HANDOFF обновлены, техническая задача done. Публикация релиза/слияние этой задачей не поручены.
