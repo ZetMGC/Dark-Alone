@@ -70,6 +70,8 @@ func _changed() -> void:
 
 
 func reset_preferences() -> void:
+	if not is_instance_valid(_display):
+		return
 	var data := PreferenceStore.defaults()
 	data.display.monitor = _display.export_preferences().monitor
 	_apply(data)

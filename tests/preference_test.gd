@@ -25,9 +25,10 @@ func _fixture() -> Dictionary:
 	return data
 
 
-func _main(store: PreferenceStore) -> Node:
+func _main(store: PreferenceStore, enabled: bool = true) -> Node:
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = enabled
 	main.preference_store = store
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
@@ -216,6 +217,13 @@ func _test_main(store: PreferenceStore) -> void:
 	main = _main(store)
 	_expect(main.get_node("NarrativeSession").mode == NarrativeSession.EXPLORATION and "повреждён" in main.get_node("NavigationHUD/%PreferenceStatus").text, "Bad settings file does not block game")
 	_expect(FileAccess.get_file_as_string(store.get_path()) == "{broken", "Launch does not silently overwrite corrupt settings")
+	get_tree().current_scene = null
+	main.queue_free()
+	await get_tree().process_frame
+	main = _main(store, false)
+	main.get_node("PreferenceController").reset_preferences()
+	main.get_node("PreferenceController").flush()
+	_expect(FileAccess.get_file_as_string(store.get_path()) == "{broken", "Disabled preferences reject even explicit reset API")
 	get_tree().current_scene = null
 	main.queue_free()
 	await get_tree().process_frame
