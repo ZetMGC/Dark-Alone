@@ -105,7 +105,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	_expect(main.free_roam_enabled and rig.body != null and rig.current_anchor_id == &"", "Default game boots into free walk")
 	_expect(not hud.get_node("Screen/Bottom").visible and not hud.get_node("Screen/Actions").visible, "Walking has no destination/action rows")
-	_expect(not rig.request_move(&"counter") and not rig.request_move(&"missing"), "Far and unknown workstations rejected")
+	_expect(not rig.request_move(&"back_counter") and not rig.request_move(&"missing"), "Far and unknown workstations rejected")
 	_expect(not main.start_test_dialogue() and not main.open_service_menu(), "Remote talk/service rejected")
 	var spawn := rig.body.global_position
 	await _key(KEY_2)
@@ -117,7 +117,7 @@ func _run() -> void:
 	await _snap("01-bar-walk")
 	# Реальный маршрут вокруг конца стойки, без перестановки тела.
 	await _walk(rig, Vector3(-4.9, 0, 2.3))
-	await _walk(rig, Vector3(-4.9, 0, -0.5))
+	await _walk(rig, Vector3(-4.9, 0, -1.2))
 	_expect(rig.body.is_on_floor() and absf(rig.view.global_position.y - 1.65) < 0.03, "Body stays grounded at human eye height")
 	# Преграда в пределах радиуса: близость сама по себе не даёт пройти сквозь стену.
 	var blocker := StaticBody3D.new()
@@ -127,18 +127,18 @@ func _run() -> void:
 	shape.shape = box
 	blocker.add_child(shape)
 	main.add_child(blocker)
-	blocker.global_position = Vector3(-4.9, 1.1, -0.85)
+	blocker.global_position = Vector3(-4.9, 1.1, -1.6)
 	await get_tree().physics_frame
-	_expect(not rig.request_move(&"counter"), "Nearby workstation blocked by wall")
+	_expect(not rig.request_move(&"back_counter"), "Nearby workstation blocked by wall")
 	blocker.queue_free()
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	var approach := rig.body.global_position
-	rig.view.look_at(Vector3(-3.6, 1.08, -1.2), Vector3.UP)
+	rig.view.look_at(Vector3(-5.6, 1.06, -2), Vector3.UP)
 	await _key(KEY_E)
 	while rig.is_transitioning:
 		await get_tree().process_frame
-	_expect(rig.focus_active and rig.current_anchor_id == &"counter", "E enters counter from nearby facing approach")
+	_expect(rig.focus_active and rig.current_anchor_id == &"back_counter", "E enters counter from nearby facing approach")
 	_expect(hud.get_node("Screen/Actions").visible and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "Workstation shows cursor and actions")
 	await _still(rig, "workstation")
 	var basis := rig.view.global_basis
@@ -168,13 +168,16 @@ func _run() -> void:
 	var guest_pose := Transform3D(Basis.IDENTITY, Vector3(-1.7, 0.01, -1.2))
 	_expect(rig.body.test_move(guest_pose, Vector3(-1, 0, 0)), "Guest blocks physical walking")
 	await _walk(rig, approach)
-	await _focus(rig, &"counter")
+	await _focus(rig, &"back_counter")
 	_expect(main.start_test_dialogue(), "Talk accessible at workstation")
-	await _still(rig, "dialogue")
-	_expect(not rig.leave_focus(), "Dialogue locks workstation exit")
+	_expect(not rig.focus_active, "Conversation releases workstation for walking")
+	await _walk(rig, Vector3(-4.9, 0, 1.5))
+	_expect(session.mode == NarrativeSession.DIALOGUE and session.runner.current_node_id == &"opening" and session.shift.remaining == 2 and not main._guest_in_reach(), "Walking keeps active line and time")
+	await _walk(rig, approach)
 	session.choose_for_node(&"test_guest_intro", &"opening", &"leave")
 	session.finish_for_node(&"test_guest_intro", &"goodbye")
-	_expect(main.open_service_menu(), "Service accessible after dialogue")
+	await _focus(rig, &"back_counter")
+	_expect(main.open_service_menu(), "Service accessible after returning to back counter")
 	await _still(rig, "service")
 	session.serve_drink(&"test_water")
 	_expect(session.mode == NarrativeSession.SHIFT_COMPLETE and session.shift.remaining == 0, "Actions still complete two-division shift")

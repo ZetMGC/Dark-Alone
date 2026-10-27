@@ -117,7 +117,7 @@ func update_workstation(rig: FreeRoamCamera, exploration: bool) -> void:
 	%ServiceStatus.visible = $Screen/Actions.visible
 	%LeaveWorkstation.visible = $Screen/Actions.visible
 	%MovementHint.visible = exploration
-	%MovementHint.text = "Наведите курсор на стойку или посетителя · E — действие · Esc — отойти" if rig.focus_active else "WASD — идти · Мышь — обзор · E — взаимодействовать · J — дневник · Escape — меню"
+	%MovementHint.text = "Рабочая стойка у полок · E — напитки · T — разговор · Esc — отойти" if rig.focus_active else "WASD — идти · Мышь — обзор · E — взаимодействовать · J — дневник · Escape — меню"
 
 
 func _process(_delta: float) -> void:

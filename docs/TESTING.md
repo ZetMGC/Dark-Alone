@@ -163,3 +163,7 @@ Windows Validation --preference-check повторяет набор, --preferenc
 world_target_test.tscn включён в check.ps1 и Windows Validation --world-target-check/-Graphics. Проверяются реальные физические лучи по голове/торсу и дереву/корпусу стойки, разговор без телепорта/якоря, свежий E против устаревшего попадания, стена/дальность/сторона стойки, курсор и его переключение, блокировки меню/напитка. В capture-dir три PNG, --small даёт 960×600. checkpoint/preferences отключены; число/протокол — worklog/2026-10-27-10-world-targets.md. Старый free_roam_test теперь целится в поверхность, а не в метку.
 
 Итог DA-058: наведение 26 headless/26 GPU, чистый Git archive и весь Windows-регрессионный набор PASS; capture-dir добавляет 3 PNG. Протокол worklog/2026-10-27-10-world-targets.md.
+
+## DA-059
+
+Те же world_target/free_roam/dialogue_bubble наборы теперь проверяют задний back_counter, неинтерактивный передний прилавок, ракурс поверхности у полок, авто-выход из фокуса в речь, настоящую физическую ходьбу с неизменной репликой/временем, возврат взгляда/ответ, остановку тела в Menu/Journal и повторный подход к стойке после разговора. Legacy наборы остаются проверкой старого графа. GPU снимок 03-back-counter заменяет прежний 03-cursor-guest; команды/check.ps1/export runner прежние.
