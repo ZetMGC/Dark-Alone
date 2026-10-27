@@ -12,6 +12,7 @@ var selected_drink_id: StringName:
 	get: return _selected_drink_id
 var validation_errors: PackedStringArray = []
 
+var _prepared_drink: Dictionary = {}
 var _configured: bool = false
 var _served: bool = false
 var _mutating: bool = false
@@ -66,6 +67,8 @@ func get_options() -> Array[Dictionary]:
 
 
 func get_served_drink() -> Dictionary:
+	if _served and not _prepared_drink.is_empty():
+		return {"id": "prepared_drink", "title": "[TEST] Свой состав · " + str(_prepared_drink.vessel.title).trim_prefix("[TEST] "), "description": "Приготовленный за стойкой напиток."}
 	return _options.get(str(_selected_drink_id), {}).duplicate(true) if _served else {}
 
 
@@ -76,5 +79,25 @@ func serve(drink_id: StringName) -> bool:
 	_selected_drink_id = drink_id
 	_served = true
 	service_completed.emit(StringName("service:" + str(_guest_id)), _guest_id, drink_id)
+	_mutating = false
+	return true
+
+
+func get_prepared_drink() -> Dictionary:
+	return _prepared_drink.duplicate(true)
+
+
+func serve_preparation(preparation: DrinkPreparation) -> bool:
+	if not _configured or _served or _mutating or preparation == null:
+		return false
+	_mutating = true
+	var result := preparation.seal(&"delivery")
+	if result.is_empty():
+		_mutating = false
+		return false
+	_prepared_drink = result
+	_selected_drink_id = &"prepared_drink"
+	_served = true
+	service_completed.emit(StringName("service:" + str(_guest_id)), _guest_id, _selected_drink_id)
 	_mutating = false
 	return true

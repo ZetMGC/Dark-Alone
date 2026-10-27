@@ -33,6 +33,7 @@ func _run() -> void:
 	_test_catalog()
 	_test_invalid_commands()
 	_test_layers()
+	_test_continuous_layers()
 	_test_phases()
 	_test_discard_and_seal()
 	_test_determinism_and_conservation()
@@ -141,6 +142,18 @@ func _test_layers() -> void:
 	runny.pour(&"first", &"test_equal", 10)
 	runny.pour(&"second", &"test_base", 10, 20, true)
 	_expect(viscous.get_snapshot().layers.size() == 2 and runny.get_snapshot().layers.size() == 1, "Viscosity changes allowable layering flow in game model")
+
+
+func _test_continuous_layers() -> void:
+	var cup := _cup()
+	cup.pour(&"heavy", &"test_heavy", 20)
+	for index in 20:
+		_expect(cup.pour(StringName("dose_%d" % index), &"test_base", 0.5, 5, true), "Continuous dose accepted")
+	var result := cup.get_snapshot()
+	_expect(result.layers.size() == 2 and result.layers[0].volume_ml == 20 and result.layers[1].volume_ml == 10, "Successive gentle doses extend top layer without mixing lower one")
+	_expect(result.operations[-1].data.outcome == "layer_extended", "Layer extension recorded in history")
+	cup.pour(&"fast", &"test_base", 1, 100, true)
+	_expect(cup.get_snapshot().structure == "homogeneous", "Fast continuous dose can still destroy layers")
 
 
 func _test_phases() -> void:

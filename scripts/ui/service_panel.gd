@@ -2,6 +2,9 @@ class_name ServicePanel
 extends CanvasLayer
 
 signal drink_requested(drink_id: StringName)
+signal preparation_requested(preparation: DrinkPreparation)
+var workbench_enabled: bool = false
+var workbench: DrinkWorkbench
 signal close_requested
 signal menu_requested
 
@@ -13,7 +16,24 @@ func _ready() -> void:
 	%Menu.pressed.connect(func() -> void: menu_requested.emit())
 
 
+func enable_workbench() -> void:
+	if workbench != null:
+		return
+	workbench_enabled = true
+	layer = 11
+	workbench = DrinkWorkbench.new()
+	workbench.name = "DrinkWorkbench"
+	screen.add_child(workbench)
+	workbench.preparation_requested.connect(func(value: DrinkPreparation) -> void: preparation_requested.emit(value))
+	workbench.close_requested.connect(func() -> void: close_requested.emit())
+	workbench.menu_requested.connect(func() -> void: menu_requested.emit())
+	$Screen/Card.hide()
+	$Screen/Shade.hide()
+
+
 func set_conversation_context(active: bool) -> void:
+	if workbench_enabled:
+		return
 	var card: Control = $Screen/Card
 	card.anchor_left = 0.5 if active else 0.1
 	card.anchor_top = 0.54 if active else 0.1
@@ -58,6 +78,9 @@ func render(service: GuestService) -> void:
 
 func set_open(value: bool) -> void:
 	screen.visible = value
+	if workbench_enabled:
+		workbench.set_active(value)
+		return
 	if value:
 		_focus_content.call_deferred()
 

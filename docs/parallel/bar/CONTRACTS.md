@@ -1,5 +1,17 @@
 # DA-060: изменённые контракты и потребители
 
+## WORKBENCH-01: дополнение 2026-10-27
+
+Main экспортирует `drink_workbench_enabled: bool=true`, включает новый ServicePanel только совместно с free_roam_enabled и передаёт флаг через RUN_HANDOFF при новой смене. Legacy false сохраняет прежние сигналы/меню. Потребители: Main, ServicePanel, профиль bar_service_dialogue (явно false), новый workbench_test (текущий путь).
+
+ServicePanel добавляет `enable_workbench() -> void`, `workbench_enabled`, `workbench: DrinkWorkbench` и сигнал `preparation_requested(preparation: DrinkPreparation)`. set_open управляет активностью поверхности; прежний serve_requested не меняется. Слой нового сервиса 11, пузырёк 12. DialogueBubblePanel добавляет `set_workbench_overlay(enabled: bool) -> void`: при приготовлении переносит пузырёк в свободную верхнюю правую область без сброса страницы/набора; прежний барьер ввода сохраняется.
+
+NarrativeSession добавляет `serve_preparation(preparation: DrinkPreparation) -> bool`: только SERVICE, вне _changing, с прежней проверкой времени. GuestService добавляет одноимённую команду и `get_prepared_drink() -> Dictionary` (глубокая копия). Проверки configured/served/mutating/null предшествуют seal(&"delivery"); пустой результат отклоняется. Успех сохраняет запечатанный результат, selected_drink_id=prepared_drink и испускает прежний service_completed с тем же service:<guest_id>; время списывается прежним обработчиком один раз. get_served_drink возвращает карточку приготовленной порции. Произвольные внешние Dictionary вместо модели не принимаются. Потребители: Session, представления итогов, новый профиль; дом/checkpoint/preferences не меняются.
+
+DrinkWorkbench владеет одной DrinkPreparation и позициями предметов; его typed-команды и сигналы описаны в исходнике, пользовательский путь — WORKBENCH.md. set_active(false), потеря фокуса, resize завершают удержание без commit_drop, сбрасывают струю и сохраняют уже налитые дозы. Порция остаётся в памяти сцены; файл данных production — content/drinks/test_materials.json, не каталог tests. Подача только через перенос непустого стакана на поднос.
+
+DrinkPreparation: медленная layered-доза того же единственного ингредиента верхнего слоя теперь продлевает этот слой (`outcome=layer_extended`), сохраняя нижние. Быстрая доза по-прежнему смешивает. Схема снимка/методы не меняются; потребители лаборатория, новый верстак, будущие рецепты. Регрессия непрерывных доз добавлена в drink_core_test.
+
 Локальное дополнение к общему CONTRACTS, которое сводит координатор при интеграции. Решение — DECISIONS.md в этой папке. Домашние файлы и API не меняются.
 
 ## NarrativeSession

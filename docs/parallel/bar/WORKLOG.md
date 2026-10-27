@@ -59,3 +59,19 @@ CONTRACTS.md и DECISIONS.md этой папки — дополнения для
 ## 2026-10-27: предложения визуального режима
 
 Ветка codex/drink-mode-design от 52cb53b. По запросу владельца подготовлены PREPARATION_DESIGN и три интерактивных эскиза для сравнения, без изменения игровых сцен/ядра/дома. Рекомендация — 3D-выбор с 2D-крупным планом налива и наклоном; альтернативы свободный верстак/простое удержание. Зафиксированы общий вид задней рабочей зоны, читаемость, струя/поверхность, сохранность разговора/стакана и предлагаемый порядок реализации. Макет проверен в браузере: три композиции, изменение уровня при наливе, узкая ширина, отсутствие ошибок скрипта; это эскиз, не проверка игровой физики. Реальные Godot-файлы не изменены, запуск прежних игровых тестов для этой документации не требуется. Следующий шаг — выбор варианта владельцем, затем проход самой стойки.
+# WORKBENCH-01 — 2026-10-27, свободное приготовление
+
+Владелец выбрал второй вариант и подтвердил реализацию. Ветка codex/drink-workbench от 457b3b7. Общая сцена бара редактировалась только этим агентом; область дома/журнала/камеры и общие реестры/runner не менялись.
+
+Сделано: оформлена задняя стойка (коврик, бутылки, посуда, инструменты, слив, свет), подняты полки. Новый DrinkWorkbench с перетаскиванием, колесом/ПКМ, баллистической струёй, реальными дозами/слоями, проливом/переполнением, ложкой, шейкером, сливом и подносом. ServicePanel/Main включают его по умолчанию в free-roam; пузырёк продолжается справа сверху. Пауза/resize/focus прекращают удержание без случайной подачи, черновик живёт в сцене. GuestService принимает DrinkPreparation, запечатывает и отдаёт глубокую копию результата, прежний одноразовый service-event списывает время. Исправлено продление верхнего слоя при непрерывных коротких дозах того же ингредиента.
+
+Файлы: content/drinks/test_materials.json; scripts/ui/preparation/drink_workbench.gd (+uid), scripts/service/drinks/back_counter_art.gd (+uid), drink_preparation.gd; Main/GuestService/NarrativeSession/ServicePanel/DialogueBubblePanel; scenes/levels/back_counter.tscn и bar_graybox.tscn; tests/parallel/bar/workbench_test.gd (+uid/tscn), drink_core_test.gd, tests/bar_service_dialogue_test.gd (legacy opt-out), world_target_test.gd (новая высота полки); tools/check_workbench.ps1; свои PREPARATION_DESIGN/WORKBENCH_01/WORKBENCH/STATUS/HANDOFF/WORKLOG/CONTRACTS/DECISIONS.
+
+Проверки Godot 4.7.2:
+
+- tools/check_workbench.ps1 -Graphics: PASS, 50 headless, по 53 GPU 1280×720 и 960×600, artifacts/workbench-ce5aa729d4de406f87c309207a1c2c30. Осмотрены PNG стойки, трёх слоёв и смешанного напитка в малом окне. Мышью проверены бутылки/колесо, ложка, шейкер, сосуд/поднос. Терминальная реплика завершается через реальное F с учётом разного числа страниц.
+- tools/check_drink_core.ps1: PASS, ядро 811/0 и лаборатория 5/0, artifacts/workbench-final-core.log.
+- tools/check_bar_service.ps1: PASS, прежний профиль 52/0, artifacts/workbench-final-legacy.log.
+- tools/check.ps1: полный PASS, artifacts/workbench-final-regression.log.
+
+Известные ограничения и следующий шаг — WORKBENCH.md. Чистая исходная копия/Windows ещё проверяются; задача пока in_progress, не считать этот промежуточный коммит финальной приёмкой.

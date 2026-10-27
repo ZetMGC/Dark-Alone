@@ -66,6 +66,7 @@ func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_
 	_service_ready = service_panel != null
 	if _service_ready:
 		_service_panel.drink_requested.connect(serve_drink)
+		_service_panel.preparation_requested.connect(serve_preparation)
 		_service_panel.close_requested.connect(close_service)
 		_service_panel.menu_requested.connect(open_menu)
 		service.service_completed.connect(_on_service_completed)
@@ -313,6 +314,15 @@ func serve_drink(drink_id: StringName) -> bool:
 		return false
 	_changing = true
 	var accepted := service.serve(drink_id)
+	_changing = false
+	return accepted
+
+
+func serve_preparation(preparation: DrinkPreparation) -> bool:
+	if not _configured or not _service_ready or _changing or _mode != SERVICE or not _has_service_time():
+		return false
+	_changing = true
+	var accepted := service.serve_preparation(preparation)
 	_changing = false
 	return accepted
 

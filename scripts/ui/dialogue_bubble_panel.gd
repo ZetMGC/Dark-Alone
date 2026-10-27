@@ -5,6 +5,7 @@ extends DialoguePanel
 var bubble_enabled: bool = false
 var _response_input_enabled: bool = true
 var _service_overlay: bool = false
+var _workbench_overlay: bool = false
 @export var characters_per_second: float = 38.0
 var looking_at_speaker: bool = false
 var edge_mode: bool = false
@@ -28,6 +29,10 @@ func set_response_input_enabled(enabled: bool) -> void:
 
 func set_service_overlay(enabled: bool) -> void:
 	_service_overlay = enabled
+
+
+func set_workbench_overlay(enabled: bool) -> void:
+	_workbench_overlay = enabled
 
 
 func configure_speaker(camera: Camera3D, speaker: Node3D) -> void:
@@ -232,7 +237,9 @@ func _update_layout() -> void:
 	%VoiceBubble.size = Vector2(width, 0)
 	var height: float = %VoiceBubble.size.y
 	var target := point - Vector2(width * 0.5, height + 12)
-	if edge_mode:
+	if _workbench_overlay:
+		target = Vector2(area.x - width - 16, 84)
+	elif edge_mode:
 		target = Vector2(16 if local.x < 0 else area.x - width - 16, 170)
 	%VoiceBubble.position = Vector2(clampf(target.x, 16, maxf(16, area.x - width - 16)), clampf(target.y, 16, maxf(16, area.y - height - 245)))
 	%VoiceDirection.visible = edge_mode

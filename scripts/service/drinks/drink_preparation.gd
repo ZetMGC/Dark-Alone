@@ -43,16 +43,21 @@ func pour(command_id: StringName, ingredient_id: StringName, volume_ml: float, f
 		return false
 	var amount := minf(volume_ml, space)
 	var keep_layer := false
+	var extend_layer := false
 	var outcome := "first_pour"
 	if not _layers.is_empty():
 		var top := _properties(_layers.back())
 		var incoming: Dictionary = _ingredients[str(ingredient_id)]
 		var max_flow := BASE_LAYER_FLOW + VISCOUS_FLOW_BONUS * float(top.viscosity)
+		extend_layer = layered and flow_ml_s <= max_flow and _layers.back().size() == 1 and _layers.back().has(str(ingredient_id))
 		keep_layer = layered and float(top.density) + EPSILON >= float(incoming.density) + MIN_DENSITY_GAP and flow_ml_s <= max_flow
-		outcome = "layer_preserved" if keep_layer else "mixed_pour"
+		outcome = "layer_extended" if extend_layer else ("layer_preserved" if keep_layer else "mixed_pour")
 	var emulsified := _has_emulsion()
-	_layers.append({str(ingredient_id): amount})
-	if _layers.size() > 1 and not keep_layer:
+	if extend_layer:
+		_layers.back()[str(ingredient_id)] = float(_layers.back()[str(ingredient_id)]) + amount
+	else:
+		_layers.append({str(ingredient_id): amount})
+	if _layers.size() > 1 and not keep_layer and not extend_layer:
 		_mix_layers(emulsified)
 	_record(command_id, "pour", {"ingredient_id": str(ingredient_id), "volume_ml": amount, "requested_volume_ml": volume_ml, "flow_ml_s": flow_ml_s, "layered": layered, "outcome": outcome})
 	return true

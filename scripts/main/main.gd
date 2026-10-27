@@ -8,6 +8,7 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export_range(1, 24) var shift_budget: int = 2
 @export var checkpoint_enabled: bool = true
 @export var free_roam_enabled: bool = true
+@export var drink_workbench_enabled: bool = true
 @export var preferences_enabled: bool = true
 var checkpoint_store := CheckpointStore.new()
 var preference_store := PreferenceStore.new()
@@ -47,6 +48,13 @@ func _ready() -> void:
 			preferences_enabled = context.preferences_enabled
 			preference_store = context.preference_store
 			_preferences_handoff = true
+	if get_tree().has_meta(RUN_HANDOFF):
+		var previous: Variant = get_tree().get_meta(RUN_HANDOFF)
+		if previous is Dictionary and previous.get("scene") == scene_file_path and previous.get("drink_workbench_enabled") is bool:
+			drink_workbench_enabled = previous.drink_workbench_enabled
+	if free_roam_enabled and drink_workbench_enabled:
+		($ServicePanel as ServicePanel).enable_workbench()
+		_hud.get_node("%Service").text = "B   Готовить"
 	(_rig as FreeRoamCamera).free_roam_enabled = free_roam_enabled
 	_session.concurrent_service_enabled = free_roam_enabled
 	($DialoguePanel as DialogueBubblePanel).bubble_enabled = free_roam_enabled
@@ -270,7 +278,7 @@ func _reload_shift(keep_journal: bool = false) -> bool:
 		_hud.show_notice(checkpoint_store.last_error)
 		return false
 	_restart_pending = true
-	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled, "preferences_enabled": preferences_enabled, "preference_store": preference_store}
+	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled, "drink_workbench_enabled": drink_workbench_enabled, "preferences_enabled": preferences_enabled, "preference_store": preference_store}
 	if keep_journal:
 		handoff.merge({"journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
 	get_tree().set_meta(RUN_HANDOFF, handoff)
@@ -410,6 +418,7 @@ func _refresh_navigation() -> void:
 	var focused := free_roam_enabled and (_rig as FreeRoamCamera).focus_active
 	($DialoguePanel as DialogueBubblePanel).set_response_input_enabled(not focused and _session.mode == NarrativeSession.DIALOGUE)
 	($DialoguePanel as DialogueBubblePanel).set_service_overlay(_session.mode == NarrativeSession.SERVICE)
+	($DialoguePanel as DialogueBubblePanel).set_workbench_overlay(_session.mode == NarrativeSession.SERVICE and ($ServicePanel as ServicePanel).workbench_enabled)
 	(_rig as FreeRoamCamera).set_dialogue_look(_session.mode == NarrativeSession.DIALOGUE and not focused)
 	_rig.set_controls_enabled(exploration or walking_dialogue)
 	var enabled := (exploration or walking_dialogue) and not _rig.is_transitioning
@@ -420,7 +429,7 @@ func _refresh_navigation() -> void:
 	_trigger.set_available(exploration and enabled and (_guest_in_reach() if free_roam_enabled else _rig.current_anchor_id == _trigger.required_anchor))
 	if _counter_target != null:
 		_counter_target.available = enabled and (_session.can_open_service() if focused else _rig.can_move_to(&"back_counter"))
-		_counter_target.prompt = "E — выбрать напиток" if focused else "E — открыть рабочую стойку у полок"
+		_counter_target.prompt = ("E — готовить напиток" if drink_workbench_enabled else "E — выбрать напиток") if focused else "E — открыть рабочую стойку у полок"
 		_counter_target.blocked_prompt = ("Гость уже обслужен" if _session.service.served else "Осталось одно деление: сначала завершите разговор") if focused else "Подойдите к рабочей стойке у полок"
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())

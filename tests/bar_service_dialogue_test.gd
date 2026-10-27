@@ -62,6 +62,7 @@ func _snap(label: String) -> void:
 
 func _boot(budget: int = 2, long_speech: bool = false) -> Node:
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.drink_workbench_enabled = false
 	main.checkpoint_enabled = false
 	main.preferences_enabled = false
 	main.shift_budget = budget
