@@ -14,12 +14,22 @@
 | --- | --- | --- |
 | git fetch origin --prune, status/branch/log | Git | PASS, база a2a9691, main 1b748d3; DA-057/058 входят в DA-059 |
 | Карточки/области | Документы | PASS: вручную сверены непересекающиеся области; относительные ссылки входов/карточек/передач и существующие основные пути проверены Python |
-| Проверка готового кода | Godot 4.7.2/Windows | DA-059 уже прошла clean source/check.ps1 и Windows/GPU/ZIP; протокол предыдущей сессии. Для main результат ещё дополнить |
+| Полный tools/check.ps1 на main | Godot 4.7.2/Windows | PASS всех наборов, artifacts/da061-main-check.log |
+| git diff --quiet a2a9691 HEAD -- scripts scenes tests tools content assets project.godot export_presets.cfg .godot-version | Git | Exit 0: игровые файлы не отличаются от проверенной DA-059; её GPU/Windows проверки не выдаются за новый прогон |
+| tools/build_windows.ps1 | Godot 4.7.2/Windows | PASS, artifacts/da061-main-build.log, ZIP builds/windows-20261027-151016-a09472ed.zip из merge a1e2cce, source_dirty=false |
+| Распаковка ZIP, все SHA256, обычный EXE --headless --quit-after 5 | Windows | PASS, builds/da061-zip-check, artifacts/da061-zip-startup.log |
+| git diff --check, относительные ссылки входных документов | Git/Python | PASS |
 
 ## Решения и ограничения
 
 Это организационное распределение, не изменение игрового API. Используются ADR-0025 и существующие HOME/WORLD_INTERACTION-контракты. Для собственных будущих изменений агентам оставлены отдельные CONTRACTS/DECISIONS, координатор сведёт их при ревью. Нельзя утверждать завершение DA-060/062 или M3. Релиз GitHub отдельно не запрошен.
 
+## Интеграция и очистка
+
+Готовые вершины: DA-057 53f3064, DA-058 e7f2fc4, DA-059 a2a9691. План: 14f22cb. Merge main a1e2cce8b99c62d2c1874351dbc11b378e394e96 выполнен без конфликтов и отправлен в origin/main после полного check.ps1. Перед удалением git merge-base --is-ancestor подтвердил все локальные/существующие remote вершины внутри опубликованной origin/main. git worktree list показал только текущую main-копию.
+
+Удалены удалённые codex/da057-persistent-settings, codex/da058-world-interaction-targets, codex/da059-backbar-and-walking-dialogue. Локально удалены те же три и codex/da061-parallel-plan-integration (никогда не отправлялась). Без force и потери неслитых изменений. После очистки локально/на сервере только main. Последующий коммит фиксирует итоговые документы, игровой код не меняет.
+
 ## Продолжение
 
-Объединить готовые DA-057–059 и этот план в main, проверить основной набор, отправить origin/main, затем проверить включение вершин и удалить только слитые codex/da057/058/059/061. Дописать точные SHA/проверки/очистку и итоговые статусы. После интеграции каждый человек запускает своего агента с назначенной карточкой. STATUS/BACKLOG обновлены: да, DA-061 пока in_progress, две реализации todo.
+Каждый человек обновляет свою копию от origin/main и запускает агента с назначенной карточкой: владелец DA-060, второй коллега DA-062. Каждой дорожке принадлежат разные игровые/тестовые/документационные файлы; общий API сохраняется, зависимостей между задачами нет. Их реализации не начаты этой сессией. После собственной приёмки передать ветку/SHA и свой HANDOFF координатору; любая дорожка может быть принята первой. STATUS/BACKLOG обновлены: да, DA-061 done; DA-060/062 todo и зарезервированы. M3 не закрыт, новый GitHub-релиз не опубликован.
