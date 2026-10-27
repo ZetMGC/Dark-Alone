@@ -74,4 +74,11 @@ CONTRACTS.md и DECISIONS.md этой папки — дополнения для
 - tools/check_bar_service.ps1: PASS, прежний профиль 52/0, artifacts/workbench-final-legacy.log.
 - tools/check.ps1: полный PASS, artifacts/workbench-final-regression.log.
 
-Известные ограничения и следующий шаг — WORKBENCH.md. Чистая исходная копия/Windows ещё проверяются; задача пока in_progress, не считать этот промежуточный коммит финальной приёмкой.
+Итоговая проверка игрового коммита 05c1f83eedfd66e3b30abbc6956e55bd0f820601:
+
+- Чистый Git archive, без исходного .godot: tools/check.ps1, check_workbench.ps1 (50/0), check_drink_core.ps1 (811/0 и lab 5/0), check_bar_service.ps1 (52/0) PASS. Логи artifacts/workbench-clean-{regression,profile,core,legacy}.log, исходники artifacts/workbench-clean-05c1f83.
+- tools/build_windows.ps1: Desktop PASS, builds/windows-20261027-173029-6031d256.zip, manifest source_revision=05c1f83, source_dirty=false. ZIP распакован в artifacts/workbench-windows-unpacked-05c1f83; все SHA256 сверены с manifest, обычный EXE запущен --headless --quit-after 5 без ошибок.
+- Первый запуск Validation с переопределением сцены отклонён штатным шаблоном (path overrides disabled). Для проверки приготовлена отдельная временная копия Git archive artifacts/workbench-export-source-05c1f83: единственное изменение — run/main_scene.integration_test указывает на tests/parallel/bar/workbench_test.tscn. Импорт и export-release Windows Validation PASS; профиль EXE без переопределения: 50 headless, 53 GPU 1280×720, 53 GPU 960×600, все 0 failures. Логи/PNG artifacts/workbench-validation-05c1f83; слои в малом экспортированном окне просмотрены. Рабочий project.godot/общие runner не менялись.
+- git diff --check и проверка 28 путей относительно 457b3b7: область бара, домашние файлы/журнал/checkpoint/preferences/общие реестры не затронуты. Сгенерированные .uid сохранены. Финальный коммит после игрового — только документация.
+
+WORKBENCH-01 done, готово к ревью. Известные ограничения и следующий конкретный шаг — WORKBENCH.md. Стакан только в памяти текущей смены, шейкер целиком, бесконечные TEST-бутылки, без рецептов/реакций. Общие STATUS/BACKLOG/ADR/TESTING намеренно не менялись по AGENTS/PARALLEL_WORK; сводит координатор. Локальную Windows-сборку не публиковали как релиз; main/чужие ветки не менялись.
