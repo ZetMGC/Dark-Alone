@@ -52,3 +52,5 @@ DA-034: checker дополнительно запускает проверочн
 DA-053: check_windows_export.ps1 проверяет новый --bubble-check headless/GPU вместе с пешим циклом/прежними наборами. Desktop EXE не содержит тестового режима. Новый PLAYTEST в комплекте начинается с управления речь/цифры/колесо/F.
 
 DA-057: export-check включает preferences и пару процессов write/read; -Graphics добавляет реальные F11/монитор/новый fullscreen-процесс. Обычный Desktop EXE не содержит тестовых аргументов. Настройки user://settings/ не включаются в архив.
+
+DA-058: экспортная проверка включает --world-target-check headless/GPU, обычный EXE содержит только реальное взаимодействие. Новое управление — WORLD_INTERACTION/PLAYTEST.

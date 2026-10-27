@@ -4,8 +4,9 @@
 [ext_resource type="Script" path="res://scripts/presentation/guest_art.gd" id="2_art"]
 [ext_resource type="PackedScene" path="res://scenes/characters/test_face.tscn" id="3_face"]
 
-[sub_resource type="SphereShape3D" id="Target"]
-radius = 0.32
+[sub_resource type="CapsuleShape3D" id="Target"]
+radius = 0.35
+height = 1.8
 
 [sub_resource type="CapsuleShape3D" id="WalkObstacle"]
 radius = 0.26
@@ -55,6 +56,7 @@ monitoring = false
 script = ExtResource("1")
 
 [node name="Collision" type="CollisionShape3D" parent="."]
+position = Vector3(0, -0.75, 0)
 shape = SubResource("Target")
 
 [node name="WalkObstacle" type="StaticBody3D" parent="."]

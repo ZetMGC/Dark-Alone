@@ -134,6 +134,7 @@ func _run() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	var approach := rig.body.global_position
+	rig.view.look_at(Vector3(-3.6, 1.08, -1.2), Vector3.UP)
 	await _key(KEY_E)
 	while rig.is_transitioning:
 		await get_tree().process_frame

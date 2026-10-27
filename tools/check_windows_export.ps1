@@ -53,6 +53,7 @@ Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'ch
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'free-roam.log') -ExtraArguments @('--', '--free-roam-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: free roam,'
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'bubbles.log') -ExtraArguments @('--', '--bubble-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: dialogue bubbles,'
 Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'preferences.log') -ExtraArguments @('--', '--preference-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: preferences,'
+Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'world-targets.log') -ExtraArguments @('--', '--world-target-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: world targeting,'
 $preferenceDirectory = 'user://preference_tests/process_export_' + [guid]::NewGuid().ToString('N')
 foreach ($phase in @('write', 'read')) {
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot ('preference-' + $phase + '.log')) -ExtraArguments @('--', '--preference-check', ('--preference-probe=' + $phase), ('--preference-directory=' + $preferenceDirectory)) -ExpectPlaythrough $false -ExpectedMarker ('PASS: preference probe ' + $phase)
@@ -62,6 +63,7 @@ foreach ($phase in @('write', 'read')) {
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot ('checkpoint-' + $phase + '.log')) -ExtraArguments @('--', '--checkpoint-check', ('--checkpoint-probe=' + $phase), ('--checkpoint-directory=' + $checkpointDirectory)) -ExpectPlaythrough $false -ExpectedMarker ('PASS: checkpoint probe ' + $phase)
 }
 if ($Graphics) {
+  Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'world-targets-graphical.log') -ExtraArguments @('--', '--world-target-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: world targeting,' -Graphical $true
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'preferences-graphical.log') -ExtraArguments @('--', '--preference-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: preferences,' -Graphical $true
   $graphicalPreferenceDirectory = 'user://preference_tests/process_graphics_' + [guid]::NewGuid().ToString('N')
   foreach ($phase in @('write', 'read')) {

@@ -13,6 +13,7 @@ signal leave_workstation_requested
 var _buttons: Dictionary = {}
 var _shift_number: int = 1
 var _free_roam: bool = false
+var _pointer_hint: bool = false
 
 @onready var _location: Label = %Location
 @onready var _message: Label = %Message
@@ -104,12 +105,27 @@ func update_workstation(rig: FreeRoamCamera, exploration: bool) -> void:
 	%ServiceStatus.offset_bottom = -112
 	$Screen/Bottom.hide()
 	$Screen/Reticle.visible = exploration and not rig.focus_active
-	%Prompt.visible = exploration and not rig.focus_active
+	%Prompt.visible = exploration
+	_pointer_hint = exploration and rig.focus_active
+	if not _pointer_hint:
+		%Prompt.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		%Prompt.offset_left = -280
+		%Prompt.offset_right = 280
+		%Prompt.offset_top = 30
+		%Prompt.offset_bottom = 65
 	$Screen/Actions.visible = exploration and rig.focus_active and not rig.is_transitioning
 	%ServiceStatus.visible = $Screen/Actions.visible
 	%LeaveWorkstation.visible = $Screen/Actions.visible
 	%MovementHint.visible = exploration
-	%MovementHint.text = "Escape — отойти от стойки" if rig.focus_active else "WASD — идти · Мышь — обзор · E — рабочее место · J — дневник · Escape — меню"
+	%MovementHint.text = "Наведите курсор на стойку или посетителя · E — действие · Esc — отойти" if rig.focus_active else "WASD — идти · Мышь — обзор · E — взаимодействовать · J — дневник · Escape — меню"
+
+
+func _process(_delta: float) -> void:
+	if _pointer_hint and %Prompt.visible:
+		%Prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		%Prompt.size = Vector2(430, 35)
+		var point := get_viewport().get_mouse_position() + Vector2(18, 24)
+		%Prompt.position = point.clamp(Vector2(8, 8), ($Screen.size - %Prompt.size - Vector2(8, 8)).max(Vector2(8, 8)))
 
 
 func set_menu_visible(value: bool) -> void:
@@ -122,7 +138,7 @@ func set_menu_visible(value: bool) -> void:
 
 func update_narrative(talk_available: bool, journal_available: bool, count: int, unread: int = 0) -> void:
 	%Talk.disabled = not talk_available
-	%Talk.tooltip_text = "Подойдите к стойке, чтобы начать тестовый разговор." if not talk_available else "Начать тестовый разговор"
+	%Talk.tooltip_text = ("Подойдите ближе к посетителю." if _free_roam else "Подойдите к стойке, чтобы начать тестовый разговор.") if not talk_available else "Начать тестовый разговор"
 	%Journal.disabled = not journal_available
 	%Journal.text = "J   Дневник · %d" % count
 	if unread > 0:

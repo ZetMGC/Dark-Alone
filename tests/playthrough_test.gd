@@ -52,6 +52,9 @@ func _wait_book() -> void:
 
 
 func _run() -> void:
+	if "--world-target-check" in OS.get_cmdline_user_args():
+		get_tree().root.add_child((load("res://tests/world_target_test.tscn") as PackedScene).instantiate())
+		return
 	if "--preference-check" in OS.get_cmdline_user_args():
 		get_tree().root.add_child((load("res://tests/preference_test.tscn") as PackedScene).instantiate())
 		return

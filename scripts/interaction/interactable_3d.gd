@@ -11,5 +11,9 @@ func get_prompt() -> String:
 	return ""
 
 
+func get_unavailable_prompt() -> String:
+	return ""
+
+
 func interact() -> void:
 	pass
