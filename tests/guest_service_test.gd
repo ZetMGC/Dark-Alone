@@ -102,6 +102,7 @@ func _test_scene() -> void:
 	var scene := load("res://scenes/main/main.tscn") as PackedScene
 	var main := scene.instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = false
 	main.free_roam_enabled = false
 	root.add_child(main)
 	await process_frame
@@ -172,6 +173,7 @@ func _test_scene() -> void:
 	await process_frame
 	var fresh := scene.instantiate()
 	fresh.checkpoint_enabled = false
+	fresh.preferences_enabled = false
 	fresh.free_roam_enabled = false
 	root.add_child(fresh)
 	await process_frame

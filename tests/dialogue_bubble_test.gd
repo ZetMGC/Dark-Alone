@@ -55,18 +55,20 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"off"
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	var rig: FreeRoamCamera = main.get_node("AnchorCamera")
 	var panel: DialogueBubblePanel = main.get_node("DialoguePanel")
 	var session: NarrativeSession = main.get_node("NarrativeSession")
 	panel.characters_per_second = 20
-	rig.body.global_position = Vector3(-4.9, 0, -0.6)
+	rig.body.global_position = Vector3(-4.9, 0, -1.2)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	rig.fade_seconds = 0.01
 	rig.black_hold_seconds = 0
-	_expect(rig.request_move(&"counter"), "Fixture takes workstation")
+	rig.apply_look_delta(Vector2(-PI / 2, 0))
+	_expect(rig.request_move(&"back_counter"), "Fixture takes workstation")
 	while rig.is_transitioning:
 		await get_tree().process_frame
 	_expect(main.start_test_dialogue() and panel.bubble_enabled, "Default starts bubble dialogue")
@@ -94,7 +96,7 @@ func _run() -> void:
 	Input.action_press("move_forward")
 	await get_tree().create_timer(0.1).timeout
 	Input.action_release("move_forward")
-	_expect(rig.body.global_position.is_equal_approx(position), "Dialogue look does not unlock walking")
+	_expect(rig.body.global_position.distance_to(position) > 0.1 and not rig.focus_active and session.shift.remaining == 2, "Dialogue permits walking without spending time")
 	var facing := rig.view.global_basis
 	rig.apply_look_delta(Vector2(PI, 0))
 	await get_tree().process_frame
@@ -129,13 +131,21 @@ func _run() -> void:
 	var count: int = text.visible_characters
 	await _key(KEY_ESCAPE)
 	var paused_basis := rig.view.global_basis
+	var paused_position := rig.body.global_position
+	Input.action_press("move_back")
 	rig.apply_look_delta(Vector2(0.3, 0))
 	await get_tree().create_timer(0.15).timeout
 	_expect(session.mode == NarrativeSession.MENU and text.visible_characters == count and rig.view.global_basis.is_equal_approx(paused_basis), "Menu pauses typing and camera")
+	Input.action_release("move_back")
+	_expect(rig.body.global_position.is_equal_approx(paused_position), "Menu pauses walking during dialogue")
 	session.resume_menu()
 	await _key(KEY_J)
 	count = text.visible_characters
+	paused_position = rig.body.global_position
+	Input.action_press("move_back")
 	await get_tree().create_timer(0.12).timeout
+	Input.action_release("move_back")
+	_expect(rig.body.global_position.is_equal_approx(paused_position), "Journal pauses walking during dialogue")
 	_expect(session.mode == NarrativeSession.JOURNAL and text.visible_characters == count, "Journal pauses line")
 	session.close_journal()
 	_expect(text.visible_characters == count, "Return keeps reading progress")
@@ -153,7 +163,8 @@ func _run() -> void:
 	rig.apply_look_delta(Vector2(PI, 0))
 	await _key(KEY_BACKSPACE)
 	_expect(not session.runner.active and session.shift.remaining == 1, "Explicit cancel has no finish cost")
-	_expect((-rig.view.global_basis.z).dot(Vector3.RIGHT) > 0.99, "Cancel restores workstation view instead of locking backwards")
+	_expect((-rig.view.global_basis.z).dot(Vector3.RIGHT) < -0.99 and not rig.focus_active, "Cancel preserves free walking view")
+	rig.apply_look_delta(Vector2(-PI, 0))
 	main.start_test_dialogue()
 	panel.set_open(false)
 	await _test_format_and_long(main, rig)

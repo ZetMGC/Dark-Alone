@@ -49,6 +49,7 @@ func _run() -> void:
 	var scene := load("res://scenes/main/main.tscn") as PackedScene
 	var main := scene.instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = false
 	main.free_roam_enabled = false
 	get_tree().root.add_child(main)
 	var art := main.get_node("DialogueTrigger/Body")
@@ -115,6 +116,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	main = scene.instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = false
 	main.free_roam_enabled = false
 	get_tree().root.add_child(main)
 	art = main.get_node("DialogueTrigger/Body")

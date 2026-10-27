@@ -1,5 +1,6 @@
 class_name JournalPanel
 extends CanvasLayer
+signal preferences_changed
 
 signal close_requested
 signal close_completed
@@ -69,6 +70,7 @@ func set_motion_mode(value: StringName) -> bool:
 			_complete_motion()
 		else:
 			_finish_on_resume = true
+	preferences_changed.emit()
 	return true
 
 
@@ -81,6 +83,7 @@ func set_page_volume(value: float) -> void:
 	if is_instance_valid(_sound_control):
 		_sound_control.set_value_no_signal(page_volume)
 	_update_sound_label()
+	preferences_changed.emit()
 
 
 func _update_sound_label() -> void:

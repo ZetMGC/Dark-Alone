@@ -30,6 +30,7 @@ func _capture() -> void:
 	DirAccess.make_dir_recursive_absolute(_output)
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = false
 	main.free_roam_enabled = false
 	root.add_child(main)
 	current_scene = main

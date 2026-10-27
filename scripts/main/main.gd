@@ -8,7 +8,9 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export_range(1, 24) var shift_budget: int = 2
 @export var checkpoint_enabled: bool = true
 @export var free_roam_enabled: bool = true
+@export var preferences_enabled: bool = true
 var checkpoint_store := CheckpointStore.new()
+var preference_store := PreferenceStore.new()
 @export var drink_options: Array[Dictionary] = [
 	{"id": "test_water", "title": "[TEST] Вода", "description": "Стакан прохладной воды."},
 	{"id": "test_house_drink", "title": "[TEST] Напиток бара", "description": "Напиток бара в простом стакане."}
@@ -27,6 +29,9 @@ var _error_menu: bool = false
 var _restart_pending: bool = false
 var _home: HomeExploration
 var _checkpoint_message: String = ""
+var _preferences: PreferenceController
+var _preferences_handoff: bool = false
+var _counter_target: WorkstationTarget
 
 
 func _ready() -> void:
@@ -35,10 +40,17 @@ func _ready() -> void:
 		var context: Variant = get_tree().get_meta(RUN_HANDOFF)
 		if context is Dictionary and context.get("scene") == scene_file_path and context.get("free_roam_enabled") is bool:
 			free_roam_enabled = context.free_roam_enabled
+		if context is Dictionary and context.get("scene") == scene_file_path and context.has("preferences_enabled"):
+			if not context.preferences_enabled is bool or not context.get("preference_store") is PreferenceStore:
+				_fail_setup("Неверная передача настроек игрока.")
+				return
+			preferences_enabled = context.preferences_enabled
+			preference_store = context.preference_store
+			_preferences_handoff = true
 	(_rig as FreeRoamCamera).free_roam_enabled = free_roam_enabled
 	($DialoguePanel as DialogueBubblePanel).bubble_enabled = free_roam_enabled
 	($DialoguePanel as DialogueBubblePanel).configure_speaker(_rig.view, _trigger)
-	(_rig as FreeRoamCamera).focus_anchor_ids = PackedStringArray(["counter"])
+	(_rig as FreeRoamCamera).focus_anchor_ids = PackedStringArray(["back_counter"])
 	(_rig as FreeRoamCamera).availability_changed.connect(_refresh_navigation)
 	_hud.leave_workstation_requested.connect(func() -> void:
 		if _session.mode == NarrativeSession.EXPLORATION:
@@ -46,11 +58,35 @@ func _ready() -> void:
 	)
 	_hud.resume_requested.connect(_resume_menu)
 	_hud.quit_requested.connect(func() -> void: get_tree().quit())
+	if free_roam_enabled:
+		var back := (load("res://scenes/levels/back_counter.tscn") as PackedScene).instantiate() as Node3D
+		add_child(back)
+		var anchor := (load("res://scenes/navigation/anchor_point.tscn") as PackedScene).instantiate() as AnchorPoint
+		anchor.name = "BackCounter"
+		anchor.anchor_id = &"back_counter"
+		anchor.display_name = "Рабочая стойка у полок"
+		_anchors_root.add_child(anchor)
+		anchor.global_transform = back.get_node("WorkPosition").global_transform
 	if not _rig.configure(_anchors_root, &"entry"):
 		_fail_setup("Ошибка локации: " + "; ".join(_rig.validation_errors))
 		return
 	_configured = true
 	_interaction.configure(_rig.view)
+	if free_roam_enabled:
+		_interaction.reach = 3.0
+		_trigger.show_marker = false
+		_counter_target = WorkstationTarget.new()
+		_counter_target.name = "CounterTarget"
+		_counter_target.collision_layer = 0
+		_counter_target.collision_mask = 0
+		_counter_target.monitoring = false
+		add_child(_counter_target)
+		_counter_target.activated.connect(_use_counter)
+		for part in ["BackCounter/Top/Body", "BackCounter/Cabinet/Body", "BarLevel/Geometry/ShelfBack/Body", "BarLevel/Geometry/ShelfUpper/Body", "BarLevel/Geometry/ShelfLower/Body"]:
+			var body := get_node_or_null(part) as CollisionObject3D
+			if not _interaction.register_surface(body, _counter_target):
+				_fail_setup("Не удалось связать поверхность стойки: " + part)
+				return
 	_interaction.prompt_changed.connect(_hud.set_prompt)
 	_hud.configure(_rig.get_anchors())
 	_hud.destination_requested.connect(_request_destination)
@@ -145,6 +181,10 @@ func _ready() -> void:
 	$DisplaySettings.configure_controls(_hud)
 	$DialogueTrigger/Body.configure_controls(_hud)
 	_rig.configure_controls(_hud)
+	_preferences = PreferenceController.new()
+	_preferences.name = "PreferenceController"
+	add_child(_preferences)
+	_preferences.configure(preference_store, $Presentation, _rig, $JournalPanel, $DisplaySettings, _hud, preferences_enabled, not _preferences_handoff)
 	_hud.new_game_requested.connect(_new_game_from_menu)
 	if checkpoint_enabled and save_on_ready:
 		_checkpoint_message = "Автосохранение: начало смены %d." % number if checkpoint_store.save_checkpoint(number, _session.journal, _home.state, catalog) else checkpoint_store.last_error
@@ -191,11 +231,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _narrative_ready or _session.mode != NarrativeSession.EXPLORATION:
 		return
 	if event.is_action_pressed("interact"):
-		if free_roam_enabled and (_rig as FreeRoamCamera).try_focus():
-			get_viewport().set_input_as_handled()
-			return
 		if not _interaction.try_interact() and not _rig.is_transitioning:
-			_hud.show_notice("Подойдите к рабочему месту и посмотрите на его метку." if free_roam_enabled else "Наведите прицел на метку или выберите доступную точку внизу.")
+			_hud.show_notice("Наведите на стойку или посетителя и нажмите E." if free_roam_enabled else "Наведите прицел на метку или выберите доступную точку внизу.")
 		get_viewport().set_input_as_handled()
 	if free_roam_enabled:
 		return
@@ -224,13 +261,15 @@ func _restart_after_commute() -> void:
 func _reload_shift(keep_journal: bool = false) -> bool:
 	if get_tree().has_meta(RUN_HANDOFF):
 		return false
+	if _preferences != null:
+		_preferences.flush()
 	if not keep_journal and checkpoint_enabled and not checkpoint_store.clear_checkpoint():
 		_checkpoint_message = checkpoint_store.last_error
 		_update_checkpoint_label()
 		_hud.show_notice(checkpoint_store.last_error)
 		return false
 	_restart_pending = true
-	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled}
+	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled, "preferences_enabled": preferences_enabled, "preference_store": preference_store}
 	if keep_journal:
 		handoff.merge({"journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
 	get_tree().set_meta(RUN_HANDOFF, handoff)
@@ -258,10 +297,34 @@ func _update_checkpoint_label() -> void:
 func _start_dialogue(dialogue_id: StringName) -> bool:
 	if not _narrative_ready or _rig.is_transitioning or _session.mode != NarrativeSession.EXPLORATION:
 		return false
-	if _rig.current_anchor_id != _trigger.required_anchor:
-		_hud.show_notice("Подойдите к стойке, чтобы начать [TEST] разговор.")
+	if (free_roam_enabled and not _guest_in_reach()) or (not free_roam_enabled and _rig.current_anchor_id != _trigger.required_anchor):
+		_hud.show_notice("Подойдите ближе к посетителю." if free_roam_enabled else "Подойдите к стойке, чтобы начать [TEST] разговор.")
 		return false
 	return _session.start_dialogue(dialogue_id)
+
+
+func _guest_in_reach() -> bool:
+	if not _rig.view.current or _rig.view.global_position.distance_to(_trigger.global_position) > 3.0:
+		return false
+	var query := PhysicsRayQueryParameters3D.create(_rig.view.global_position, _trigger.global_position, 1)
+	return _rig.view.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+
+func _use_counter() -> void:
+	if not _narrative_ready or _session.mode != NarrativeSession.EXPLORATION or _rig.is_transitioning:
+		return
+	if (_rig as FreeRoamCamera).focus_active:
+		open_service_menu()
+	else:
+		_rig.request_move(&"back_counter")
+
+
+func _physics_process(_delta: float) -> void:
+	if not free_roam_enabled or not _narrative_ready:
+		return
+	var ready := _session.mode == NarrativeSession.EXPLORATION and not _rig.is_transitioning and _guest_in_reach()
+	if ready != _trigger.is_available():
+		_refresh_navigation()
 
 
 func _toggle_journal() -> void:
@@ -276,7 +339,7 @@ func _toggle_journal() -> void:
 func open_service_menu() -> bool:
 	if not _narrative_ready or _rig.is_transitioning or _session.mode != NarrativeSession.EXPLORATION:
 		return false
-	if _rig.current_anchor_id != _trigger.required_anchor:
+	if _rig.current_anchor_id != (&"back_counter" if free_roam_enabled else _trigger.required_anchor):
 		_hud.show_notice("Подойдите к стойке, чтобы обслужить гостя.")
 		return false
 	if _session.service.served:
@@ -325,6 +388,8 @@ func _on_anchor_reached(_anchor_id: StringName) -> void:
 
 
 func _on_mode_changed(mode: StringName) -> void:
+	if free_roam_enabled and mode == NarrativeSession.DIALOGUE and (_rig as FreeRoamCamera).focus_active:
+		(_rig as FreeRoamCamera).leave_focus()
 	if free_roam_enabled and mode == NarrativeSession.EXPLORATION and (_rig as FreeRoamCamera).focus_active:
 		_rig.reset_look()
 	$Presentation.set_environment_context(mode)
@@ -336,16 +401,23 @@ func _refresh_navigation() -> void:
 	if not _configured or not _narrative_ready:
 		return
 	var exploration := _session.mode == NarrativeSession.EXPLORATION
+	var walking_dialogue := free_roam_enabled and _session.mode == NarrativeSession.DIALOGUE
 	(_rig as FreeRoamCamera).set_dialogue_look(_session.mode == NarrativeSession.DIALOGUE)
-	_rig.set_controls_enabled(exploration)
+	_rig.set_controls_enabled(exploration or walking_dialogue)
 	var enabled := exploration and not _rig.is_transitioning
 	_interaction.set_enabled(enabled)
+	_interaction.pointer_mode = free_roam_enabled and enabled and (_rig as FreeRoamCamera).focus_active
 	for anchor in _rig.get_anchors():
-		anchor.set_available(_rig.can_move_to(anchor.anchor_id))
-	_trigger.set_available(enabled and _rig.current_anchor_id == _trigger.required_anchor)
+		anchor.set_available(not free_roam_enabled and _rig.can_move_to(anchor.anchor_id))
+	_trigger.set_available(enabled and (_guest_in_reach() if free_roam_enabled else _rig.current_anchor_id == _trigger.required_anchor))
+	if _counter_target != null:
+		var focused := (_rig as FreeRoamCamera).focus_active
+		_counter_target.available = enabled and (not _session.service.served if focused else _rig.can_move_to(&"back_counter"))
+		_counter_target.prompt = "E — выбрать напиток" if focused else "E — открыть рабочую стойку у полок"
+		_counter_target.blocked_prompt = "Гость уже обслужен" if focused else "Подойдите к рабочей стойке у полок"
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())
-	_hud.update_service(enabled and _rig.current_anchor_id == _trigger.required_anchor and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
+	_hud.update_service(enabled and _rig.current_anchor_id == (&"back_counter" if free_roam_enabled else _trigger.required_anchor) and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
 	if free_roam_enabled:
 		_hud.update_workstation(_rig as FreeRoamCamera, exploration)
 

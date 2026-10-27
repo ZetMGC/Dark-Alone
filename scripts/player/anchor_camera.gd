@@ -1,5 +1,6 @@
 class_name AnchorCamera
 extends Node3D
+signal preferences_changed
 ## Камера меняет позу только под непрозрачным fade; свободной ходьбы нет.
 
 signal transition_started(from_id: StringName, to_id: StringName)
@@ -56,6 +57,11 @@ func set_look_sensitivity(multiplier: float) -> void:
 	if is_instance_valid(_look_control):
 		_look_control.set_value_no_signal(_preferred_look)
 		_look_label.text = "Скорость обзора: %d%%" % roundi(_preferred_look * 100.0)
+	preferences_changed.emit()
+
+
+func get_preferences() -> Dictionary:
+	return {"sensitivity": _preferred_look, "transition": _preferred_duration}
 
 
 func apply_preferences() -> void:
@@ -72,6 +78,7 @@ func set_transition_duration(seconds: float) -> void:
 	if is_instance_valid(_duration_control):
 		_duration_control.set_value_no_signal(_preferred_duration)
 		_duration_label.text = "Переход между точками: %.2f с" % _preferred_duration
+	preferences_changed.emit()
 
 
 func configure(anchors_root: Node3D, initial_id: StringName) -> bool:

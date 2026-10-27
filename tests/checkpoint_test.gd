@@ -49,6 +49,7 @@ func _probe(mode: String, directory: String) -> void:
 				var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 				main.free_roam_enabled = false
 				main.checkpoint_store = store
+				main.preferences_enabled = false
 				get_tree().root.add_child(main)
 				_expect(main.get_node("NarrativeSession").shift_number == 2 and main.get_node("HomeExploration").state.has_resolved(&"test_home_observation"), "New process boots the real game from disk")
 				main.queue_free()
@@ -168,6 +169,7 @@ func _test_application() -> void:
 	var main := scene.instantiate()
 	main.free_roam_enabled = false
 	main.checkpoint_store = store
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	var session: NarrativeSession = main.get_node("NarrativeSession")
@@ -212,6 +214,7 @@ func _test_application() -> void:
 	main = scene.instantiate()
 	main.free_roam_enabled = false
 	main.checkpoint_store = CheckpointStore.new(directory)
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	session = main.get_node("NarrativeSession")
@@ -246,6 +249,7 @@ func _test_application() -> void:
 	main = scene.instantiate()
 	main.free_roam_enabled = false
 	main.checkpoint_store = CheckpointStore.new(directory)
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	_expect(main.get_node("NarrativeSession").shift_number == 1 and FileAccess.file_exists(store.get_path()), "Corrupt boot starts safely and preserves invalid file")
@@ -260,6 +264,7 @@ func _test_application() -> void:
 	main = scene.instantiate()
 	main.free_roam_enabled = false
 	main.checkpoint_store = CheckpointStore.new(directory)
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	_expect(main.get_node("NarrativeSession").shift_number == 2 and "предыдущая" in main.get_node("NavigationHUD/%CheckpointStatus").text, "Actual boot falls back to previous checkpoint with status")

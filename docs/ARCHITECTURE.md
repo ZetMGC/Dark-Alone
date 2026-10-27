@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-058: InteractionController связывает физическую поверхность с Interactable3D через register_surface и берёт ближайшее попадание, обновляя его при E. Main создаёт логический WorkstationTarget, NPC доступен рядом без рабочего якоря. При ходьбе ray из камеры, у стойки от курсора; legacy графы прежние. WORLD_INTERACTION/ADR-0024.
+
 DA-053: Main использует наследуемую сцену DialogueBubblePanel, явно связывает текущего NPC с камерой; Runner/Session прежние. При DIALOGUE разрешён обзор на месте через set_dialogue_look, тело/выход с места заблокированы. Подробности — DIALOGUE_BUBBLES/ADR-0021; старое описание полностью неподвижной камеры в диалоге относится к прежнему UI.
 
 DA-052: текущая навигация — свободная ходьба и локальные рабочие места, [FREE_ROAM](FREE_ROAM.md)/ADR-0020. Описание графа M1 ниже — исторический контракт и база прежних тестов. Main/Home используют FreeRoamCamera; модели смены и checkpoint v1 не меняются.
@@ -100,3 +102,13 @@ DialogueCatalog владеет принятым снимком. Main читае�
 CheckpointCodec сериализует только независимые модели прогресса, CheckpointStore отвечает за user:// и резервную копию. Main — единственная точка загрузки/записи на границе смены, UI показывает результат и запрашивает подтверждённый новый старт. Session/Runner не занимаются файловой системой. [SAVES](SAVES.md), [ADR-0019](decisions/0019-shift-checkpoint.md).
 
 DA-054: SpeechPaginator измеряет normal/bold через TextParagraph и делит plain-диапазоны для отображения. DialogueText.styled_slice сохраняет выделение на границах; literal-флаг сохраняет непарные ** буквально. DialogueBubblePanel хранит номер текущего продолжения, Runner/Journal не изменяются при переходе пузырька.
+
+DA-057: PreferenceStore/PreferenceController отделяют параметры восприятия от checkpoint. Main создаёт контроллер и связывает Presentation/AnchorCamera/JournalPanel/DisplaySettings через preferences_changed. Загрузка только при старте, RUN_HANDOFF переносит enabled/store, перезагрузка не применяет окно повторно. Прогресс и JSON checkpoint v1 прежние. PLAYER_SETTINGS/ADR-0023.
+
+## DA-059: задняя стойка и движение в разговоре
+
+[ADR-0025](decisions/0025-backbar-walking-dialogue.md) заменяет прежнюю блокировку тела DIALOGUE и привязку переднего прилавка. Публичные методы не менялись; меняется поведенческий контракт Main в free_roam_enabled=true: controls_enabled в exploration/dialogue, взаимодействия мира пока только exploration. При входе в dialogue из focus Main вызывает leave_focus, освобождая тело и возвращая прежний взгляд. Menu/Journal по-прежнему блокируют движение; при возврате к dialogue ходьба возобновляется. Speech/Runner/страница/эффекты не перезапускаются из-за движения, конец не телепортирует игрока.
+
+Main добавляет независимую scenes/levels/back_counter.tscn и AnchorPoint back_counter по дочернему WorkPosition перед configure камеры. Только back_counter в focus_anchor_ids текущего бара. Физические привязки: BackCounter/{Top,Cabinet}/Body и BarLevel/Geometry/{ShelfBack,ShelfUpper,ShelfLower}/Body. CounterTop/Base/Trim не интерактивны. Отсутствие обязательного Body — ошибка настройки. Старый counter/граф и legacy fixtures остаются прежними; Home не меняется.
+
+Потребители: Main, NavigationHUD, back_counter.tscn, world_target_test/free_roam_test/dialogue_bubble_test; check.ps1/Windows Validation уже включают их. Session/Runner/GuestService, сохранения и настройки прежние. Программные service API и UI пока разрешают подачу только exploration у back_counter (legacy: required_anchor). Готовить параллельно разговору будет DA-060 с отдельным решением, сейчас не обещать такую возможность.
