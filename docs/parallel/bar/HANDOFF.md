@@ -1,6 +1,6 @@
 # DA-060: передача барной дорожки
 
-Исполнитель: агент владельца DA-060. Ветка codex/da060-bar-service-dialogue, база main 9303616. Статус пока in_progress: игровая механика/профильные проверки готовы, заканчивается чистая проверка коммита. [Карточка](../../tasks/DA-060.md), [WORKLOG](WORKLOG.md), [CONTRACTS](CONTRACTS.md), [DECISIONS](DECISIONS.md).
+Исполнитель: агент владельца DA-060. Ветка codex/da060-bar-service-dialogue, база main 9303616. Статус done, готово к ревью/интеграции. Игровой коммит cc79a997fd4827d7bbdfd241e0d30dc5c662adc1; чистая проверка завершена. [Карточка](../../tasks/DA-060.md), [WORKLOG](WORKLOG.md), [CONTRACTS](CONTRACTS.md), [DECISIONS](DECISIONS.md).
 
 ## Результат
 
@@ -13,7 +13,7 @@
 3. Запустить `tools/check_bar_service.ps1 -Godot <движок> -Graphics`: import, профиль headless и GPU в двух размерах со снимками. Отдельно `godot --headless --path . res://tests/bar_service_dialogue_test.tscn`; для снимков без --headless добавить `-- --capture-dir=<папка>` и при необходимости --small.
 4. Общий старый набор: `tools/check.ps1 -Godot <движок>`. Новый профиль пока запускается отдельно по правилам параллельного раунда.
 
-Фактические результаты и точный список файлов — WORKLOG. Полный регрессионный набор PASS, профиль 52 headless/56 GPU в обоих окнах; чистый коммит ещё проверить. Данные тестов явно TEST, настройки/checkpoint игрока отключены.
+Фактические результаты и точный список файлов — WORKLOG. Полный регрессионный набор PASS, профиль 52 headless/56 GPU в обоих окнах; чистый Git archive cc79a99 также прошёл полный tools/check.ps1 и новый профиль 52/0. Логи artifacts/da060-clean-source.log и artifacts/da060-clean-profile.log. Последующий коммит — только итоговые документы. Данные тестов явно TEST, настройки/checkpoint игрока отключены.
 
 ## Координатору после ревью
 
