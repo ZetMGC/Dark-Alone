@@ -91,7 +91,7 @@ func show_notice(message: String) -> void:
 		%MovementHint.text = message
 
 
-func update_workstation(rig: FreeRoamCamera, exploration: bool) -> void:
+func update_workstation(rig: FreeRoamCamera, exploration: bool, dialogue: bool = false) -> void:
 	_free_roam = true
 	$Screen/Actions.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	$Screen/Actions.offset_left = 24
@@ -116,8 +116,8 @@ func update_workstation(rig: FreeRoamCamera, exploration: bool) -> void:
 	$Screen/Actions.visible = exploration and rig.focus_active and not rig.is_transitioning
 	%ServiceStatus.visible = $Screen/Actions.visible
 	%LeaveWorkstation.visible = $Screen/Actions.visible
-	%MovementHint.visible = exploration
-	%MovementHint.text = "Рабочая стойка у полок · E — напитки · T — разговор · Esc — отойти" if rig.focus_active else "WASD — идти · Мышь — обзор · E — взаимодействовать · J — дневник · Escape — меню"
+	%MovementHint.visible = exploration and (not dialogue or rig.focus_active)
+	%MovementHint.text = ("Разговор продолжается · E — напитки · Esc — отойти" if dialogue else "Рабочая стойка у полок · E — напитки · T — разговор · Esc — отойти") if rig.focus_active else "WASD — идти · Мышь — обзор · E — взаимодействовать · J — дневник · Escape — меню"
 
 
 func _process(_delta: float) -> void:

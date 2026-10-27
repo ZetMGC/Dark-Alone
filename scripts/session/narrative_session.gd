@@ -26,6 +26,9 @@ var shift := ShiftClock.new()
 var commute := CommuteFlow.new()
 var shift_number: int = 1
 
+var concurrent_service_enabled: bool = false
+var _service_return: StringName = EXPLORATION
+
 var _mode: StringName = EXPLORATION
 var _journal_return: StringName = EXPLORATION
 var _menu_return: StringName = EXPLORATION
@@ -196,11 +199,11 @@ func cancel_dialogue() -> bool:
 
 
 func open_journal() -> bool:
-	if not _configured or _changing or _mode not in [EXPLORATION, DIALOGUE, SHIFT_COMPLETE, HOME]:
+	if not _configured or _changing or (_mode not in [EXPLORATION, DIALOGUE, SHIFT_COMPLETE, HOME] and not (concurrent_service_enabled and _mode == SERVICE)):
 		return false
 	_changing = true
 	_journal_return = _mode
-	_journal_panel.render(journal, _journal_return == DIALOGUE, _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
+	_journal_panel.render(journal, (_journal_return == DIALOGUE or (_journal_return == SERVICE and runner.active)), _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
 	_journal_panel.reset_scroll()
 	_set_mode(JOURNAL)
 	_changing = false
@@ -253,7 +256,7 @@ func request_close_journal() -> bool:
 
 
 func _render_journal() -> void:
-	_journal_panel.render(journal, _journal_return == DIALOGUE, _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
+	_journal_panel.render(journal, (_journal_return == DIALOGUE or (_journal_return == SERVICE and runner.active)), _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
 
 
 func close_journal() -> bool:
@@ -276,10 +279,20 @@ func open_menu() -> bool:
 	return true
 
 
+func can_open_service() -> bool:
+	return _configured and _service_ready and not service.served \
+		and (_mode == EXPLORATION or (concurrent_service_enabled and _mode == DIALOGUE)) and _has_service_time()
+
+
+func _has_service_time() -> bool:
+	return not _shift_ready or (not shift.finished and (not runner.active or shift.remaining >= 2))
+
+
 func open_service() -> bool:
-	if not _configured or not _service_ready or _changing or _mode != EXPLORATION or service.served:
+	if _changing or not can_open_service():
 		return false
 	_changing = true
+	_service_return = _mode
 	_service_panel.render(service)
 	_set_mode(SERVICE)
 	_changing = false
@@ -290,13 +303,13 @@ func close_service() -> bool:
 	if not _configured or _changing or _mode != SERVICE:
 		return false
 	_changing = true
-	_set_mode(EXPLORATION)
+	_set_mode(_service_return)
 	_changing = false
 	return true
 
 
 func serve_drink(drink_id: StringName) -> bool:
-	if not _configured or not _service_ready or _changing or _mode != SERVICE:
+	if not _configured or not _service_ready or _changing or _mode != SERVICE or not _has_service_time():
 		return false
 	_changing = true
 	var accepted := service.serve(drink_id)
@@ -308,7 +321,7 @@ func _on_service_completed(event_id: StringName, guest_id: StringName, drink_id:
 	if _shift_ready:
 		shift.apply_completed_event(event_id, 1)
 	if _mode != SHIFT_COMPLETE:
-		_set_mode(EXPLORATION)
+		_set_mode(_service_return)
 	service_completed.emit(event_id, guest_id, drink_id)
 
 
@@ -352,7 +365,7 @@ func _on_shift_finished() -> void:
 
 func _on_term_added(_term_id: StringName) -> void:
 	if _mode == JOURNAL:
-		_journal_panel.render(journal, _journal_return == DIALOGUE, _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
+		_journal_panel.render(journal, (_journal_return == DIALOGUE or (_journal_return == SERVICE and runner.active)), _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
 	elif _mode == DIALOGUE:
 		_dialogue_panel.render(runner, journal)
 	journal_changed.emit(journal.get_known_term_ids().size())
@@ -365,9 +378,10 @@ func _set_mode(value: StringName) -> void:
 
 
 func _sync_panels() -> void:
-	_dialogue_panel.set_open(_mode == DIALOGUE)
+	_dialogue_panel.set_open(_mode == DIALOGUE or (concurrent_service_enabled and _mode == SERVICE and runner.active))
 	_journal_panel.set_open(_mode == JOURNAL)
 	if _service_ready:
+		_service_panel.set_conversation_context(concurrent_service_enabled and runner.active)
 		_service_panel.set_open(_mode == SERVICE)
 	if _shift_ready:
 		_summary_panel.set_open(_mode == SHIFT_COMPLETE)
