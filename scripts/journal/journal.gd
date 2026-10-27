@@ -6,6 +6,7 @@ signal term_added(term_id: StringName)
 signal entry_changed(term_id: StringName)
 signal selection_changed(term_id: StringName)
 signal reading_position_changed(term_id: StringName)
+signal annotations_changed(term_id: StringName)
 
 var selected_term_id: StringName:
 	get: return _selected
@@ -16,6 +17,101 @@ var _order: PackedStringArray = []
 var _configured: bool = false
 var _selected: StringName = &""
 var _mutating: bool = false
+var _annotations: Dictionary = {}
+var _ink_undo: Dictionary = {}
+var _ink_redo: Dictionary = {}
+const MAX_ANNOTATIONS := 64
+const MAX_INK_HISTORY := 32
+
+
+func get_annotations(term_id: StringName) -> Array:
+	return _annotations.get(str(term_id), []).duplicate(true)
+
+
+func add_annotation(term_id: StringName, kind: StringName, start: int, end: int) -> bool:
+	var id := str(term_id)
+	if _mutating or not has_term(term_id) or kind not in [&"underline", &"circle"] or start < 0 or end <= start or end > str(_definitions[id].description).length():
+		return false
+	var marks := get_annotations(term_id)
+	var mark := {"kind": str(kind), "start": start, "end": end}
+	if marks.size() >= MAX_ANNOTATIONS or mark in marks:
+		return false
+	_mutating = true
+	_remember_ink(id)
+	marks.append(mark)
+	_annotations[id] = marks
+	annotations_changed.emit(term_id)
+	_mutating = false
+	return true
+
+
+func erase_annotation(term_id: StringName, index: int) -> bool:
+	var marks := get_annotations(term_id)
+	if _mutating or index < 0 or index >= marks.size():
+		return false
+	_mutating = true
+	_remember_ink(str(term_id))
+	marks.remove_at(index)
+	_annotations[str(term_id)] = marks
+	annotations_changed.emit(term_id)
+	_mutating = false
+	return true
+
+
+func can_undo_annotations(term_id: StringName) -> bool:
+	return not _ink_undo.get(str(term_id), []).is_empty()
+
+
+func can_redo_annotations(term_id: StringName) -> bool:
+	return not _ink_redo.get(str(term_id), []).is_empty()
+
+
+func undo_annotations(term_id: StringName, redo: bool = false) -> bool:
+	var id := str(term_id)
+	var source: Dictionary = _ink_redo if redo else _ink_undo
+	var destination: Dictionary = _ink_undo if redo else _ink_redo
+	if _mutating or not has_term(term_id) or source.get(id, []).is_empty():
+		return false
+	_mutating = true
+	if not destination.has(id):
+		destination[id] = []
+	destination[id].append(get_annotations(term_id))
+	_annotations[id] = source[id].pop_back()
+	annotations_changed.emit(term_id)
+	_mutating = false
+	return true
+
+
+func _remember_ink(id: String) -> void:
+	if not _ink_undo.has(id):
+		_ink_undo[id] = []
+	_ink_undo[id].append(_annotations.get(id, []).duplicate(true))
+	if _ink_undo[id].size() > MAX_INK_HISTORY:
+		_ink_undo[id].pop_front()
+	_ink_redo.erase(id)
+
+
+func _restore_ink(data: Variant, known: Dictionary) -> Dictionary:
+	if not data is Dictionary or data.size() > known.size():
+		return {"valid": false}
+	var result: Dictionary = {}
+	for id in data:
+		if not id is String or not known.has(id) or not data[id] is Array or data[id].size() > MAX_ANNOTATIONS:
+			return {"valid": false}
+		var marks: Array = []
+		for value in data[id]:
+			if not value is Dictionary or value.size() != 3 or value.get("kind") not in ["underline", "circle"]:
+				return {"valid": false}
+			var start := _checkpoint_integer(value.get("start"))
+			var end := _checkpoint_integer(value.get("end"))
+			if start < 0 or end <= start or end > str(_definitions[id].description).length():
+				return {"valid": false}
+			var mark := {"kind": value.kind, "start": start, "end": end}
+			if mark in marks:
+				return {"valid": false}
+			marks.append(mark)
+		result[id] = marks
+	return {"valid": true, "marks": result}
 
 
 func configure(catalog: DialogueCatalog) -> bool:
@@ -158,11 +254,18 @@ func export_progress() -> Dictionary:
 		item.erase("learned_order")
 		item["id"] = id
 		entries.append(item)
-	return {"entries": entries, "selected": str(_selected)}
+	var progress := {"entries": entries, "selected": str(_selected)}
+	var marks: Dictionary = {}
+	for id in _annotations:
+		if not _annotations[id].is_empty():
+			marks[id] = _annotations[id].duplicate(true)
+	if not marks.is_empty():
+		progress["annotations"] = marks
+	return progress
 
 
 func restore_progress(data: Dictionary) -> bool:
-	if not _configured or _mutating or not _known.is_empty() or data.size() != 2 or not data.get("entries") is Array or not data.get("selected") is String:
+	if not _configured or _mutating or not _known.is_empty() or data.size() not in [2, 3] or (data.size() == 3 and not data.has("annotations")) or not data.get("entries") is Array or not data.get("selected") is String:
 		return false
 	var known: Dictionary = {}
 	var order := PackedStringArray()
@@ -184,9 +287,13 @@ func restore_progress(data: Dictionary) -> bool:
 		known[id] = {"entry_id": "term:" + id, "learned_order": order.size(), "source": source, "read": value.read, "bookmarked": value.bookmarked, "reading_offset": offset}
 	if (order.is_empty() and data.selected != "") or (not order.is_empty() and not known.has(data.selected)):
 		return false
+	var ink := _restore_ink(data.get("annotations", {}), known)
+	if not ink.valid:
+		return false
 	_known = known
 	_order = order
 	_selected = StringName(data.selected)
+	_annotations = ink.marks
 	return true
 
 

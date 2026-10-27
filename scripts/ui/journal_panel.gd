@@ -31,6 +31,7 @@ var _open_start: float = 0.0
 var _motion_control: OptionButton
 var _sound_control: HSlider
 var _sound_label: Label
+const INK_TOOLS: Array[StringName] = [&"select", &"underline", &"circle", &"erase"]
 
 
 func _ready() -> void:
@@ -41,6 +42,12 @@ func _ready() -> void:
 	%Previous.pressed.connect(func() -> void: request_page(-1))
 	%Next.pressed.connect(func() -> void: request_page(1))
 	%Description.resized.connect(_queue_pagination)
+	%Description.annotation_requested.connect(_add_ink)
+	%Description.erase_requested.connect(_erase_ink)
+	%Description.selection_changed.connect(_word_selected)
+	%InkTool.item_selected.connect(func(index: int) -> void: %Description.set_tool(INK_TOOLS[index]))
+	%InkUndo.pressed.connect(func() -> void: _undo_ink())
+	%InkRedo.pressed.connect(func() -> void: _undo_ink(true))
 	if _rustle == null:
 		_rustle = _make_rustle()
 	$PageSound.stream = _rustle
@@ -92,6 +99,10 @@ func _update_sound_label() -> void:
 
 
 func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool = false, return_to_home: bool = false) -> void:
+	if _journal != journal:
+		if _journal != null and _journal.annotations_changed.is_connected(_ink_changed):
+			_journal.annotations_changed.disconnect(_ink_changed)
+		journal.annotations_changed.connect(_ink_changed)
 	_journal = journal
 	%Close.text = "Вернуться к разговору" if return_to_dialogue else "Вернуться в бар"
 	if return_to_summary:
@@ -154,6 +165,7 @@ func _refresh() -> void:
 func _queue_pagination() -> void:
 	if not _layout_pending:
 		_layout_pending = true
+		_update_controls()
 		_paginate.call_deferred()
 
 
@@ -169,9 +181,10 @@ func _paginate() -> void:
 	var text := "Новые слова из разговоров появятся здесь." if entry.is_empty() else str(entry.description)
 	var font: Font = %Description.get_theme_font("normal_font")
 	var font_size: int = %Description.get_theme_font_size("normal_font_size")
-	_pages = BookPaginator.paginate(text, font, font_size, %Description.size)
+	_pages = BookPaginator.paginate(text, font, font_size, %Description.size - Vector2(12, 10))
 	_page = BookPaginator.page_for_offset(_pages, 0 if entry.is_empty() else int(entry.reading_offset))
-	%Description.text = _pages[_page].text
+	%Description.set_content(_pages[_page].text, int(_pages[_page].start), _journal.selected_term_id)
+	%Description.set_marks(_journal.get_annotations(_journal.selected_term_id))
 	%PagePosition.text = "Стр. %d / %d" % [_page + 1, _pages.size()]
 	_update_controls()
 
@@ -182,6 +195,10 @@ func get_page_count() -> int:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not screen.visible or get_viewport().gui_get_focus_owner() is LineEdit or not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if event.ctrl_pressed and event.keycode in [KEY_Z, KEY_Y] and not is_transitioning():
+		_undo_ink(event.keycode == KEY_Y or event.shift_pressed)
+		get_viewport().set_input_as_handled()
 		return
 	if event.keycode in [KEY_PAGEUP, KEY_PAGEDOWN]:
 		request_page(-1 if event.keycode == KEY_PAGEUP else 1)
@@ -240,11 +257,56 @@ func _update_controls() -> void:
 	%Previous.disabled = blocked or (_page <= 0 and selected <= 0)
 	%Next.disabled = blocked or (_page >= _pages.size() - 1 and (_ids.is_empty() or selected >= _ids.size() - 1))
 	%Bookmark.disabled = blocked or _journal == null or _journal.selected_term_id == &""
+	var ink_enabled := _can_edit_ink()
+	%Description.editing_enabled = ink_enabled
+	%InkTool.disabled = not ink_enabled
+	%InkUndo.disabled = not ink_enabled or not _journal.can_undo_annotations(_journal.selected_term_id)
+	%InkRedo.disabled = not ink_enabled or not _journal.can_redo_annotations(_journal.selected_term_id)
+	%BookArt.show_sketch = _journal != null and _journal.get_entries().size() <= 4
+
+
+func _can_edit_ink() -> bool:
+	return not is_transitioning() and not _layout_pending and screen.visible and _journal != null and _journal.selected_term_id != &"" and %Description.entry_id == _journal.selected_term_id
+
+
+func _add_ink(kind: StringName, start: int, end: int) -> void:
+	if not _can_edit_ink():
+		return
+	if not _journal.add_annotation(_journal.selected_term_id, kind, start, end):
+		%WordNote.text = "Такая пометка уже есть или достигнут предел 64 пометок на запись."
+
+
+func _erase_ink(index: int) -> void:
+	if _can_edit_ink():
+		_journal.erase_annotation(_journal.selected_term_id, index)
+
+
+func _undo_ink(redo: bool = false) -> void:
+	if _can_edit_ink():
+		_journal.undo_annotations(_journal.selected_term_id, redo)
+
+
+func _ink_changed(id: StringName) -> void:
+	if _journal != null and id == _journal.selected_term_id:
+		%Description.set_marks(_journal.get_annotations(id))
+		_update_controls()
+
+
+func _word_selected(word: String) -> void:
+	%WordNote.text = "Выберите слово или протяните мышью по фразе."
+	if word.is_empty() or _journal == null:
+		return
+	%WordNote.text = "«%s» · выберите инструмент пометки" % word
+	for entry in _journal.get_entries():
+		if str(entry.title).trim_prefix("[TEST] ").to_lower() == word.to_lower():
+			%WordNote.text = "«%s»\n%s" % [word, str(entry.description)]
+			return
 
 
 func set_open(value: bool) -> void:
 	screen.visible = value
 	if not value:
+		%Description.editing_enabled = false
 		if _tween != null and _tween.is_valid():
 			_tween.pause()
 		$PageSound.stop()
@@ -269,6 +331,7 @@ func begin_close() -> bool:
 
 func force_closed() -> void:
 	_cancel_motion()
+	%Description.editing_enabled = false
 	_opened = false
 	%BookArt.open_amount = 0.0
 	screen.visible = false
