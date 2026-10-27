@@ -76,7 +76,10 @@ func _bind(id: String, parts: Array, caption: Callable, action: Callable) -> voi
 	target.allowed = func() -> bool: return home.house_actions_allowed() and home.rig.view.global_position.distance_to(primary.global_position) <= 2.5
 	add_child(target)
 	for part: Node3D in parts:
-		assert(home.interaction.register_surface(part.get_node("Body"), target), "House surface missing: " + str(part.get_path()))
+		# Регистрация нужна и в release, где assert полностью вырезается.
+		var registered: bool = home.interaction.register_surface(part.get_node("Body"), target)
+		if not registered:
+			push_error("House surface missing: " + str(part.get_path()))
 	actions[id] = target
 
 
