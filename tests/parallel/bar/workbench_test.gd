@@ -92,6 +92,7 @@ func _run() -> void:
 		get_window().size = Vector2i(960, 600)
 	JournalPanel.motion_mode = &"off"
 	_test_service_model()
+	_test_spills()
 	await _test_controls()
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.preferences_enabled = false
@@ -186,6 +187,10 @@ func _run() -> void:
 	var operations: Array = bench.preparation.get_snapshot().operations
 	_expect(operations.any(func(item: Dictionary) -> bool: return item.operation == "shake"), "Shaking gesture recorded in recipe history")
 	await _snap("03-mixed-workbench")
+	# Дать короткой струе переливания завершиться и в ручном режиме времени теста.
+	bench.set_process(true)
+	await get_tree().create_timer(0.45).timeout
+	bench.set_process(false)
 	# Пауза над подносом не должна случайно подать напиток.
 	bench.begin_drag(&"cup", bench.get_item_position(&"cup"))
 	bench.drag_to(DrinkWorkbench.SERVE_ZONE.get_center())
@@ -194,7 +199,16 @@ func _run() -> void:
 	session.resume_menu()
 	var prepared := bench.preparation.get_snapshot()
 	await _drag(bench, &"cup", DrinkWorkbench.SERVE_ZONE.get_center())
-	_expect(session.service.served and session.shift.remaining == 1 and session.runner.current_node_id == node and session.mode == NarrativeSession.DIALOGUE, "Drop on tray serves real drink and keeps conversation")
+	_expect(bench.is_ready_to_deliver() and not session.service.served and session.shift.remaining == 2, "Drop stages drink without spending shift time")
+	await _snap("05-ready-for-delivery")
+	await _move(bench, Vector2(1080, 438))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(session.service.served and session.shift.remaining == 1 and session.runner.current_node_id == node and session.mode == NarrativeSession.DIALOGUE, "Delivery button serves real drink and keeps conversation")
+	var guest: ServiceGuest = main.get_node("DialogueTrigger")
+	_expect(guest.get_node("ServedGlass").visible and guest.get_node("ServedGlass/DrinkLayer0") != null, "Actual drink appears on counter in front of guest")
+	var served_glass: MeshInstance3D = guest.get_node("ServedGlass/Cup")
+	_expect(served_glass.global_position.x > -4.325 and served_glass.global_position.x < -2.875 and is_equal_approx(served_glass.global_position.y - served_glass.mesh.height / 2, 1.16), "Prepared glass rests on actual counter top")
 	_expect(session.service.get_prepared_drink().overall == prepared.overall and not bench.preparation.get_result().is_empty(), "Guest receives exact sealed composition")
 	_expect(not session.serve_preparation(bench.preparation) and session.shift.get_events().size() == 1, "Duplicate delivery rejected")
 	await _key(KEY_ESCAPE)
@@ -206,6 +220,7 @@ func _run() -> void:
 	var forward := -rig.view.global_basis.z
 	var desired: Vector3 = (main.get_node("DialogueTrigger").global_position - rig.view.global_position).normalized()
 	rig.apply_look_delta(Vector2(atan2(-desired.x, -desired.z) - atan2(-forward.x, -forward.z), 0))
+	await _snap("06-drink-at-guest")
 	await _key(KEY_F)
 	await _key(KEY_2)
 	# Число страниц зависит от окна; каждое F раскрывает/перелистывает
@@ -229,6 +244,42 @@ func _test_controls() -> void:
 	bench.set_process(false)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	for item in [&"cup", &"spoon", &"shaker"]:
+		var position := bench.get_item_position(item)
+		bench.begin_drag(item, position)
+		bench.drag_to(position + Vector2(100, 0))
+		bench.advance_motion(0.016)
+		_expect(absf(bench.get_item_angle(item)) > 0.1, "Held object has cursor inertia: " + str(item))
+		for step in 350:
+			bench.advance_motion(0.016)
+		_expect(absf(bench.get_item_angle(item)) < 0.1, "Object inertia settles: " + str(item))
+		bench.drag_to(position)
+		bench.end_drag()
+	var standing := bench.get_item_position(&"test_equal")
+	var saved_stock := bench.get_bottle_remaining(&"test_equal")
+	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.drag_to(standing)
+	bench.advance_motion(0.016)
+	_expect(absf(bench.get_item_angle(&"test_equal")) > 0.1 and bench.get_item_position(&"test_equal") == standing and bench.get_bottle_remaining(&"test_equal") == saved_stock, "Passing bottle nudges standing glass without moving or losing contents")
+	bench.end_drag()
+	for step in 300:
+		bench.advance_motion(0.016)
+	_expect(absf(bench.get_item_angle(&"test_equal")) < 0.1, "Standing bottle nudge damps")
+	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.drag_to(standing + Vector2(0, -100))
+	bench.drag_to(standing)
+	bench.advance_motion(0.016)
+	_expect(absf(bench.get_item_angle(&"test_equal")) > 0.1, "Vertical bottle contact also produces gentle nudge")
+	bench.end_drag()
+	# Отдельные кнопки работают независимо от предметов в зоне чистой посуды.
+	await _move(bench, Vector2(245, 607))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(bench.preparation.get_snapshot().vessel.id == "test_glass", "Explicit button chooses tall glass")
+	await _move(bench, Vector2(95, 607))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(bench.preparation.get_snapshot().vessel.id == "test_shot", "Explicit button switches back to shot")
 	await _move(bench, Vector2(175, 520))
 	await _button(MOUSE_BUTTON_LEFT, true)
 	await _button(MOUSE_BUTTON_LEFT, false)
@@ -257,6 +308,10 @@ func _test_controls() -> void:
 	_expect(is_equal_approx(bench.preparation.get_volume_ml(), 240) and bench.get_spilled_ml() > 0, "Overflow stays on table rather than overfilling model")
 	_expect(is_equal_approx(overflow_stock - bench.get_bottle_remaining(&"test_base"), bench.preparation.get_volume_ml() - overflow_volume + bench.get_spilled_ml() - overflow_waste), "Overfilled glass consumes all exiting bottle contents")
 	_expect(not bench.select_vessel(&"test_shot"), "Nonempty portion cannot disappear when selecting glass")
+	await _move(bench, Vector2(95, 607))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(bench.preparation.get_volume_ml() == 240 and bench.preparation.get_snapshot().vessel.id == "test_glass", "Blocked vessel button preserves full portion")
 	await _drag(bench, &"cup", DrinkWorkbench.SINK.get_center())
 	_expect(bench.preparation.get_volume_ml() == 0, "Dropping cup into sink empties actual composition")
 	await _move(bench, Vector2(75, 520))
@@ -334,9 +389,42 @@ func _test_controls() -> void:
 	bench.set_active(false)
 	bench.set_active(true)
 	_expect(bench.get_bottle_remaining(&"test_base") == 0 and bench.get_bottle_remaining(&"test_heavy") == stock, "Vessel selection and reopen never refill bottles")
+	bench.preparation.pour(&"rejected_delivery", &"test_heavy", 5)
+	await _drag(bench, &"cup", DrinkWorkbench.SERVE_ZONE.get_center())
+	var staged := bench.preparation.get_snapshot()
+	_expect(bench.is_ready_to_deliver() and not bench.request_delivery() and bench.preparation.get_result().is_empty() and bench.preparation.get_snapshot() == staged, "Rejected delivery preserves staged drink without sealing")
+	bench.set_active(false)
+	bench.set_active(true)
+	_expect(bench.is_ready_to_deliver() and not bench.request_delivery(), "Reopen preserves staged portion and rejection remains safe")
 	bench.set_active(false)
 	bench.queue_free()
 	await get_tree().process_frame
+
+
+func _test_spills() -> void:
+	var catalog := DrinkMaterialCatalog.new()
+	catalog.load_file(DrinkWorkbench.MATERIALS)
+	var surface := DrinkSpillSurface.new()
+	_expect(surface.configure(catalog), "Spill model configures")
+	_expect(not surface.add_spill({"unknown": 10}, Vector2.ZERO) and not surface.add_spill({"test_heavy": NAN}, Vector2.ZERO) and surface.get_patches().is_empty(), "Invalid spills are atomic")
+	surface.add_spill({"test_heavy": 10.0}, Vector2(500, 500))
+	surface.add_spill({"test_light": 30.0}, Vector2(500, 500))
+	var patch: Dictionary = surface.get_patches()[0]
+	_expect(surface.get_patches().size() == 1 and patch.volume_ml == 40 and patch.components.test_heavy == 10 and patch.components.test_light == 30, "Overlapping spills combine actual components and volume")
+	var heavy: Array = catalog.get_ingredient(&"test_heavy").color
+	var light: Array = catalog.get_ingredient(&"test_light").color
+	var expected := (Color(heavy[0], heavy[1], heavy[2], 0.7) + Color(light[0], light[1], light[2], 0.7) * 3) / 4
+	_expect(patch.color.is_equal_approx(expected), "Puddle color is volume-weighted mixture")
+	patch.components.test_heavy = 999
+	_expect(surface.get_patches()[0].components.test_heavy == 10, "Mixed puddle snapshots are isolated")
+	var spreading := DrinkSpillSurface.new()
+	spreading.configure(catalog)
+	spreading.add_spill({"test_heavy": 20.0}, Vector2(800, 500))
+	spreading.add_spill({"test_light": 20.0}, Vector2(840, 500))
+	_expect(spreading.get_patches().size() == 2, "Separate wet spots remain separate initially")
+	for step in 20:
+		spreading.advance(0.05)
+	_expect(spreading.get_patches().size() == 1 and spreading.get_patches()[0].volume_ml == 40, "Spreading spots join on contact without losing liquid")
 
 
 func _test_service_model() -> void:

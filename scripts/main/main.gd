@@ -366,8 +366,12 @@ func open_service_menu() -> bool:
 func _on_service_completed(_event_id: StringName, _guest_id: StringName, _drink_id: StringName) -> void:
 	var title := str(_session.service.get_served_drink().get("title", ""))
 	_trigger.show_served(title)
+	var prepared := _session.service.get_prepared_drink()
+	if not prepared.is_empty():
+		var counter: Node3D = $BarLevel/Geometry/CounterTop
+		_trigger.show_prepared(prepared, counter.to_global(Vector3(0.25, 0.5, 0.1)))
 	_refresh_navigation()
-	_hud.show_notice("Гость получил: " + title)
+	_hud.show_notice("Напиток на стойке перед гостем. Esc — отойти и обернуться." if not prepared.is_empty() else "Гость получил: " + title)
 
 
 func _resume_menu() -> void:
