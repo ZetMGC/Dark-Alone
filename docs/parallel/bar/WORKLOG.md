@@ -127,3 +127,15 @@ git diff --check PASS. Все 11 изменённых путей внутри б
 - git diff --check PASS. Новых зависимостей и runtime-файлов игрока нет. Профиль использует отключённые checkpoint/preferences.
 
 Известные ограничения: физика 2.5D, визуальные касания без звука/разрушения; для смены заполненного сосуда сначала слив, независимых двух порций пока нет; пятна смешивают цвет и несовместимых компонентов без отдельных фаз; уборка/склад/рецепты/реакции следующие этапы. Следующий конкретный шаг — рецепты/допуски по реальному составу, сохраняя свободное приготовление. Новые API и решение записаны в собственных CONTRACTS/DECISIONS, общие реестры сведёт координатор.
+
+## WORKBENCH-03: итоговая проверка и передача
+
+Код c2b0f4eaa8e1c8ce2bac52ac677534734199c95e. Статус done. Из чистого Git archive artifacts/workbench-interactions-clean-c2b0f4e без исходного .godot: tools/check.ps1 и tools/check_workbench.ps1 PASS (103/0). Логи artifacts/workbench-interactions-clean-regression.log и workbench-interactions-clean-profile.log. Весь текущий код, включая привязку точки подачи/наследование ложки/вертикальное касание, проверен этим набором.
+
+Windows Desktop: tools/build_windows.ps1 PASS, builds/windows-20261027-181941-170f84a5.zip, source_revision=c2b0f4e, source_dirty=false. Распакован в artifacts/workbench-interactions-unpacked-c2b0f4e, все SHA256 по manifest совпадают; обычный EXE --headless --quit-after 5 без ошибок.
+
+После чистой проверки только во временной копии integration_test main_scene заменена на res://tests/parallel/bar/workbench_test.tscn, export-release Windows Validation PASS. Это прежний способ изолированной проверки без изменения общих runner/project.godot, так как штатный release-template не поддерживает path overrides. EXE: headless 103/0, GPU 1280×720 109/0, GPU 960×600 109/0, логи/PNG artifacts/workbench-interactions-validation-c2b0f4e. Готовая выдача в малом экспортированном окне просмотрена. Рабочая проектная конфигурация и старый Windows Validation runner не менялись.
+
+Все 13 путей относительно 0f6d6f6 внутри новой карточки. Сцены, домашняя дорожка, журнал, checkpoint/preferences, центральные реестры/runner не менялись; новый .uid сохранён. git diff --check PASS. Последующий коммит — только итоговые документы, игровой SHA остаётся источником сборки/чистой проверки. Ветка передаётся в GitHub, main/релиз не публикуются.
+
+Продолжение: TEST-рецепты/допуски и обратная связь по реальному составу. Не считать реализованными склад, покупку/пополнение, уборку, реактивную химию, разделение фаз пятен, звуковой стук или перенос напитка в новый сосуд без слива. Управление и стабильные API — WORKBENCH.md/CONTRACTS. Общие STATUS/BACKLOG/ADR сводит координатор по исключению AGENTS/PARALLEL_WORK.
