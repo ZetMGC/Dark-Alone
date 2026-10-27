@@ -15,3 +15,33 @@ Git merge прошёл без текстовых конфликтов; сохр�
 Первый source 1f13248 прошёл исходники, но release-template выявил 62 отказа дома: register_surface находился внутри assert и не выполнялся в release. Исправлено в 8d8916a, вызов вынесен из assert с явной диагностикой. Проверка поиска assert в scripts других таких мест не обнаружила. Новый релизный probe дома 99/0 и journal ink 113/0, полный source check и чистый архив 8d8916a PASS. Неудачный комплект не публиковался.
 
 После ряда графических переключений окон выявлен конфликт двух очередей ввода самого workbench_test: OS warp_mouse добавлял отложенное движение поверх push_input, иногда срывая click/drag. Тест переведён на одну очередь push_input (как journal_ink), перед подтверждением возвращается фокус; проверка повторной подачи больше не может случайно совершить первую подачу после неудачного клика. Все исходные сценарии и реальные GUI-события сохранены, 119 headless/126 normal/126 small PASS, artifacts/alpha3-single-input.log. Это изменение теста, продуктовый ввод не менялся. Финальный комплект пересобирается с этим исправлением; source SHA ниже будет записан после проверки.
+
+## Итог: alpha.3 опубликован, DA-063 done
+
+Проверенный source/tag: cca792e24260f6c0bdf43f038c431106c23fe711. Merge обеих дорожек 1f13248, исправление release-регистрации дома 8d8916a, стабилизация тестового ввода cca792e. История main содержит исходные cc1a8e1 и c8988a8, без потери файлов/переписывания истории. Последующий коммит меняет только Markdown/инструкции; игровой тег не перемещается.
+
+Опубликован https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.3, release ID 425925882, published_at 2026-10-27T20:02:44Z, draft=false/prerelease=true/make_latest=false. Три вложения: Dark-Alone-v0.1.0-alpha.3-windows-x86_64.zip (39 804 812 байт), SHA256SUMS.txt, build-manifest.json. SHA256 ZIP: fea13b2b2f9ff9c005204bc541ff411c56d583df22685f27baf65508b5aeeeac. Manifest source_dirty=false, Godot 4.7.2.stable.official.ed1daf0bf. Старые alpha.1/alpha.2 и их теги/вложения сохранены.
+
+| Проверка | Фактический результат |
+| --- | --- |
+| Общий исходниковый набор и чистый git archive cca792e | PASS, artifacts/alpha3-clean-final.log |
+| tools/prepare_release.ps1 -Tag v0.1.0-alpha.3 | PASS, artifacts/alpha3-prepare-final.log; source=origin/main |
+| Windows release-template headless, общие/новые профили | PASS, builds/validation-7ff223cc8feb49a18e830c88d81b9534 |
+| tools/check_windows_export.ps1 -Graphics, окончательный source | PASS, artifacts/alpha3-export-final-graphics.log, builds/validation-2a99d21d417044dab8e788f4906cad8c |
+| Бар/совместный default-цикл | 119 headless/126 GPU верстак, 52/56 legacy service, 21/21 бар → пометки → дом → новая смена; PASS |
+| Новый дом/пометки | home targets 96/108, house layout 99/104, journal ink 113/117; PASS |
+| Ядро напитков/лаборатория | 837/5 headless; PASS |
+| Малое окно 960×600 в финальном EXE | Верстак 126/0, пометки 117/0; artifacts/alpha3-small-final.log; PASS |
+| Локальный ZIP: manifest SHA256 и обычный графический старт | PASS, artifacts/alpha3-local-unpacked-cca792e/startup.log |
+| API draft → upload → server size/digest → publish | PASS, три полных вложения, опубликован Pre-release |
+| Скачивание трёх опубликованных файлов без авторизации | PASS: каждый совпал с локальным по SHA256; artifacts/alpha3-downloaded |
+| Скачанный ZIP распакован в отдельной временной папке вне проекта | Все файлы manifest совпали, EXE --quit-after 30 стартовал графически без редактора, код 0/ошибок нет; artifacts/alpha3-downloaded-startup.log |
+| GitHub ref и локальный fetch tag | Точное совпадение с cca792e; PASS |
+
+Просмотрены финальные PNG кухни-гостиной, рукописной книги с пометками в малом окне, налив смеси слоем в малом окне. Окружение Windows, Compatibility/NVIDIA RTX 5060; другие реальные машины/мониторы остаются проверкой команды. GPU-числа включают сохранение контрольных снимков.
+
+Релизный комплект builds/releases/v0.1.0-alpha.3, исходная Windows-сборка builds/windows-20261027-225723-7cbbbb97. Непрошедший предыдущий локальный комплект сохранён отдельно v0.1.0-alpha.3-attempt-8d8916a и не публиковался. API-помощник/метаданные игнорируются Git; секреты в логи/проект не выводились. GitHub-коннектор Releases не предоставляет, поэтому использован REST с настроенной Git-авторизацией.
+
+Обновлены README/STATUS/BACKLOG/HANDOFF, PLAYTEST, RELEASES, общий контракт/архитектура/ADR-0026, проверочные runner и TASK DA-063. AGENTS теперь указывает, что прежний параллельный раунд завершён; следующие агенты берут актуальный main и новую карточку, не повторяют готовую DA-060. Барный HANDOFF содержит ссылку на принятие. Текущая игровая часть не менялась после подготовленного source SHA.
+
+Следующий конкретный шаг: коллегам проверить опубликованный Windows ZIP на своих машинах по START-HERE, затем TEST-рецепты/допуски и дозировка. Реальные истории/лица/новый концепт записей ждут отдельного решения. Автосохранение только на начале следующей смены; незавершённые напитки не сериализуются; жидкости и ледяная техника приближённые TEST, ведёрко льда бесконечно. Не подменять опубликованный ZIP: следующий исправленный выпуск alpha.4.
