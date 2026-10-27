@@ -24,7 +24,14 @@ Windows, Godot 4.7.2.stable.official.ed1daf0bf, Compatibility/RTX 5060.
 | GPU со снимком меню | PASS 33/0 до проверки нативного maximize, artifacts/da057-preferences-graphics.log; меню просмотрено |
 | Итоговый GPU с native maximize/F11 | PASS 33/0 без снимка, artifacts/da057-preferences-final-graphics.log |
 
-Итоговые чистый Git archive/Windows release-template ещё выполняются; фактический результат будет записан после завершения.
+Итоговый код: `3710d8c43ed43574c830d527ea0e731e4d7ee3a0`.
+
+- Полный check.ps1 из чистого Git archive ce332b0 PASS, включая настройки 29, процессы 2/3, все прежние наборы; artifacts/da057-clean-source.log. После него добавлена только защита reset в отключённом режиме и её проверка. Последний 3710d8c отдельно импортирован из чистого Git archive и прошёл настройки 30/0: artifacts/da057-final-clean.log.
+- build_windows.ps1 PASS: builds/windows-20261027-141127-0e5c42b7.zip, manifest source_dirty=false, artifacts/da057-final-build.log. Промежуточный ce332b0-билд не итоговый.
+- check_windows_export.ps1 -BuildDirectory builds/windows-20261027-141127-0e5c42b7 -Graphics PASS. Настройки 30 headless/34 GPU, процессы write/read 2/3 и отдельный графический read 4 с восстановлением fullscreen. Прежние речь 107/109, пеший цикл 63/64, checkpoint 51/53, процессы checkpoint 2/5, цикл 50, книга 51, экран 46, лица 22/38, детализация 18 — PASS. artifacts/da057-export.log, builds/validation-e7c7936756654d4fb706c5c44a5af734.
+- ZIP распакован отдельно: SHA256 файлов manifest совпали, извлечённый EXE запущен без редактора и ошибок. git diff --check и ссылки новых документов PASS.
+
+Архив локальный/игнорируется Git, ветка отправляется отдельно от main. После 3710d8c меняются только документы результатов. Новый GitHub-релиз не опубликован.
 
 ## Решения и ограничения
 
@@ -32,4 +39,4 @@ Windows, Godot 4.7.2.stable.official.ed1daf0bf, Compatibility/RTX 5060.
 
 ## Продолжение
 
-Пользователю изменить звук/камеру/окно/книгу, закрыть и запустить заново, проверить меню, затем независимые «Сбросить настройки» и «Начать заново». Коллегам: читать PLAYER_SETTINGS, изолировать новые Main-fixtures preferences_enabled=false или тестовым Store, выполнять check.ps1/экспорт -Graphics. STATUS/BACKLOG/HANDOFF обновлены; до финальных проверок in_progress. Сюжет/новые записи/реалистичные лица не возобновлять без поручения. Слияния/релиза в этой задаче нет.
+Пользователю изменить звук/камеру/окно/книгу, закрыть и запустить заново, проверить меню, затем независимые «Сбросить настройки» и «Начать заново». Коллегам: читать PLAYER_SETTINGS, изолировать новые Main-fixtures preferences_enabled=false или тестовым Store, выполнять check.ps1/экспорт -Graphics. STATUS/BACKLOG/HANDOFF обновлены; техническая задача done. Сюжет/новые записи/реалистичные лица не возобновлять без поручения. Слияния/релиза в этой задаче нет.
