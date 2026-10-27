@@ -35,7 +35,8 @@ func _move(bench: DrinkWorkbench, logical: Vector2) -> void:
 	event.global_position = point
 	event.relative = point - _mouse
 	_mouse = point
-	get_viewport().warp_mouse(point)
+	# Только одна очередь ввода: OS warp порождает вторую, запаздывающую
+	# очередь motion и искажает drag/клик в растянутом маленьком окне.
 	get_viewport().push_input(event, true)
 	await get_tree().process_frame
 
@@ -203,6 +204,10 @@ func _run() -> void:
 	await _drag(bench, &"cup", DrinkWorkbench.SERVE_ZONE.get_center())
 	_expect(bench.is_ready_to_deliver() and not session.service.served and session.shift.remaining == 2, "Drop stages drink without spending shift time")
 	await _snap("05-ready-for-delivery")
+	if DisplayServer.get_name() != "headless":
+		get_window().grab_focus()
+		await get_tree().process_frame
+		await get_tree().process_frame
 	await _move(bench, Vector2(1080, 438))
 	await _button(MOUSE_BUTTON_LEFT, true)
 	await _button(MOUSE_BUTTON_LEFT, false)
@@ -212,7 +217,10 @@ func _run() -> void:
 	var served_glass: MeshInstance3D = guest.get_node("ServedGlass/Cup")
 	_expect(served_glass.global_position.x > -4.325 and served_glass.global_position.x < -2.875 and is_equal_approx(served_glass.global_position.y - served_glass.mesh.height / 2, 1.16), "Prepared glass rests on actual counter top")
 	_expect(session.service.get_prepared_drink().overall == prepared.overall and not bench.preparation.get_result().is_empty(), "Guest receives exact sealed composition")
-	_expect(not session.serve_preparation(bench.preparation) and session.shift.get_events().size() == 1, "Duplicate delivery rejected")
+	if session.service.served:
+		_expect(not session.serve_preparation(bench.preparation) and session.shift.get_events().size() == 1, "Duplicate delivery rejected")
+	else:
+		_expect(false, "Duplicate delivery requires successful original delivery")
 	await _key(KEY_ESCAPE)
 	await get_tree().create_timer(0.08).timeout
 	if DisplayServer.get_name() != "headless":
