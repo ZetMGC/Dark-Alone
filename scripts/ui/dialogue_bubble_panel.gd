@@ -3,6 +3,9 @@ extends DialoguePanel
 ## Позиция речи зависит от головы, ответы — от взгляда; правила диалога в Session.
 
 var bubble_enabled: bool = false
+var _response_input_enabled: bool = true
+var _service_overlay: bool = false
+var _workbench_overlay: bool = false
 @export var characters_per_second: float = 38.0
 var looking_at_speaker: bool = false
 var edge_mode: bool = false
@@ -18,6 +21,18 @@ var _terminal: bool = false
 var _window_focused: bool = true
 var _pages: Array[Dictionary] = []
 var _page_index: int = 0
+
+
+func set_response_input_enabled(enabled: bool) -> void:
+	_response_input_enabled = enabled
+
+
+func set_service_overlay(enabled: bool) -> void:
+	_service_overlay = enabled
+
+
+func set_workbench_overlay(enabled: bool) -> void:
+	_workbench_overlay = enabled
 
 
 func configure_speaker(camera: Camera3D, speaker: Node3D) -> void:
@@ -122,7 +137,7 @@ func _show_page() -> void:
 
 
 func advance_page() -> bool:
-	if not screen.visible or not _window_focused or not is_line_complete() or _page_index >= _pages.size() - 1:
+	if not _response_input_enabled or not screen.visible or not _window_focused or not is_line_complete() or _page_index >= _pages.size() - 1:
 		return false
 	_page_index += 1
 	_show_page()
@@ -131,7 +146,7 @@ func advance_page() -> bool:
 
 
 func reveal_text() -> void:
-	if not screen.visible or not _window_focused:
+	if not _response_input_enabled or not screen.visible or not _window_focused:
 		return
 	_typed = _length
 	%VoiceText.visible_characters = -1
@@ -139,7 +154,7 @@ func reveal_text() -> void:
 
 
 func can_answer() -> bool:
-	return bubble_enabled and screen.visible and _window_focused and is_instance_valid(_camera) and is_instance_valid(_speaker) and looking_at_speaker and is_speech_complete() and _runner != null and _runner.active and _line_key == str(_runner.current_dialogue_id) + ":" + str(_runner.current_node_id)
+	return _response_input_enabled and bubble_enabled and screen.visible and _window_focused and is_instance_valid(_camera) and is_instance_valid(_speaker) and looking_at_speaker and is_speech_complete() and _runner != null and _runner.active and _line_key == str(_runner.current_dialogue_id) + ":" + str(_runner.current_node_id)
 
 
 func select_relative(direction: int) -> bool:
@@ -165,7 +180,7 @@ func submit_choice(index: int) -> bool:
 
 func confirm() -> bool:
 	_update_layout()
-	if not screen.visible or not _window_focused:
+	if not _response_input_enabled or not screen.visible or not _window_focused:
 		return false
 	if not is_line_complete():
 		reveal_text()
@@ -209,7 +224,9 @@ func _update_layout() -> void:
 	var head := _speaker.global_position + Vector3.UP * 0.36
 	var face := _speaker.global_position + Vector3.UP * 0.06
 	var area := screen.size
-	var point := _camera.unproject_position(head)
+	# На плоскости камеры перспектива не определена; голос сразу уходит к краю.
+	var head_local := _camera.to_local(head)
+	var point := _camera.unproject_position(head) if head_local.z < -0.001 else Vector2(-10000, -10000)
 	var local := _camera.to_local(face)
 	var behind := _camera.is_position_behind(face)
 	var visible_head := not behind and Rect2(Vector2.ZERO, area).has_point(point)
@@ -222,7 +239,9 @@ func _update_layout() -> void:
 	%VoiceBubble.size = Vector2(width, 0)
 	var height: float = %VoiceBubble.size.y
 	var target := point - Vector2(width * 0.5, height + 12)
-	if edge_mode:
+	if _workbench_overlay:
+		target = Vector2(area.x - width - 16, 84)
+	elif edge_mode:
 		target = Vector2(16 if local.x < 0 else area.x - width - 16, 170)
 	%VoiceBubble.position = Vector2(clampf(target.x, 16, maxf(16, area.x - width - 16)), clampf(target.y, 16, maxf(16, area.y - height - 245)))
 	%VoiceDirection.visible = edge_mode
@@ -237,10 +256,13 @@ func _update_layout() -> void:
 	%VoiceHint.text = "F — показать реплику целиком · J — дневник · Esc — меню" if not is_line_complete() else ("Посмотрите на говорящего, чтобы ответить" if not looking_at_speaker else "J — дневник · Esc — меню · Backspace — прервать")
 	if is_line_complete() and not is_speech_complete():
 		%VoiceHint.text = "F — следующий пузырёк · J — дневник · Esc — меню"
+	%VoiceHint.visible = not _service_overlay
+	if not _response_input_enabled:
+		%VoiceHint.text = "Esc — отойти от стойки и продолжить разговор"
 
 
 func _input(event: InputEvent) -> void:
-	if not bubble_enabled or not screen.visible or not _window_focused or event.is_echo():
+	if not _response_input_enabled or not bubble_enabled or not screen.visible or not _window_focused or event.is_echo():
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		select_relative(-1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1)

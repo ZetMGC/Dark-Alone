@@ -75,4 +75,18 @@ if ($Graphics) {
 	Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'faces-graphical.log') -ExtraArguments @('--', '--faces-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: test faces,' -Graphical $true
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'image-detail.log') -ExtraArguments @('--', '--image-detail-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: image detail,' -Graphical $true
 }
+$integrationProfiles = @(
+  @{ Name = 'release-integration'; Flag = '--release-integration-check'; Marker = 'PASS: release integration,' },
+  @{ Name = 'workbench'; Flag = '--workbench-check'; Marker = 'PASS: drink workbench,' },
+  @{ Name = 'bar-service'; Flag = '--bar-service-check'; Marker = 'PASS: bar service dialogue,' },
+  @{ Name = 'home-targets'; Flag = '--home-target-check'; Marker = 'PASS: home targets,' },
+  @{ Name = 'house-layout'; Flag = '--house-layout-check'; Marker = 'PASS: house layout,' },
+  @{ Name = 'journal-ink'; Flag = '--journal-ink-check'; Marker = 'PASS: journal ink,' }
+)
+foreach ($profile in $integrationProfiles) {
+  Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot ($profile.Name + '.log')) -ExtraArguments @('--', $profile.Flag) -ExpectPlaythrough $false -ExpectedMarker $profile.Marker
+  if ($Graphics) {
+    Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot ($profile.Name + '-graphics.log')) -ExtraArguments @('--', $profile.Flag, ('--capture-dir="' + (Join-Path $validationRoot $profile.Name) + '"')) -ExpectPlaythrough $false -ExpectedMarker $profile.Marker -Graphical $true
+  }
+}
 Write-Output "PASS: exported startup and full playthrough. Logs: $validationRoot"

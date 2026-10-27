@@ -8,6 +8,7 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export_range(1, 24) var shift_budget: int = 2
 @export var checkpoint_enabled: bool = true
 @export var free_roam_enabled: bool = true
+@export var drink_workbench_enabled: bool = true
 @export var preferences_enabled: bool = true
 var checkpoint_store := CheckpointStore.new()
 var preference_store := PreferenceStore.new()
@@ -47,13 +48,21 @@ func _ready() -> void:
 			preferences_enabled = context.preferences_enabled
 			preference_store = context.preference_store
 			_preferences_handoff = true
+	if get_tree().has_meta(RUN_HANDOFF):
+		var previous: Variant = get_tree().get_meta(RUN_HANDOFF)
+		if previous is Dictionary and previous.get("scene") == scene_file_path and previous.get("drink_workbench_enabled") is bool:
+			drink_workbench_enabled = previous.drink_workbench_enabled
+	if free_roam_enabled and drink_workbench_enabled:
+		($ServicePanel as ServicePanel).enable_workbench()
+		_hud.get_node("%Service").text = "B   Готовить"
 	(_rig as FreeRoamCamera).free_roam_enabled = free_roam_enabled
+	_session.concurrent_service_enabled = free_roam_enabled
 	($DialoguePanel as DialogueBubblePanel).bubble_enabled = free_roam_enabled
 	($DialoguePanel as DialogueBubblePanel).configure_speaker(_rig.view, _trigger)
 	(_rig as FreeRoamCamera).focus_anchor_ids = PackedStringArray(["back_counter"])
 	(_rig as FreeRoamCamera).availability_changed.connect(_refresh_navigation)
 	_hud.leave_workstation_requested.connect(func() -> void:
-		if _session.mode == NarrativeSession.EXPLORATION:
+		if _session.mode in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE]:
 			(_rig as FreeRoamCamera).leave_focus()
 	)
 	_hud.resume_requested.connect(_resume_menu)
@@ -201,7 +210,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_menu"):
-		if free_roam_enabled and _narrative_ready and _session.mode == NarrativeSession.EXPLORATION and (_rig as FreeRoamCamera).leave_focus():
+		if free_roam_enabled and _narrative_ready and _session.mode in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] and (_rig as FreeRoamCamera).leave_focus():
 			get_viewport().set_input_as_handled()
 			return
 		if not _narrative_ready:
@@ -228,7 +237,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _narrative_ready or _session.mode != NarrativeSession.EXPLORATION:
+	if not _narrative_ready or (_session.mode != NarrativeSession.EXPLORATION and not (free_roam_enabled and _session.mode == NarrativeSession.DIALOGUE)):
 		return
 	if event.is_action_pressed("interact"):
 		if not _interaction.try_interact() and not _rig.is_transitioning:
@@ -269,7 +278,7 @@ func _reload_shift(keep_journal: bool = false) -> bool:
 		_hud.show_notice(checkpoint_store.last_error)
 		return false
 	_restart_pending = true
-	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled, "preferences_enabled": preferences_enabled, "preference_store": preference_store}
+	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled, "drink_workbench_enabled": drink_workbench_enabled, "preferences_enabled": preferences_enabled, "preference_store": preference_store}
 	if keep_journal:
 		handoff.merge({"journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
 	get_tree().set_meta(RUN_HANDOFF, handoff)
@@ -300,7 +309,10 @@ func _start_dialogue(dialogue_id: StringName) -> bool:
 	if (free_roam_enabled and not _guest_in_reach()) or (not free_roam_enabled and _rig.current_anchor_id != _trigger.required_anchor):
 		_hud.show_notice("Подойдите ближе к посетителю." if free_roam_enabled else "Подойдите к стойке, чтобы начать [TEST] разговор.")
 		return false
-	return _session.start_dialogue(dialogue_id)
+	var accepted := _session.start_dialogue(dialogue_id)
+	if accepted and free_roam_enabled and (_rig as FreeRoamCamera).focus_active:
+		(_rig as FreeRoamCamera).leave_focus()
+	return accepted
 
 
 func _guest_in_reach() -> bool:
@@ -311,7 +323,7 @@ func _guest_in_reach() -> bool:
 
 
 func _use_counter() -> void:
-	if not _narrative_ready or _session.mode != NarrativeSession.EXPLORATION or _rig.is_transitioning:
+	if not _narrative_ready or _session.mode not in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] or _rig.is_transitioning:
 		return
 	if (_rig as FreeRoamCamera).focus_active:
 		open_service_menu()
@@ -337,7 +349,7 @@ func _toggle_journal() -> void:
 
 
 func open_service_menu() -> bool:
-	if not _narrative_ready or _rig.is_transitioning or _session.mode != NarrativeSession.EXPLORATION:
+	if not _narrative_ready or _rig.is_transitioning or (_session.mode != NarrativeSession.EXPLORATION and not (free_roam_enabled and _session.mode == NarrativeSession.DIALOGUE)):
 		return false
 	if _rig.current_anchor_id != (&"back_counter" if free_roam_enabled else _trigger.required_anchor):
 		_hud.show_notice("Подойдите к стойке, чтобы обслужить гостя.")
@@ -345,14 +357,21 @@ func open_service_menu() -> bool:
 	if _session.service.served:
 		_hud.show_notice("Гость уже получил напиток.")
 		return false
+	if not _session.can_open_service():
+		_hud.show_notice("Осталось одно деление: сначала завершите или прервите разговор.")
+		return false
 	return _session.open_service()
 
 
 func _on_service_completed(_event_id: StringName, _guest_id: StringName, _drink_id: StringName) -> void:
 	var title := str(_session.service.get_served_drink().get("title", ""))
 	_trigger.show_served(title)
+	var prepared := _session.service.get_prepared_drink()
+	if not prepared.is_empty():
+		var counter: Node3D = $BarLevel/Geometry/CounterTop
+		_trigger.show_prepared(prepared, counter.to_global(Vector3(0.25, 0.5, 0.1)))
 	_refresh_navigation()
-	_hud.show_notice("Гость получил: " + title)
+	_hud.show_notice("Напиток на стойке перед гостем. Esc — отойти и обернуться." if not prepared.is_empty() else "Гость получил: " + title)
 
 
 func _resume_menu() -> void:
@@ -388,8 +407,6 @@ func _on_anchor_reached(_anchor_id: StringName) -> void:
 
 
 func _on_mode_changed(mode: StringName) -> void:
-	if free_roam_enabled and mode == NarrativeSession.DIALOGUE and (_rig as FreeRoamCamera).focus_active:
-		(_rig as FreeRoamCamera).leave_focus()
 	if free_roam_enabled and mode == NarrativeSession.EXPLORATION and (_rig as FreeRoamCamera).focus_active:
 		_rig.reset_look()
 	$Presentation.set_environment_context(mode)
@@ -402,24 +419,27 @@ func _refresh_navigation() -> void:
 		return
 	var exploration := _session.mode == NarrativeSession.EXPLORATION
 	var walking_dialogue := free_roam_enabled and _session.mode == NarrativeSession.DIALOGUE
-	(_rig as FreeRoamCamera).set_dialogue_look(_session.mode == NarrativeSession.DIALOGUE)
+	var focused := free_roam_enabled and (_rig as FreeRoamCamera).focus_active
+	($DialoguePanel as DialogueBubblePanel).set_response_input_enabled(not focused and _session.mode == NarrativeSession.DIALOGUE)
+	($DialoguePanel as DialogueBubblePanel).set_service_overlay(_session.mode == NarrativeSession.SERVICE)
+	($DialoguePanel as DialogueBubblePanel).set_workbench_overlay(_session.mode == NarrativeSession.SERVICE and ($ServicePanel as ServicePanel).workbench_enabled)
+	(_rig as FreeRoamCamera).set_dialogue_look(_session.mode == NarrativeSession.DIALOGUE and not focused)
 	_rig.set_controls_enabled(exploration or walking_dialogue)
-	var enabled := exploration and not _rig.is_transitioning
+	var enabled := (exploration or walking_dialogue) and not _rig.is_transitioning
 	_interaction.set_enabled(enabled)
 	_interaction.pointer_mode = free_roam_enabled and enabled and (_rig as FreeRoamCamera).focus_active
 	for anchor in _rig.get_anchors():
 		anchor.set_available(not free_roam_enabled and _rig.can_move_to(anchor.anchor_id))
-	_trigger.set_available(enabled and (_guest_in_reach() if free_roam_enabled else _rig.current_anchor_id == _trigger.required_anchor))
+	_trigger.set_available(exploration and enabled and (_guest_in_reach() if free_roam_enabled else _rig.current_anchor_id == _trigger.required_anchor))
 	if _counter_target != null:
-		var focused := (_rig as FreeRoamCamera).focus_active
-		_counter_target.available = enabled and (not _session.service.served if focused else _rig.can_move_to(&"back_counter"))
-		_counter_target.prompt = "E — выбрать напиток" if focused else "E — открыть рабочую стойку у полок"
-		_counter_target.blocked_prompt = "Гость уже обслужен" if focused else "Подойдите к рабочей стойке у полок"
+		_counter_target.available = enabled and (_session.can_open_service() if focused else _rig.can_move_to(&"back_counter"))
+		_counter_target.prompt = ("E — готовить напиток" if drink_workbench_enabled else "E — выбрать напиток") if focused else "E — открыть рабочую стойку у полок"
+		_counter_target.blocked_prompt = ("Гость уже обслужен" if _session.service.served else "Осталось одно деление: сначала завершите разговор") if focused else "Подойдите к рабочей стойке у полок"
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())
-	_hud.update_service(enabled and _rig.current_anchor_id == (&"back_counter" if free_roam_enabled else _trigger.required_anchor) and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
+	_hud.update_service(enabled and _session.can_open_service() and _rig.current_anchor_id == (&"back_counter" if free_roam_enabled else _trigger.required_anchor) and not _session.service.served, _session.service.served, str(_session.service.get_served_drink().get("title", "")))
 	if free_roam_enabled:
-		_hud.update_workstation(_rig as FreeRoamCamera, exploration)
+		_hud.update_workstation(_rig as FreeRoamCamera, exploration or walking_dialogue, walking_dialogue)
 
 
 func _fail_setup(message: String) -> void:

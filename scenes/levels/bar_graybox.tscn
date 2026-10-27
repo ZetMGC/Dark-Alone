@@ -129,17 +129,17 @@ scale = Vector3(0.04, 0.05, 6)
 material_override = SubResource("Metal")
 
 [node name="ShelfBack" parent="Geometry" instance=ExtResource("1_block")]
-position = Vector3(-5.8, 1.65, -2)
-scale = Vector3(0.15, 1.9, 5)
+position = Vector3(-5.8, 2, -2)
+scale = Vector3(0.15, 2.8, 5)
 material_override = SubResource("Dark")
 
 [node name="ShelfUpper" parent="Geometry" instance=ExtResource("1_block")]
-position = Vector3(-5.65, 2.25, -2)
+position = Vector3(-5.65, 2.65, -2)
 scale = Vector3(0.4, 0.08, 5)
 material_override = SubResource("Counter")
 
 [node name="ShelfLower" parent="Geometry" instance=ExtResource("1_block")]
-position = Vector3(-5.65, 1.5, -2)
+position = Vector3(-5.65, 1.95, -2)
 scale = Vector3(0.4, 0.08, 5)
 material_override = SubResource("Counter")
 
@@ -216,19 +216,19 @@ text = "B A R   /   G R A Y B O X"
 [node name="Props" type="Node3D" parent="."]
 
 [node name="BottleOne" type="MeshInstance3D" parent="Props"]
-position = Vector3(-5.65, 1.72, -3.5)
+position = Vector3(-5.65, 2.17, -3.5)
 mesh = SubResource("Bottle")
 
 [node name="BottleTwo" type="MeshInstance3D" parent="Props"]
-position = Vector3(-5.65, 1.72, -3.85)
+position = Vector3(-5.65, 2.17, -3.85)
 mesh = SubResource("Bottle")
 
 [node name="BottleThree" type="MeshInstance3D" parent="Props"]
-position = Vector3(-5.65, 2.47, -2.5)
+position = Vector3(-5.65, 2.87, -2.5)
 mesh = SubResource("Bottle")
 
 [node name="BottleFour" type="MeshInstance3D" parent="Props"]
-position = Vector3(-5.65, 2.47, -2.8)
+position = Vector3(-5.65, 2.87, -2.8)
 mesh = SubResource("Bottle")
 
 [node name="CounterGlass" type="MeshInstance3D" parent="Props"]

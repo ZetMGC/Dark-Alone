@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-063 объединяет действующие [барные контракты](parallel/bar/CONTRACTS.md) с домашними/дневниковыми ниже. DA-060 и WORKBENCH-01–04 включают одновременное обслуживание/речь, независимые составы и технологию смешивания. [ADR-0026](decisions/0026-bar-home-journal-integration.md) фиксирует совместимость и общие профили; checkpoint/preferences/Home API не меняются барной интеграцией.
+
 Интегрированы 2026-10-27: [домашние поверхности/бытовые действия](parallel/home/CONTRACTS.md) и [семантические пометки дневника](parallel/journal/CONTRACTS.md). Эти документы являются частью действующего контракта main. Прежние Main/Session/InteractionController/FreeRoamCamera и схема верхнего checkpoint не менялись; Journal дополнен annotation API и опциональным annotations в собственном прогрессе, старые данные читаются. Description книги теперь собственный Control/TextParagraph. Подробности/потребители/ограничения указаны по ссылкам; общий check.ps1 включает новые home_target, house_layout, journal_ink.
 
 DA-052 заменяет игровое перемещение по графу ходьбой/локальным фокусом. API AnchorCamera ниже сохранён для старого контракта; новые типы/потребители описаны в разделе DA-052 в конце. [FREE_ROAM](FREE_ROAM.md).

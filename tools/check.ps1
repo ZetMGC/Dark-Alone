@@ -46,6 +46,11 @@ Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res:
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/home_target_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/parallel/home/house_layout_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/journal_ink_test.tscn')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/parallel/bar/drink_core_test.gd')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/parallel/bar/drink_lab_test.gd')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/bar_service_dialogue_test.tscn')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/parallel/bar/workbench_test.tscn')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/release_integration_test.tscn')
 $preferenceDirectory = 'user://preference_tests/process_' + [guid]::NewGuid().ToString('N')
 foreach ($phase in @('write', 'read')) {
   Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/preference_test.tscn', '--', ('--preference-probe=' + $phase), ('--preference-directory=' + $preferenceDirectory))

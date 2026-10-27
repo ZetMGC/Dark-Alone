@@ -135,7 +135,7 @@ func _run() -> void:
 	_expect(interaction.get_target() == counter and counter.is_available(), "Wooden countertop is target without aiming at invisible anchor")
 	_aim(rig, Vector3(-5.5, 0.5, -2))
 	_expect(interaction.get_target() == counter, "Back cabinet maps to workstation")
-	_aim(rig, Vector3(-5.65, 2.25, -2))
+	_aim(rig, Vector3(-5.65, 2.65, -2))
 	_expect(interaction.get_target() == counter, "Back shelves map to workstation")
 	_aim(rig, Vector3(-5.6, 1.06, -2))
 	await _key(KEY_E)

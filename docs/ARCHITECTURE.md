@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-063: текущий бар использует ServicePanel/DrinkWorkbench с тремя DrinkPreparation (подача, смесительный стакан, шейкер), DrinkBottleStock и DrinkSpillSurface; NarrativeSession сохраняет речь в SERVICE. GuestService запечатывает фактический состав и испускает прежнее одноразовое событие смены. Подробные API/потребители — [контракт бара](parallel/bar/CONTRACTS.md), решения/исследование — parallel/bar. Новый дом и Journal annotations коллеги сохранены; общий default-цикл проверяет release_integration_test. [ADR-0026](decisions/0026-bar-home-journal-integration.md).
+
 Интеграция 2026-10-27: main включает DA-062/HOME-02/JOURNAL-02. Дом создаёт отдельный HouseInterior с геометрией/локальными бытовыми действиями, не меняя бар/формат домашнего прогресса. Книга рисует текст через TextParagraph, Journal хранит символьные диапазоны пометок отдельно от представления и передаёт их существующему checkpoint. Контракты — parallel/home/CONTRACTS и parallel/journal/CONTRACTS; проверки подключены к общему runner. Новый EXE этим слиянием не выпускается.
 
 DA-058: InteractionController связывает физическую поверхность с Interactable3D через register_surface и берёт ближайшее попадание, обновляя его при E. Main создаёт логический WorkstationTarget, NPC доступен рядом без рабочего якоря. При ходьбе ray из камеры, у стойки от курсора; legacy графы прежние. WORLD_INTERACTION/ADR-0024.
