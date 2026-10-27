@@ -15,7 +15,7 @@ func show_prepared(result: Dictionary, surface_position: Vector3) -> void:
 	if result.is_empty():
 		return
 	for child in $ServedGlass.get_children():
-		if str(child.name).begins_with("DrinkLayer"):
+		if str(child.name).begins_with("Drink"):
 			$ServedGlass.remove_child(child)
 			child.queue_free()
 	$ServedGlass.visible = true
@@ -53,6 +53,19 @@ func show_prepared(result: Dictionary, surface_position: Vector3) -> void:
 		liquid.position.y = bottom + mesh.height / 2
 		bottom += mesh.height
 		$ServedGlass.add_child(liquid)
+	if float(result.get("technique", {}).get("ice_ml", 0)) > 0:
+		for index in 3:
+			var cube := MeshInstance3D.new()
+			cube.name = "DrinkIce%d" % index
+			var mesh := BoxMesh.new()
+			mesh.size = Vector3.ONE * (0.025 if shot else 0.035)
+			cube.mesh = mesh
+			var ice := StandardMaterial3D.new()
+			ice.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			ice.albedo_color = Color(0.65, 0.85, 0.92, 0.75)
+			cube.material_override = ice
+			cube.position = Vector3((index - 1) * radius * 0.45, minf(height / 2 - 0.015, bottom), 0)
+			$ServedGlass.add_child(cube)
 	$ServedGlass/Label.text = "Напиток подан · шот" if shot else "Напиток подан · стакан"
 
 

@@ -94,6 +94,7 @@ func _run() -> void:
 	_test_service_model()
 	_test_spills()
 	await _test_controls()
+	await _test_mixing_surface()
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.preferences_enabled = false
 	main.checkpoint_enabled = false
@@ -128,7 +129,7 @@ func _run() -> void:
 	var before := bench.preparation.get_volume_ml()
 	await _move(bench, bench.get_item_position(&"test_base") + Vector2(0, 15))
 	await _button(MOUSE_BUTTON_LEFT, true)
-	await _move(bench, Vector2(270, 265))
+	await _move(bench, Vector2(50, 265))
 	await _button(MOUSE_BUTTON_RIGHT, true)
 	for step in 8:
 		bench.advance_pour(0.05)
@@ -168,9 +169,9 @@ func _run() -> void:
 	_expect(bench.preparation.get_snapshot().structure == "homogeneous", "Spoon gesture actually mixes composition")
 	await _drag(bench, &"cup", bench.get_item_position(&"shaker"))
 	_expect(bench.is_in_shaker(), "Transfer portion into shaker")
-	var amount := bench.preparation.get_volume_ml()
+	var amount: float = bench.get_container_snapshot(&"shaker").overall.volume_ml
 	await _drag(bench, &"cup", DrinkWorkbench.SINK.get_center())
-	_expect(bench.is_in_shaker() and bench.preparation.get_volume_ml() == amount, "Empty glass cannot discard contents of shaker")
+	_expect(bench.is_in_shaker() and bench.preparation.get_volume_ml() == 0 and bench.get_container_snapshot(&"shaker").overall.volume_ml == amount, "Empty glass cannot discard independent contents of shaker")
 	var shaker := bench.get_item_position(&"shaker")
 	await _move(bench, shaker + Vector2(0, 25))
 	await _button(MOUSE_BUTTON_LEFT, true)
@@ -180,14 +181,15 @@ func _run() -> void:
 	await _move(bench, Vector2(748, 335))
 	await _button(MOUSE_BUTTON_RIGHT, true)
 	_expect(bench.stream_info().hit, "Shaker return aimed at glass")
-	bench.advance_pour(0.05)
+	for step in 200:
+		bench.advance_pour(0.05)
 	await _button(MOUSE_BUTTON_RIGHT, false)
 	await _button(MOUSE_BUTTON_LEFT, false)
-	_expect(not bench.is_in_shaker() and bench.preparation.get_volume_ml() == amount, "Shaker return conserves portion")
+	_expect(not bench.is_in_shaker() and is_equal_approx(bench.preparation.get_volume_ml(), amount), "Continuous shaker return conserves portion")
 	var operations: Array = bench.preparation.get_snapshot().operations
-	_expect(operations.any(func(item: Dictionary) -> bool: return item.operation == "shake"), "Shaking gesture recorded in recipe history")
+	_expect(bench.preparation.get_snapshot().technique.shaken_s > 0 and operations.any(func(item: Dictionary) -> bool: return item.operation == "transfer_in"), "Shaking provenance survives straining into serving glass")
 	await _snap("03-mixed-workbench")
-	# Дать короткой струе переливания завершиться и в ручном режиме времени теста.
+	# Дать инструментам успокоиться перед передачей.
 	bench.set_process(true)
 	await get_tree().create_timer(0.45).timeout
 	bench.set_process(false)
@@ -356,7 +358,7 @@ func _test_controls() -> void:
 	var endpoints: Array[Vector2] = []
 	for height in [230, 400]:
 		bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
-		bench.drag_to(Vector2(300, height))
+		bench.drag_to(Vector2(50, height))
 		bench.tilt_by(70)
 		endpoints.append(bench.stream_info().end)
 		bench.advance_pour(0.05)
@@ -368,7 +370,7 @@ func _test_controls() -> void:
 	patches.back().volume_ml = -100
 	_expect(bench.get_spill_patches().back().volume_ml > 0, "Spill snapshots are isolated")
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
-	bench.drag_to(Vector2(300, 300))
+	bench.drag_to(Vector2(50, 300))
 	bench.tilt_by(70)
 	bench.advance_pour(0.05)
 	await _snap("04-spill-on-surface")
@@ -376,7 +378,7 @@ func _test_controls() -> void:
 	stock = bench.get_bottle_remaining(&"test_base")
 	waste = bench.get_spilled_ml()
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
-	bench.drag_to(Vector2(300, 300))
+	bench.drag_to(Vector2(50, 300))
 	bench.tilt_by(90)
 	for step in 1000:
 		bench.advance_pour(0.05)
@@ -396,6 +398,72 @@ func _test_controls() -> void:
 	bench.set_active(false)
 	bench.set_active(true)
 	_expect(bench.is_ready_to_deliver() and not bench.request_delivery(), "Reopen preserves staged portion and rejection remains safe")
+	bench.set_active(false)
+	bench.queue_free()
+	await get_tree().process_frame
+
+
+func _test_mixing_surface() -> void:
+	var bench := DrinkWorkbench.new()
+	get_tree().root.add_child(bench)
+	bench.set_active(true)
+	bench.set_process(false)
+	await get_tree().process_frame
+	await _pour(bench, &"test_heavy")
+	var base := bench.preparation.get_snapshot()
+	for ingredient in [&"test_base", &"test_light"]:
+		await _move(bench, bench.get_item_position(ingredient) + Vector2(0, 15))
+		await _button(MOUSE_BUTTON_LEFT, true)
+		await _move(bench, bench.get_item_position(&"mixing") + Vector2(-25, -45))
+		for index in 7:
+			await _button(MOUSE_BUTTON_WHEEL_UP, true)
+		_expect(bench.stream_info().target == &"mixing", "Mouse aims ingredient into independent mixing glass")
+		for step in 30:
+			bench.advance_pour(0.05)
+		await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(bench.preparation.get_snapshot() == base and bench.get_container_snapshot(&"mixing").overall.components.size() == 2, "Preparing premix does not change serving glass")
+	await _drag(bench, &"ice", bench.get_container_rect(&"mixing").get_center())
+	_expect(bench.get_container_snapshot(&"mixing").technique.ice_ml == 30, "Mouse adds ice only to chosen container")
+	await _drag(bench, &"spoon", bench.get_item_position(&"mixing") + Vector2(34, -10))
+	await _move(bench, bench.get_item_position(&"mixing") + Vector2(34, -10))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	for point in [Vector2(520, 480), Vector2(600, 480), Vector2(520, 520), Vector2(600, 520)]:
+		await _move(bench, point)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	var premix := bench.get_container_snapshot(&"mixing")
+	_expect(premix.technique.temperature_c < 20 and premix.technique.dilution_ml > 0 and premix.structure == "homogeneous", "Mouse stirring with ice makes real diluted chilled premix")
+	await _drag(bench, &"spoon", bench.get_item_position(&"cup") + Vector2(34, -10))
+	var stock := bench.get_bottle_remaining(&"test_base")
+	await _move(bench, bench.get_item_position(&"mixing") + Vector2(0, 50))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _move(bench, Vector2(785, 380) - Vector2(63, -8).rotated(deg_to_rad(49)) + Vector2(0, 50))
+	for index in 7:
+		await _button(MOUSE_BUTTON_WHEEL_UP, true)
+	_expect(bench.stream_info().target == &"cup", "Mouse tilts premix over spoon in serving glass")
+	for step in 30:
+		bench.advance_pour(0.05)
+	await _snap("07-premix-layer")
+	await _button(MOUSE_BUTTON_LEFT, false)
+	var result := bench.preparation.get_snapshot()
+	var rest := bench.get_container_snapshot(&"mixing")
+	_expect(result.layers.size() == 2 and result.layers[1].components.size() == 3 and result.layers[0].components.has("test_heavy"), "Premix is added as its own layer containing both ingredients and meltwater")
+	_expect(rest.overall.volume_ml > 0 and rest.technique.ice_ml == premix.technique.ice_ml and is_equal_approx(result.overall.volume_ml + rest.overall.volume_ml, base.overall.volume_ml + premix.overall.volume_ml), "Partial layered pour conserves both containers and leaves spent ice")
+	_expect(bench.get_bottle_remaining(&"test_base") == stock, "Pouring premix never charges source bottle twice")
+	var saved := bench.get_container_snapshot(&"mixing")
+	bench.set_active(false)
+	bench.advance_pour(10)
+	bench.advance_motion(10)
+	bench.set_active(true)
+	_expect(bench.get_container_snapshot(&"mixing") == saved and bench.preparation.get_snapshot() == result, "Pause preserves both independent drafts")
+	# Пролив смеси сохраняет все составляющие, а не превращает её в один материал.
+	bench.begin_drag(&"mixing", bench.get_item_position(&"mixing"))
+	bench.drag_to(Vector2(50, 300))
+	bench.tilt_by(70)
+	var before_waste := bench.get_spilled_ml()
+	for step in 4:
+		bench.advance_pour(0.05)
+	bench.end_drag()
+	_expect(bench.get_spilled_ml() > before_waste and bench.get_spill_patches().back().components.size() == 3, "Spilled premix retains real ingredient composition")
 	bench.set_active(false)
 	bench.queue_free()
 	await get_tree().process_frame
