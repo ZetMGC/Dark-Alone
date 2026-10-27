@@ -10,6 +10,7 @@ const DESIGN := Vector2(1280, 720)
 const MATERIALS := "res://content/drinks/test_materials.json"
 const SERVE_ZONE := Rect2(860, 310, 190, 78)
 const SINK := Rect2(1080, 490, 150, 130)
+const BOTTLE_CAPACITY_ML: float = 500.0
 var preparation: DrinkPreparation
 var _catalog := DrinkMaterialCatalog.new()
 var _positions: Dictionary = {}
@@ -29,7 +30,12 @@ var _pending_flow: float = 0
 var _pending_layered: bool = false
 var _pending_age: float = 0
 var _spilled: float = 0
-var _marks: Array[Vector2] = []
+var _marks: Array[Dictionary] = []
+var bottle_stock := DrinkBottleStock.new()
+var _cursor_travel := Vector2.ZERO
+var _cursor_velocity := Vector2.ZERO
+var _swing: float = 0
+var _swing_velocity: float = 0
 var _spoon_attached: bool = false
 var _in_shaker: bool = false
 var _gesture_distance: float = 0
@@ -56,6 +62,7 @@ func _ready() -> void:
 		_message = "Не удалось загрузить материалы напитков"
 		return
 	_ids = _catalog.get_ingredient_ids()
+	bottle_stock.configure(_catalog, BOTTLE_CAPACITY_ML)
 	for index in _ids.size():
 		_positions[_ids[index]] = Vector2(100 + index * 105, 225)
 		_angles[_ids[index]] = 0.0
@@ -134,6 +141,38 @@ func get_spilled_ml() -> float:
 	return _spilled
 
 
+func get_bottle_remaining(id: StringName) -> float:
+	return bottle_stock.get_remaining(id)
+
+
+func get_spill_patches() -> Array[Dictionary]:
+	return _marks.duplicate(true)
+
+
+func get_bottle_angle(id: StringName) -> float:
+	return float(_angles.get(str(id), 0.0)) + (rad_to_deg(_swing) if id == _dragging and str(id) in _ids else 0.0)
+
+
+func advance_motion(delta: float) -> void:
+	if not _active or not _focused or not is_finite(delta) or delta <= 0:
+		return
+	var dt := minf(delta, 0.05)
+	if str(_dragging) in _ids:
+		var velocity := (_cursor_travel / dt).limit_length(2200)
+		# Бутылка подвешена за горлышко: тело отстаёт от ускорения руки.
+		_swing_velocity += (velocity.x - _cursor_velocity.x) * 0.0012
+		_cursor_velocity = velocity
+		var steps := int(ceil(dt / (1.0 / 120.0)))
+		var step := dt / steps
+		for index in steps:
+			_swing_velocity += (-42 * _swing - 5.5 * _swing_velocity) * step
+			_swing = clampf(_swing + _swing_velocity * step, -0.55, 0.55)
+	_cursor_travel = Vector2.ZERO
+	for patch in _marks:
+		patch.spread = minf(1.0, float(patch.spread) + dt * 1.8)
+	queue_redraw()
+
+
 func is_in_shaker() -> bool:
 	return _in_shaker
 
@@ -151,6 +190,10 @@ func begin_drag(id: StringName, point: Vector2) -> bool:
 	_reversals = 0
 	_last_direction = 0
 	_mixed_this_drag = false
+	_cursor_travel = Vector2.ZERO
+	_cursor_velocity = Vector2.ZERO
+	_swing = 0
+	_swing_velocity = 0
 	if id == &"spoon":
 		_spoon_attached = false
 	queue_redraw()
@@ -170,6 +213,7 @@ func drag_to(point: Vector2) -> void:
 	target.y = clampf(target.y, 165, max_y)
 	_positions[str(_dragging)] = target
 	var movement := target - old
+	_cursor_travel += movement
 	if _dragging == &"spoon" and not _in_shaker and target.distance_to(get_item_position(&"cup") + Vector2(0, 45)) < 100:
 		_gesture_distance += movement.length()
 		if _gesture_distance >= 180 and not _mixed_this_drag and preparation.mix(_next(), &"stir"):
@@ -199,6 +243,10 @@ func end_drag(commit_drop: bool = true) -> void:
 	_flush_pour()
 	var item := _dragging
 	_dragging = &""
+	_swing = 0
+	_swing_velocity = 0
+	_cursor_velocity = Vector2.ZERO
+	_cursor_travel = Vector2.ZERO
 	if _angles.has(str(item)):
 		_angles[str(item)] = 0.0
 	if str(item) in _ids:
@@ -252,25 +300,32 @@ func _next() -> StringName:
 func stream_info() -> Dictionary:
 	if not _angles.has(str(_dragging)):
 		return {}
-	var angle := deg_to_rad(float(_angles[str(_dragging)]))
-	var rate := maxf(0, (rad_to_deg(angle) - 35) / 55.0) * 24.0
+	if str(_dragging) in _ids and get_bottle_remaining(_dragging) < DrinkPreparation.MIN_DOSE_ML:
+		return {}
+	if _dragging == &"shaker" and not _in_shaker:
+		return {}
+	var angle := deg_to_rad(get_bottle_angle(_dragging))
+	var rate := maxf(0, (absf(rad_to_deg(angle)) - 35) / 55.0) * 24.0
 	if rate <= 0:
 		return {}
 	var start := get_item_position(_dragging)
-	var velocity := Vector2.UP.rotated(angle) * (50 + rate * 3)
+	var velocity := Vector2.UP.rotated(angle) * (50 + rate * 3) + _cursor_velocity * 0.08
 	var cup := get_cup_rect()
 	var difference := cup.position.y - start.y
 	var discriminant := velocity.y * velocity.y + 1300 * difference
 	var hit := false
 	var time := 0.0
-	var endpoint := Vector2(start.x, 625)
+	# Глубина на столе определяется положением руки, а не нижней границей экрана.
+	var surface_y := clampf(start.y + 160, 410, 620)
+	var endpoint := Vector2(start.x, surface_y)
 	if difference > 5 and discriminant >= 0:
 		time = (-velocity.y + sqrt(discriminant)) / 650.0
 		endpoint = start + velocity * time + Vector2(0, 325 * time * time)
 		hit = endpoint.x > cup.position.x + 7 and endpoint.x < cup.end.x - 7
 	if not hit:
-		time = (-velocity.y + sqrt(maxf(0, velocity.y * velocity.y + 1300 * (625 - start.y)))) / 650.0
+		time = (-velocity.y + sqrt(maxf(0, velocity.y * velocity.y + 1300 * (surface_y - start.y)))) / 650.0
 		endpoint = start + velocity * time + Vector2(0, 325 * time * time)
+		endpoint.x = clampf(endpoint.x, 22, 1258)
 	return {"start": start, "velocity": velocity, "time": time, "end": endpoint, "hit": hit, "rate": rate, "height": difference}
 
 
@@ -292,9 +347,10 @@ func advance_pour(delta: float) -> void:
 		return
 	if str(_dragging) not in _ids:
 		return
-	var amount: float = stream.rate * dt
+	var amount := bottle_stock.withdraw(_dragging, float(stream.rate) * dt)
 	if stream.hit and not _in_shaker:
-		var layered: bool = stream.rate <= (14.0 if _spoon_attached else 8.0) and stream.height <= (180 if _spoon_attached else 90)
+		var over_spoon: bool = _spoon_attached and absf(float(stream.end.x) - _spoon_position().x) <= 44
+		var layered: bool = over_spoon and stream.rate <= 14.0 and stream.height <= 180 and absf(_swing_velocity) < 0.6
 		var effective_flow: float = stream.rate * (0.7 if _spoon_attached else 1.0)
 		if _pending_id != _dragging or layered != _pending_layered or absf(_pending_flow - effective_flow) > 0.5:
 			_flush_pour()
@@ -310,6 +366,9 @@ func advance_pour(delta: float) -> void:
 		_flush_pour()
 		_spill(amount, stream.end)
 		_message = "Мимо стакана"
+	if get_bottle_remaining(_dragging) < DrinkPreparation.MIN_DOSE_ML:
+		_flush_pour()
+		_message = "Бутылка пуста"
 	queue_redraw()
 
 
@@ -323,17 +382,30 @@ func _flush_pour() -> void:
 	if amount >= DrinkPreparation.MIN_DOSE_ML and preparation.pour(_next(), _pending_id, amount, _pending_flow, _pending_layered):
 		accepted = preparation.get_volume_ml() - before
 	if _pending > accepted:
-		_spill(_pending - accepted, get_item_position(&"cup") + Vector2(50, 160))
+		var cup := get_cup_rect()
+		_spill(_pending - accepted, Vector2(cup.end.x + 8, maxf(410, cup.end.y - 3)))
 	_pending = 0
 	_pending_age = 0
 
 
 func _spill(amount: float, point: Vector2) -> void:
 	_spilled += amount
-	if _marks.is_empty() or point.distance_to(_marks.back()) > 8:
-		_marks.append(point.clamp(Vector2(25, 405), Vector2(1255, 630)))
-		if _marks.size() > 24:
-			_marks.pop_front()
+	if SINK.grow(-10).has_point(point):
+		return
+	var ground := point.clamp(Vector2(22, 410), Vector2(1258, 620))
+	var color := Color(0.45, 0.35, 0.2, 0.7)
+	var id := _pending_id if _dragging == &"" else _dragging
+	if str(id) in _ids:
+		var material := _catalog.get_ingredient(id)
+		color = Color(material.color[0], material.color[1], material.color[2], 0.7)
+	for patch in _marks:
+		if ground.distance_to(patch.position) < 32:
+			patch.volume_ml += amount
+			return
+	if _marks.size() < 64:
+		_marks.append({"position": ground, "volume_ml": amount, "color": color, "spread": 0.0})
+	else:
+		_marks.back().volume_ml += amount
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -346,12 +418,13 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
-				if Rect2(35, 425, 90, 190).has_point(_pointer):
+				var item := _hit_item(_pointer)
+				if item != &"":
+					begin_drag(item, _pointer)
+				elif Rect2(35, 425, 90, 190).has_point(_pointer):
 					select_vessel(&"test_shot")
 				elif Rect2(130, 425, 90, 190).has_point(_pointer):
 					select_vessel(&"test_glass")
-				else:
-					begin_drag(_hit_item(_pointer), _pointer)
 			else:
 				end_drag()
 		elif event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
@@ -365,15 +438,19 @@ func _gui_input(event: InputEvent) -> void:
 func _hit_item(point: Vector2) -> StringName:
 	var spoon := _spoon_position()
 	var nearest := Geometry2D.get_closest_point_to_segment(point, spoon, spoon + Vector2(-65, 75))
-	if point.distance_to(spoon) < 20 or point.distance_to(nearest) < 13:
+	var hits_spoon := point.distance_to(spoon) < 20 or point.distance_to(nearest) < 13
+	if _spoon_attached and hits_spoon:
+		_positions["spoon"] = spoon
+		return &"spoon"
+	if get_cup_rect().grow(10).has_point(point):
+		return &"cup"
+	if hits_spoon:
 		_positions["spoon"] = spoon
 		return &"spoon"
 	if Rect2(get_item_position(&"shaker") - Vector2(40, 5), Vector2(80, 135)).has_point(point):
 		return &"shaker"
-	if get_cup_rect().grow(10).has_point(point):
-		return &"cup"
 	for id in _ids:
-		var transform := Transform2D(deg_to_rad(float(_angles[id])), _positions[id])
+		var transform := Transform2D(deg_to_rad(get_bottle_angle(StringName(id))), _positions[id])
 		if Rect2(-35, -12, 70, 170).has_point(transform.affine_inverse() * point):
 			return StringName(id)
 	return &""
@@ -386,6 +463,7 @@ func _spoon_position() -> Vector2:
 func _process(delta: float) -> void:
 	if not _active or not _focused:
 		return
+	advance_motion(delta)
 	advance_pour(delta)
 	if _transfer_time > 0:
 		_transfer_time = maxf(0, _transfer_time - delta)
@@ -436,16 +514,23 @@ func _draw() -> void:
 	draw_circle(SINK.get_center(), 15, Color(0.025, 0.035, 0.03))
 	_text(SINK.position + Vector2(42, -12), "СЛИВ")
 	_draw_rack()
-	for mark in _marks:
-		draw_circle(mark, 8, Color(0.35, 0.26, 0.16, 0.6))
+	for patch in _marks:
+		var radius := clampf(7 + sqrt(float(patch.volume_ml)) * 3.5, 7, 55) * lerpf(0.45, 1.0, float(patch.spread))
+		draw_set_transform_matrix(_view * Transform2D(0, Vector2(radius, radius * 0.3), 0, patch.position))
+		draw_circle(Vector2.ZERO, 1, patch.color)
+		draw_circle(Vector2(0.6, -0.35), 0.5, patch.color)
+	_local()
 	if preparation == null:
 		return
 	for id in _ids:
 		if StringName(id) != _dragging:
 			_draw_bottle(StringName(id))
-	_draw_cup()
-	_draw_spoon()
 	_draw_shaker()
+	if not _spoon_attached:
+		_draw_spoon()
+	_draw_cup()
+	if _spoon_attached:
+		_draw_spoon()
 	if str(_dragging) in _ids:
 		_draw_bottle(_dragging)
 	_draw_stream()
@@ -474,16 +559,29 @@ func _draw_rack() -> void:
 
 func _draw_bottle(id: StringName) -> void:
 	var item := _catalog.get_ingredient(id)
-	_local(get_item_position(id), deg_to_rad(float(_angles[str(id)])))
+	if _dragging == id:
+		var ground := Vector2(get_item_position(id).x, clampf(get_item_position(id).y + 160, 410, 620))
+		draw_set_transform_matrix(_view * Transform2D(0, Vector2(31, 8), 0, ground))
+		draw_circle(Vector2.ZERO, 1, Color(0.02, 0.025, 0.02, 0.35))
+	_local(get_item_position(id), deg_to_rad(get_bottle_angle(id)))
 	draw_colored_polygon(PackedVector2Array([Vector2(-12, 0), Vector2(12, 0), Vector2(12, 38), Vector2(34, 58), Vector2(34, 153), Vector2(-34, 153), Vector2(-34, 58), Vector2(-12, 38)]), Color(0.2, 0.27, 0.22))
-	draw_rect(Rect2(-27, 67, 54, 75), Color(item.color[0], item.color[1], item.color[2], 0.85))
+	var fill := get_bottle_remaining(id) / BOTTLE_CAPACITY_ML
+	var color := Color(item.color[0], item.color[1], item.color[2], 0.85)
+	# Поверхность жидкости отстаёт от качания стекла, силуэт остаётся внутри корпуса.
+	var slosh := clampf(_swing_velocity * 3, -9, 9) if id == _dragging else 0.0
+	var level := 147.0 - fill * 92.0
+	if fill > 0:
+		draw_colored_polygon(PackedVector2Array([Vector2(-27, clampf(level + slosh, 55, 147)), Vector2(27, clampf(level - slosh, 55, 147)), Vector2(27, 147), Vector2(-27, 147)]), color)
 	draw_rect(Rect2(-28, 87, 56, 37), Color(0.67, 0.62, 0.47))
 	_text(Vector2(-10, 113), str(_ids.find(str(id)) + 1), Color(0.14, 0.17, 0.13), 24)
 	draw_line(Vector2(-9, 7), Vector2(-9, 40), Color(0.56, 0.62, 0.51), 3)
 	draw_line(Vector2(-13, 0), Vector2(13, 0), Color(0.64, 0.65, 0.55), 4)
+	# Узкое смотровое окно не перекрывается этикеткой.
+	draw_rect(Rect2(20, 62, 5, 80), Color(0.08, 0.12, 0.1, 0.7))
+	draw_rect(Rect2(20, 142 - fill * 80, 5, fill * 80), color.lightened(0.25))
 	_local()
 	if _dragging == id:
-		_text(Vector2(32, 153), str(item.title).trim_prefix("[TEST] "), Color(0.8, 0.75, 0.61), 18)
+		_text(Vector2(32, 153), "Бутылка пуста" if fill <= 0 else str(item.title).trim_prefix("[TEST] "), Color(0.8, 0.75, 0.61), 18)
 
 
 func _draw_cup() -> void:
@@ -530,6 +628,7 @@ func _draw_stream() -> void:
 	for index in 18:
 		var time: float = stream.time * index / 17.0
 		points.append(stream.start + stream.velocity * time + Vector2(0, 325 * time * time))
+	points[points.size() - 1] = stream.end
 	if stream.hit:
 		var rect := get_cup_rect()
 		var fraction: float = preparation.get_volume_ml() / float(preparation.get_snapshot().vessel.capacity_ml)
