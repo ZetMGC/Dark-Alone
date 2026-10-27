@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "test_content": true,
+  "ingredients": [
+    {
+      "id": "test_heavy",
+      "title": "[TEST] Плотный компонент",
+      "density": 1.3,
+      "viscosity": 0.9,
+      "color": [
+        1,
+        0,
+        0,
+        1
+      ],
+      "strength": 0,
+      "taste": {
+        "sweet": 1,
+        "sour": 0,
+        "bitter": 0
+      },
+      "mix_group": "test_aqueous",
+      "tags": []
+    },
+    {
+      "id": "test_base",
+      "title": "[TEST] Базовый компонент",
+      "density": 1.0,
+      "viscosity": 0.1,
+      "color": [
+        0,
+        1,
+        0,
+        0.8
+      ],
+      "strength": 0.2,
+      "taste": {
+        "sweet": 0,
+        "sour": 0.6,
+        "bitter": 0.2
+      },
+      "mix_group": "test_aqueous",
+      "tags": [
+        "test_base_tag"
+      ]
+    },
+    {
+      "id": "test_light",
+      "title": "[TEST] Лёгкий компонент",
+      "density": 0.8,
+      "viscosity": 0.05,
+      "color": [
+        0,
+        0,
+        1,
+        0.6
+      ],
+      "strength": 0.6,
+      "taste": {
+        "sweet": 0,
+        "sour": 0.2,
+        "bitter": 0.4
+      },
+      "mix_group": "test_aqueous",
+      "tags": []
+    },
+    {
+      "id": "test_equal",
+      "title": "[TEST] Плотный текучий компонент",
+      "density": 1.3,
+      "viscosity": 0,
+      "color": [
+        1,
+        1,
+        0,
+        1
+      ],
+      "strength": 0,
+      "taste": {
+        "sweet": 0.5,
+        "sour": 0,
+        "bitter": 0.1
+      },
+      "mix_group": "test_aqueous",
+      "tags": []
+    },
+    {
+      "id": "test_oil",
+      "title": "[TEST] Отдельная фаза",
+      "density": 0.9,
+      "viscosity": 0.6,
+      "color": [
+        1,
+        0.7,
+        0,
+        0.9
+      ],
+      "strength": 0,
+      "taste": {
+        "sweet": 0.2,
+        "sour": 0,
+        "bitter": 0.3
+      },
+      "mix_group": "test_separate",
+      "tags": [
+        "test_phase_tag"
+      ]
+    },
+    {
+      "id": "test_trace",
+      "title": "[TEST] Добавка-маркер",
+      "density": 1.05,
+      "viscosity": 0.1,
+      "color": [
+        0.3,
+        0.1,
+        0.2,
+        1
+      ],
+      "strength": 0,
+      "taste": {
+        "sweet": 0.1,
+        "sour": 0.2,
+        "bitter": 0.3
+      },
+      "mix_group": "test_aqueous",
+      "tags": [
+        "test_additive"
+      ]
+    }
+  ],
+  "vessels": [
+    {
+      "id": "test_shot",
+      "title": "[TEST] Шот",
+      "capacity_ml": 60
+    },
+    {
+      "id": "test_glass",
+      "title": "[TEST] Стакан",
+      "capacity_ml": 240
+    }
+  ]
+}

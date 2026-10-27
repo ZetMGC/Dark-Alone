@@ -19,3 +19,7 @@ DialogueBubblePanel: `set_response_input_enabled(enabled: bool) -> void` бло�
 ServicePanel: `set_conversation_context(active: bool) -> void` выбирает компактную нижнюю правую карточку без Shade при активном Runner, иначе прежнее полное меню. В компактном варианте показаны кнопки без отдельных описаний/разделителей, описания доступны как tooltip; оба TEST-напитка помещаются без прокрутки. Это только отображение; истинное состояние живёт в Session. `NavigationHUD.update_workstation(rig, exploration, dialogue: bool=false)` добавляет необязательный флаг для подсказок/видимости при разговоре, старые вызовы совместимы. Screen/Menu, используемые домом, сохраняются. FreeRoamCamera не изменялась.
 
 Потребители: scripts/main/main.gd, scripts/session/narrative_session.gd, scripts/ui/{dialogue_bubble_panel,service_panel,navigation_hud}.gd; новый bar_service_dialogue_test и wrapper check_bar_service.ps1; тематические документы. Существующие тесты моделей/всего цикла остаются отдельной регрессией. Общие check.ps1/export runner намеренно не меняются в параллельном раунде; новый тест подключит координатор.
+
+## DRINK-CORE-01: независимый контракт приготовления
+
+[DRINK_CORE](DRINK_CORE.md) фиксирует новые DrinkMaterialCatalog/DrinkPreparation, JSON материалов/сосудов, команды с идемпотентными ID и снимок результата. Текущие потребители — собственные тесты/TEST-стенд; Main/GuestService/дом не подключаются и прежние публичные интерфейсы не меняются. При дальнейшей интеграции рецепты/подача читают снимок, не изменяя порцию задним числом.
