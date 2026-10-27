@@ -4,6 +4,13 @@ extends Node3D
 
 signal work_requested
 signal journal_requested
+const SURFACE_TARGET = preload("res://scripts/home/targets/home_surface_target.gd")
+const SURFACES := {
+	"Desk": ["Desk", "DeskLegLeft", "DeskLegRight", "Book"],
+	"Window": ["Window", "WindowBar"],
+	"Bed": ["BedFrame", "Mattress", "Pillow"],
+	"Door": ["Door"],
+}
 var state := HomeState.new()
 var _session: NarrativeSession
 var _bar_hud: NavigationHUD
@@ -28,6 +35,8 @@ func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: Home
 		state = shared_state
 	state.changed.connect(_refresh)
 	interaction.configure(rig.view)
+	if free_roam and not _configure_surfaces():
+		return false
 	interaction.prompt_changed.connect(func(text: String) -> void: %Prompt.text = text)
 	rig.transition_started.connect(func(_from: StringName, _to: StringName) -> void: _refresh())
 	rig.anchor_reached.connect(func(_id: StringName) -> void: _refresh())
@@ -87,23 +96,76 @@ func _has_inspection() -> bool:
 	return _inspection != &"" or _event != &""
 
 
+func _world_enabled() -> bool:
+	return _session != null and _at_home and _session.mode == NarrativeSession.HOME and not _has_inspection() and not rig.is_transitioning and rig.view.is_current()
+
+
+func _process(_delta: float) -> void:
+	if _session == null or not (rig as FreeRoamCamera).free_roam_enabled:
+		return
+	interaction.set_enabled(_world_enabled())
+	if interaction.pointer_mode:
+		%Prompt.position = (get_viewport().get_mouse_position() + Vector2(16, 20)).clamp(Vector2.ZERO, get_viewport().get_visible_rect().size - %Prompt.size)
+
+
+func _configure_surfaces() -> bool:
+	interaction.reach = 3.0
+	# Прежний вход смотрел в комнату: в локальном ракурсе дверь должна быть видна.
+	rig.get_anchor(&"home_entry").rotation_degrees = Vector3(0, 180, 0)
+	for object_name: String in SURFACES:
+		var object := get_node_or_null("Objects/" + object_name) as HomeObject
+		if object == null or rig.get_anchor(object.required_anchor) == null:
+			push_error("Home: неверный предмет/ракурс " + object_name)
+			return false
+		var target := SURFACE_TARGET.new()
+		target.name = object_name + "SurfaceTarget"
+		target.collision_layer = 0
+		target.collision_mask = 0
+		target.monitoring = false
+		target.rig = rig
+		target.object = object
+		target.context_allowed = _world_enabled
+		add_child(target)
+		target.activated.connect(_use_surface.bind(object))
+		for part: String in SURFACES[object_name]:
+			var body := get_node_or_null("Geometry/" + part + "/Body") as CollisionObject3D
+			if not interaction.register_surface(body, target):
+				push_error("Home: отсутствует коллизия Geometry/" + part + "/Body")
+				return false
+	return true
+
+
+func _use_surface(object: HomeObject) -> void:
+	if not _world_enabled():
+		return
+	if (rig as FreeRoamCamera).focus_active:
+		if rig.current_anchor_id == object.required_anchor:
+			inspect(object.object_id)
+	else:
+		rig.request_move(object.required_anchor)
+
+
 func _refresh() -> void:
 	if _session == null:
 		return
-	var enabled := _at_home and _session.mode == NarrativeSession.HOME and not _has_inspection()
+	var enabled := _at_home and _session.mode == NarrativeSession.HOME and not _has_inspection() and rig.view.is_current()
 	rig.set_controls_enabled(enabled)
 	interaction.set_enabled(enabled and not rig.is_transitioning)
+	var walking := (rig as FreeRoamCamera).free_roam_enabled
+	interaction.pointer_mode = walking and (rig as FreeRoamCamera).focus_active
 	var anchors := rig.get_anchors()
 	for index in anchors.size():
-		anchors[index].set_available(rig.can_move_to(anchors[index].anchor_id))
+		anchors[index].set_available(not walking and rig.can_move_to(anchors[index].anchor_id))
 		(%Destinations.get_child(index) as Button).disabled = not rig.can_move_to(anchors[index].anchor_id)
 	for object: HomeObject in $Objects.get_children():
 		object.set_available(enabled and not rig.is_transitioning and rig.current_anchor_id == object.required_anchor)
+		if walking:
+			object.collision_layer = 0
 	var anchor := rig.get_anchor(rig.current_anchor_id)
 	%Location.text = "ДОМ · " + anchor.display_name if anchor != null else "ДОМ"
 	%Observed.text = "[TEST] Осмотрено: %d / 4" % state.get_observed_ids().size()
 	%Work.disabled = not enabled or rig.is_transitioning or rig.current_anchor_id != &"home_entry"
-	%Work.tooltip_text = "Вернитесь к двери (1), чтобы выйти на работу."
+	%Work.tooltip_text = "Подойдите к двери и нажмите E, чтобы открыть действия у выхода."
 	%Event.visible = not state.get_available_events().is_empty()
 	%Event.disabled = not enabled or rig.is_transitioning
 	%Journal.disabled = not enabled or rig.is_transitioning
@@ -118,8 +180,11 @@ func _refresh() -> void:
 		%Work.visible = rig.current_anchor_id == &"home_entry"
 		%Event.visible = focused and not state.get_available_events().is_empty()
 		$HomeHUD/Screen/Reticle.visible = not focused and not _has_inspection()
-		%Prompt.visible = not focused and not _has_inspection()
 		%MovementHint.visible = not focused and not _has_inspection()
+		%Prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if focused else HORIZONTAL_ALIGNMENT_CENTER
+		if not focused:
+			%Prompt.position = get_viewport().get_visible_rect().size * 0.5 + Vector2(-320, 24)
+		%Prompt.visible = enabled and not rig.is_transitioning
 
 
 func _move(id: StringName) -> void:
@@ -128,7 +193,7 @@ func _move(id: StringName) -> void:
 
 
 func inspect(id: StringName) -> bool:
-	if _session.mode != NarrativeSession.HOME or rig.is_transitioning or _has_inspection():
+	if not _world_enabled():
 		return false
 	for object: HomeObject in $Objects.get_children():
 		if object.object_id == id and object.is_available():
@@ -141,7 +206,7 @@ func inspect(id: StringName) -> bool:
 
 
 func open_event() -> bool:
-	if _session.mode != NarrativeSession.HOME or rig.is_transitioning or _has_inspection():
+	if not _world_enabled():
 		return false
 	if (rig as FreeRoamCamera).free_roam_enabled and not (rig as FreeRoamCamera).focus_active:
 		return false
@@ -179,14 +244,14 @@ func close_inspection(commit: bool) -> bool:
 
 
 func request_work() -> bool:
-	if _session.mode != NarrativeSession.HOME or _has_inspection() or rig.is_transitioning or rig.current_anchor_id != &"home_entry":
+	if not _world_enabled() or rig.current_anchor_id != &"home_entry":
 		return false
 	work_requested.emit()
 	return true
 
 
 func handle_input(event: InputEvent) -> bool:
-	if _session == null or _session.mode != NarrativeSession.HOME or event.is_echo():
+	if _session == null or _session.mode != NarrativeSession.HOME or event.is_echo() or not rig.view.is_current():
 		return false
 	if event.is_action_pressed("toggle_menu") and _has_inspection():
 		close_inspection(false)
@@ -195,8 +260,7 @@ func handle_input(event: InputEvent) -> bool:
 		return true
 	if event.is_action_pressed("interact"):
 		if not _has_inspection():
-			if not (rig as FreeRoamCamera).try_focus():
-				interaction.try_interact()
+			interaction.try_interact()
 		return true
 	if (rig as FreeRoamCamera).free_roam_enabled:
 		return false
