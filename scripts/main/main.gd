@@ -8,7 +8,9 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export_range(1, 24) var shift_budget: int = 2
 @export var checkpoint_enabled: bool = true
 @export var free_roam_enabled: bool = true
+@export var preferences_enabled: bool = true
 var checkpoint_store := CheckpointStore.new()
+var preference_store := PreferenceStore.new()
 @export var drink_options: Array[Dictionary] = [
 	{"id": "test_water", "title": "[TEST] Вода", "description": "Стакан прохладной воды."},
 	{"id": "test_house_drink", "title": "[TEST] Напиток бара", "description": "Напиток бара в простом стакане."}
@@ -27,6 +29,8 @@ var _error_menu: bool = false
 var _restart_pending: bool = false
 var _home: HomeExploration
 var _checkpoint_message: String = ""
+var _preferences: PreferenceController
+var _preferences_handoff: bool = false
 
 
 func _ready() -> void:
@@ -35,6 +39,13 @@ func _ready() -> void:
 		var context: Variant = get_tree().get_meta(RUN_HANDOFF)
 		if context is Dictionary and context.get("scene") == scene_file_path and context.get("free_roam_enabled") is bool:
 			free_roam_enabled = context.free_roam_enabled
+		if context is Dictionary and context.get("scene") == scene_file_path and context.has("preferences_enabled"):
+			if not context.preferences_enabled is bool or not context.get("preference_store") is PreferenceStore:
+				_fail_setup("Неверная передача настроек игрока.")
+				return
+			preferences_enabled = context.preferences_enabled
+			preference_store = context.preference_store
+			_preferences_handoff = true
 	(_rig as FreeRoamCamera).free_roam_enabled = free_roam_enabled
 	($DialoguePanel as DialogueBubblePanel).bubble_enabled = free_roam_enabled
 	($DialoguePanel as DialogueBubblePanel).configure_speaker(_rig.view, _trigger)
@@ -145,6 +156,10 @@ func _ready() -> void:
 	$DisplaySettings.configure_controls(_hud)
 	$DialogueTrigger/Body.configure_controls(_hud)
 	_rig.configure_controls(_hud)
+	_preferences = PreferenceController.new()
+	_preferences.name = "PreferenceController"
+	add_child(_preferences)
+	_preferences.configure(preference_store, $Presentation, _rig, $JournalPanel, $DisplaySettings, _hud, preferences_enabled, not _preferences_handoff)
 	_hud.new_game_requested.connect(_new_game_from_menu)
 	if checkpoint_enabled and save_on_ready:
 		_checkpoint_message = "Автосохранение: начало смены %d." % number if checkpoint_store.save_checkpoint(number, _session.journal, _home.state, catalog) else checkpoint_store.last_error
@@ -224,13 +239,15 @@ func _restart_after_commute() -> void:
 func _reload_shift(keep_journal: bool = false) -> bool:
 	if get_tree().has_meta(RUN_HANDOFF):
 		return false
+	if _preferences != null:
+		_preferences.flush()
 	if not keep_journal and checkpoint_enabled and not checkpoint_store.clear_checkpoint():
 		_checkpoint_message = checkpoint_store.last_error
 		_update_checkpoint_label()
 		_hud.show_notice(checkpoint_store.last_error)
 		return false
 	_restart_pending = true
-	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled}
+	var handoff := {"scene": scene_file_path, "checkpoint_enabled": checkpoint_enabled, "checkpoint_store": checkpoint_store, "fresh": not keep_journal, "free_roam_enabled": free_roam_enabled, "preferences_enabled": preferences_enabled, "preference_store": preference_store}
 	if keep_journal:
 		handoff.merge({"journal": _session.journal, "home_state": _home.state, "shift": _session.shift_number + 1})
 	get_tree().set_meta(RUN_HANDOFF, handoff)

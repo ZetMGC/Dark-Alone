@@ -41,6 +41,11 @@ Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res:
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/checkpoint_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/free_roam_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/dialogue_bubble_test.tscn')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/preference_test.tscn')
+$preferenceDirectory = 'user://preference_tests/process_' + [guid]::NewGuid().ToString('N')
+foreach ($phase in @('write', 'read')) {
+  Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/preference_test.tscn', '--', ('--preference-probe=' + $phase), ('--preference-directory=' + $preferenceDirectory))
+}
 $checkpointDirectory = 'user://checkpoint_tests/process_' + [guid]::NewGuid().ToString('N')
 foreach ($phase in @('write', 'read')) {
   Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/checkpoint_test.tscn', '--', ('--checkpoint-probe=' + $phase), ('--checkpoint-directory=' + $checkpointDirectory))

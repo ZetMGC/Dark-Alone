@@ -182,6 +182,18 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
+[node name="PreferenceStatus" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = "Настройки сохраняются автоматически."
+
+[node name="ResetPreferences" type="Button" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Сбросить настройки"
+tooltip_text = "Исходные звук, изображение, камера, книга и окно. Прогресс игры сохранится."
+
 [node name="CheckpointStatus" type="Label" parent="Screen/Menu/Center/Content/SettingsScroll/Settings"]
 unique_name_in_owner = true
 layout_mode = 2

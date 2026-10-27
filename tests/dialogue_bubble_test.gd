@@ -55,6 +55,7 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"off"
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	var rig: FreeRoamCamera = main.get_node("AnchorCamera")

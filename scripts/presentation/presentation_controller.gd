@@ -1,5 +1,6 @@
 class_name PresentationController
 extends CanvasLayer
+signal preferences_changed
 ## Только оформление и настройки восприятия; не хранит игровой прогресс.
 
 static var _retro_enabled: bool = true
@@ -41,6 +42,7 @@ func set_retro_enabled(value: bool) -> void:
 	$Screen.visible = value
 	if is_instance_valid(_retro_control):
 		_retro_control.set_pressed_no_signal(value)
+	preferences_changed.emit()
 
 
 func is_retro_enabled() -> bool:
@@ -54,6 +56,7 @@ func set_image_detail(value: StringName) -> bool:
 	_apply_image_detail()
 	if is_instance_valid(_detail_control):
 		_detail_control.select([&"adaptive", &"native", &"classic"].find(value))
+	preferences_changed.emit()
 	return true
 
 
@@ -75,6 +78,7 @@ func set_ambience_gain(value: float) -> void:
 	_update_label()
 	if is_instance_valid(_volume_control):
 		_volume_control.set_value_no_signal(_ambience_gain)
+	preferences_changed.emit()
 
 
 func get_ambience_gain() -> float:

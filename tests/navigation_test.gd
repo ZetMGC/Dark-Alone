@@ -26,6 +26,7 @@ func _run() -> void:
 	)
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_enabled = false
+	main.preferences_enabled = false
 	main.free_roam_enabled = false
 	root.add_child(main)
 	await process_frame

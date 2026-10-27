@@ -92,6 +92,7 @@ func _run() -> void:
 	var store := CheckpointStore.new("user://checkpoint_tests/roam_" + str(Time.get_ticks_usec()))
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_store = store
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	var rig: FreeRoamCamera = main.get_node("AnchorCamera")
@@ -225,6 +226,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	main = (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
 	main.checkpoint_store = CheckpointStore.new(store.get_path().get_base_dir())
+	main.preferences_enabled = false
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	rig = main.get_node("AnchorCamera")
