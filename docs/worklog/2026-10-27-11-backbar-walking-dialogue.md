@@ -19,9 +19,17 @@ Godot 4.7.2.stable.official.ed1daf0bf, Windows, Compatibility/RTX 5060.
 | Профильные headless после изменения поведения | PASS world_target 26, dialogue_bubble 109, free_roam 67; artifacts/da059-*.log |
 | tools/check.ps1 | PASS всех наборов до финального уточнения ракурса; artifacts/da059-regression.log |
 | GPU с capture-dir | PASS world_target 29, dialogue_bubble 116; artifacts/da059-*-gpu.log |
-| GPU --small | Проверяется финальная поза/геометрия; результат дополнить ниже |
+| GPU --small | PASS мир 29, пеший цикл 71 до последнего уточнения декоративных бутылок/дальности отхода; artifacts/da059-*-small.log |
+| Финальный GPU 1280×720 | PASS мир 31, включая 3 PNG, поверхность/полки/корпус; artifacts/da059-final-target-gpu.log |
 
-Чистый Git archive, окончательный экспорт/ZIP ещё не проверены. Не считать задачу done до них.
+Итоговый код d1749eda66e6199707ebc16b201dd7f61c744887.
+
+- Чистый Git archive без .godot: весь tools/check.ps1 PASS, включая мир 28, речь 109, пеший цикл 67; artifacts/da059-clean-source.log.
+- tools/build_windows.ps1 PASS: builds/windows-20261027-145926-b50f09db.zip, manifest source_dirty=false; artifacts/da059-build.log.
+- tools/check_windows_export.ps1 -BuildDirectory builds/windows-20261027-145926-b50f09db -Graphics PASS: мир 28/28, речь 109/111, пеший цикл 67/68, checkpoint 51/53 + процессы 2/5, настройки 30/34 + процессы 2/3 + GPU read 4, прежний цикл 50, книга 51, экран 46, лица 22/38, детализация 18. artifacts/da059-export.log; builds/validation-2ebd1f51ebf645ef9ca2b26c4bc9ca49.
+- Архив распакован в отдельную папку builds/da059-zip-check: все SHA256 совпали, обычный EXE --headless --quit-after 5 завершился без ошибок; artifacts/da059-zip-startup.log.
+- Просмотрены PNG задней поверхности в 1280×720/960×600, пузырёк голоса за спиной; исправлена пересекающая полку высота декоративных бутылок. Финальный ракурс показывает рабочую поверхность, подписи читаемы.
+- git diff --check и относительные ссылки новых документов PASS. Последующий коммит меняет только итоговую документацию.
 
 ## Решения и ограничения
 
@@ -29,4 +37,4 @@ Godot 4.7.2.stable.official.ed1daf0bf, Windows, Compatibility/RTX 5060.
 
 ## Продолжение
 
-Завершить чистые проверки/экспорт и обновить итог этой записи/STATUS/BACKLOG. После этого следующий конкретный шаг — согласовать простой процесс DA-060 и изменить контракт Session, чтобы обслуживание не закрывало реплику. Готовить только технический TEST-контент. STATUS и BACKLOG обновлены: да, пока in_progress.
+Задача завершена. Следующий конкретный шаг — пройти новый билд вручную и согласовать простой процесс DA-060 и изменить контракт Session, чтобы обслуживание не закрывало реплику. Готовить только технический TEST-контент. STATUS и BACKLOG обновлены: да, done для DA-059; DA-060 остаётся todo. В main не вливалось, релиз не публиковался.
