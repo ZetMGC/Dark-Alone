@@ -158,3 +158,15 @@ Windows Desktop: tools/build_windows.ps1 PASS, builds/windows-20261027-181941-17
 - git diff --check PASS. Тесты отключают реальные checkpoint/preferences; пользовательские файлы не меняются.
 
 Границы: коэффициенты температуры/таяния/аэрации TEST, обработка жестами ускорена, passive melting/heat/diffusion не моделируются; стрейнер/крышка автоматические, ведёрко льда бесконечное, тепловая масса и точная физика пены не считаются. Рецепты/джиггер/гарниши/растирание/реакции/склад и сохранение приготовления следующие этапы. Контракты и решения записаны локально; общие реестры сведёт координатор. Следующий конкретный шаг — TEST-рецепты/допуски и дозировка поверх независимых составов и технологии, без изменения домашнего модуля.
+
+## WORKBENCH-04: итоговая проверка и передача
+
+Код 83f3cedc52837873bc8f8816371ca1a0354427c8, done. Чистый git archive без исходного .godot: artifacts/mixing-clean-83f3ced. PASS: tools/check.ps1, check_drink_core.ps1 (837/0 и lab 5/0), check_workbench.ps1 (119/0), check_bar_service.ps1 (52/0). Логи artifacts/mixing-clean-{check,check_drink_core,check_workbench,check_bar_service}.log.
+
+Windows Desktop tools/build_windows.ps1 PASS: builds/windows-20261027-221632-225e3fd9.zip, source_revision=83f3ced, source_dirty=false. Распакован в artifacts/mixing-unpacked-83f3ced, все SHA256 по manifest проверены; EXE --headless --quit-after 5 без ошибок.
+
+После чистых проверок только во временной копии integration_test main_scene изменена на res://tests/parallel/bar/workbench_test.tscn (обычный release-template запрещает path overrides). export-release Windows Validation PASS. EXE: headless 119/0, GPU 1280×720 126/0, GPU 960×600 126/0; логи/семь PNG artifacts/mixing-validation-83f3ced. 07-premix-layer из малой экспортированной версии просмотрен: носик/струя/верхний составной слой/остающийся лёд видны. Рабочий project.godot и общие runner не менялись.
+
+Все 14 путей относительно e351a9a внутри карточки: модель/UI/production-данные/ледяной показ у гостя/собственные тесты и документы. Main/сцены/дом/журнал/сохранения/preferences/общие реестры не затронуты. Новых зависимостей/ресурсов, требующих .uid, нет. git diff --check PASS. Последующий коммит только итоговый статус/передача/результаты, проверенный игровой SHA остаётся источником сборки. Ветка передаётся для ревью; main/релиз не меняются.
+
+Продолжение: TEST-каталог рецептов с допусками и дозировка/джиггер на фактическом составе и технологии; новое бытовое/сюжетное содержание не требуется. При проектировании учитывать BARTENDING_RESEARCH: коэффициенты условны, льдогенерация бесконечная TEST, passive тепловые процессы/точная пена/отдельная работа стрейнером/реальная химия пока не реализованы. Схема сохранений не расширялась. Общие STATUS/BACKLOG/ADR/TESTING сведёт координатор по исключению AGENTS/PARALLEL_WORK.
