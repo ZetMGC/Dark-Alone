@@ -138,6 +138,7 @@ func _run() -> void:
 		glossary.terms.append({"id": "test_cluster_%d" % index, "title": "[TEST] " + ["Свет", "Шум", "Ритм", "Пауза"][index], "description": "Техническое слово для проверки размещения групп."})
 	for index in 2:
 		glossary.reasoning_groups.append({"id": "test_cluster_group_%d" % index, "title": "[TEST] Наблюдения %d" % (index + 1), "terms": ["test_cluster_%d" % (index * 2), "test_cluster_%d" % (index * 2 + 1)], "minimum_terms": 2, "sheet": 0, "position": [0.74, 0.26 + index * 0.44], "options": [{"id": "test_cluster_linked_%d" % index, "text": "[TEST] Сведения связаны."}, {"id": "test_cluster_separate_%d" % index, "text": "[TEST] Сведения не связаны."}]})
+	glossary.reasoning_links = [{"from": "test_terms_connection", "to": "test_cluster_group_0", "required_conclusions": ["test_different_subjects"]}]
 	var dialogue: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://content/dialogues/test_guest.json"))
 	_expect(catalog.load_data(glossary, [dialogue]), "TEST catalog configured without changing authored content")
 	_model()
@@ -271,6 +272,31 @@ func _paper_model() -> void:
 		var fresh := Journal.new()
 		fresh.configure(catalog)
 		_expect(not fresh.restore_progress(bad) and fresh.get_entries().is_empty() and fresh.reasoning.export_data().is_empty(), "Forged conclusions reject entire progress atomically: " + mutation)
+	var visual := journal.make_visual_copy()
+	_expect(visual.export_progress() == journal.export_progress(), "Page rendering copy preserves exact progress")
+	visual.set_bookmarked(&"test_signal", true)
+	_expect(not journal.get_entry(&"test_signal").bookmarked, "Page preview never mutates live knowledge")
+	var linked := Journal.new()
+	linked.configure(catalog)
+	for id in [&"test_signal", &"test_marker", &"test_cluster_0", &"test_cluster_1"]:
+		linked.add_term(id)
+	_expect(linked.reasoning.get_links(0).is_empty(), "Knowledge alone does not draw relation arrows")
+	linked.choose_conclusion(&"test_terms_connection", &"test_different_subjects")
+	_expect(linked.reasoning.get_links(0).is_empty(), "One conclusion does not expose arrow")
+	linked.choose_conclusion(&"test_cluster_group_0", &"test_cluster_linked_0")
+	_expect(linked.reasoning.get_links(0).size() == 1, "Both matching conclusions derive declared arrow")
+	var link_copy := Journal.new()
+	link_copy.configure(catalog)
+	_expect(link_copy.restore_progress(linked.export_progress()) and link_copy.reasoning.get_links(0).size() == 1, "Arrows derive again after restoring conclusions without new save fields")
+	var wrong_version := Journal.new()
+	wrong_version.configure(catalog)
+	for id in [&"test_signal", &"test_marker", &"test_cluster_0", &"test_cluster_1"]:
+		wrong_version.add_term(id)
+	wrong_version.choose_conclusion(&"test_terms_connection", &"test_same_subject")
+	wrong_version.choose_conclusion(&"test_cluster_group_0", &"test_cluster_linked_0")
+	_expect(wrong_version.reasoning.get_links(0).is_empty(), "Optional version condition filters a relation without marking truth")
+	_expect(not JournalReasoning.validate_links([{"from": "missing", "to": "test_cluster_group_0"}], catalog.get_reasoning_groups()), "Unknown linked group rejected")
+
 	var store := CheckpointStore.new("user://checkpoint_tests/reasoning_" + str(Time.get_ticks_usec()))
 	_expect(store.save_checkpoint(2, journal, HomeState.new(), catalog), "Real Store saves conclusions")
 	var loaded := store.load_checkpoint(catalog)
@@ -313,25 +339,10 @@ func _paper_model() -> void:
 	_expect(not DialogueCatalog.new().load_data(invalid, [JSON.parse_string(FileAccess.get_file_as_string("res://content/dialogues/test_guest.json"))]), "Invalid authored evidence reference rejected before catalog changes")
 
 
-func _circle_group(paper: JournalPaperPages, group: Dictionary, closed: bool = true) -> void:
-	var words := paper.get_word_rects(group)
-	var rect := words[0]
-	for word_rect in words:
-		rect = rect.merge(word_rect)
-	rect = rect.grow(10)
-	var origin := paper.global_position
-	var start := rect.get_center() + Vector2(rect.size.x * 0.5, 0)
-	await _click(origin + start, true)
-	for index in 41:
-		var angle := TAU * index / 40.0 * (1.0 if closed else 0.7)
-		var point := rect.get_center() + Vector2(cos(angle) * rect.size.x * 0.5, sin(angle) * rect.size.y * 0.5)
-		var event := InputEventMouseMotion.new()
-		event.position = origin + point
-		event.global_position = event.position
-		get_viewport().push_input(event, true)
-		await get_tree().process_frame
-	var last := rect.get_center() + Vector2(cos(TAU * (1.0 if closed else 0.7)) * rect.size.x * 0.5, sin(TAU * (1.0 if closed else 0.7)) * rect.size.y * 0.5)
-	await _click(origin + last, false)
+func _click_group_point(paper: JournalPaperPages, group: Dictionary) -> void:
+	var point := paper.global_position + paper.get_conclusion_button_rect(group).get_center()
+	await _click(point, true)
+	await _click(point, false)
 
 
 func _paper_ui() -> void:
@@ -347,10 +358,17 @@ func _paper_ui() -> void:
 	_expect(panel.current_section == &"notes" and paper.editing_enabled and not paper.has_node("Writer"), "Real tab opens discovered words without any text editor")
 	var group: Dictionary = session.journal.get_reasoning_groups(0)[0]
 	_expect(session.journal.get_reasoning_groups(0).size() == 3, "Several authored word groups occupy separate areas of the spread")
-	await _circle_group(paper, group, false)
-	_expect(paper.get_pending_group() == &"", "Open curve cannot silently confirm a group")
-	await _circle_group(paper, group)
-	_expect(paper.get_pending_group() == &"test_terms_connection", "Actual closed mouse stroke selects related known words")
+	_expect(group.ready and group.conclusion.is_empty(), "Enough words automatically form a circled group with a conclusion point")
+	var word_point := paper.global_position + paper.get_word_rects(group)[0].get_center()
+	await _click(word_point, true)
+	var drag := InputEventMouseMotion.new()
+	drag.position = word_point + Vector2(80, 30)
+	drag.global_position = drag.position
+	get_viewport().push_input(drag, true)
+	await _click(drag.position, false)
+	_expect(paper.get_pending_group() == &"", "Dragging over words no longer draws or opens a conclusion")
+	await _click_group_point(paper, group)
+	_expect(paper.get_pending_group() == &"test_terms_connection", "Actual click on small point opens conclusion choices")
 	await _snap("05-conclusion-options")
 	session.open_menu()
 	_expect(not paper.choose_option(0), "Hidden journal rejects stale conclusion choice")
@@ -358,18 +376,26 @@ func _paper_ui() -> void:
 	await _settle()
 	await _key(KEY_ESCAPE)
 	_expect(paper.get_pending_group() == &"" and session.mode == NarrativeSession.JOURNAL, "Escape after menu cancels pending interpretation before closing book")
-	await _circle_group(paper, group)
+	await _click_group_point(paper, group)
 	var choice := paper.global_position + paper.get_option_rect(1).get_center()
 	await _click(choice, true)
 	await _click(choice, false)
 	_expect(session.journal.has_conclusion(&"test_different_subjects"), "Actual click writes chosen interpretation without free text")
 	_expect(not paper.choose_option(0), "Stale option cannot replace committed conclusion")
+	_expect(paper.get_visible_links().is_empty(), "Arrow stays hidden while related target has no conclusion")
+	var related: Dictionary = session.journal.get_reasoning_groups(0)[1]
+	await _click_group_point(paper, related)
+	var related_choice := paper.global_position + paper.get_option_rect(0).get_center()
+	await _click(related_choice, true)
+	await _click(related_choice, false)
+	_expect(paper.get_visible_links().size() == 1 and not paper.open_conclusion(StringName(related.id)), "Declared arrow appears only after both conclusions, committed point cannot reopen")
 	await _snap("06-recorded-conclusion")
 	tab = panel.get_node("%RecipesTab")
 	await _click(tab.get_global_rect().get_center(), true)
 	await _click(tab.get_global_rect().get_center(), false)
 	await _settle()
 	_expect(panel.current_section == &"recipes" and not session.journal.get_journal_recipes().is_empty() and paper.get_child_count() == 0, "Recipes are authored read-only pages without typing or adding")
+	_expect(not paper.open_conclusion(&"test_cluster_group_1"), "A stale point command cannot open conclusions on recipe pages")
 	await _snap("07-readonly-recipe")
 	session.close_journal()
 	session.open_journal()
@@ -382,7 +408,10 @@ func _paper_ui() -> void:
 	await get_tree().create_timer(0.16).timeout
 	_expect(panel.is_transitioning() and panel.get_node("%Leaf").turn_amount > 0, "Curved paper leaf animates before committing page")
 	if DisplayServer.get_name() != "headless":
-		_expect(panel.get_node("%Leaf").turn_texture != null, "GPU turn carries real page ink snapshot")
+		_expect(panel.get_node("%Leaf").turn_texture != null and panel.get_node("%Leaf").target_texture != null, "GPU turn uses two exact rendered page snapshots")
+	var target_image: Image
+	if DisplayServer.get_name() != "headless" and panel.get_node("%Leaf").target_texture != null:
+		target_image = panel.get_node("%Leaf").target_texture.get_image()
 	await _snap("08-curved-page")
 	session.open_menu()
 	var paused: float = panel.get_node("%Leaf").turn_amount
@@ -391,7 +420,41 @@ func _paper_ui() -> void:
 	session.resume_menu()
 	await _settle()
 	_expect(paper.sheet == 1, "Page turn commits once after resume")
+	if target_image != null:
+		await RenderingServer.frame_post_draw
+		var live := get_viewport().get_texture().get_image()
+		var mismatch := _page_mismatch(target_image, live)
+		_expect(mismatch < 0.005, "Page image stays identical when frozen target hands off to live UI (mismatch %.4f)" % mismatch)
 	panel.request_page(-1)
 	await _settle()
 	panel.select_section(&"words")
 	await _settle()
+	JournalPanel.motion_mode = &"full"
+	session.close_journal()
+	session.open_journal()
+	await get_tree().create_timer(0.14).timeout
+	_expect(panel.is_transitioning() and panel.get_node("%Card").modulate.a == 1.0 and panel.get_node("%PaperPages").modulate.a == 1.0, "Opening moves intact pages without threshold text opacity")
+	await _settle()
+	if DisplayServer.get_name() != "headless":
+		panel.request_page(1)
+		while panel.is_transitioning() and panel.get_node("%Leaf").target_texture == null:
+			await get_tree().process_frame
+		var word_target: Image = panel.get_node("%Leaf").target_texture.get_image()
+		await _settle()
+		await RenderingServer.frame_post_draw
+		var mismatch := _page_mismatch(word_target, get_viewport().get_texture().get_image())
+		print("Dictionary page handoff mismatch: %.6f" % mismatch)
+		_expect(mismatch < 0.005, "Actual word page preserves glyph positions, source and annotations at handoff")
+
+
+func _page_mismatch(target: Image, live: Image) -> float:
+	var bad := 0
+	var total := 0
+	for y in range(int(live.get_height() * 0.14), int(live.get_height() * 0.75), 3):
+		for x in range(int(live.get_width() * 0.12), int(live.get_width() * 0.88), 3):
+			var a := target.get_pixel(x, y)
+			var b := live.get_pixel(x, y)
+			if absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b) > 0.12:
+				bad += 1
+			total += 1
+	return float(bad) / maxi(1, total)

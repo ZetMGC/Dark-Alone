@@ -12,14 +12,9 @@ var recipe_page: int = 0
 var editing_enabled: bool = false:
 	set(value):
 		editing_enabled = value
-		if not value:
-			_stroke.clear()
-			_drawing = false
 		queue_redraw()
 var _font: Font = preload("res://assets/fonts/caveat/Caveat.ttf")
 var _ink := Color("353f42")
-var _stroke := PackedVector2Array()
-var _drawing: bool = false
 var _pending_group: StringName = &""
 var _pending_evidence := PackedStringArray()
 var _recipe_pages: Array[Dictionary] = []
@@ -28,12 +23,8 @@ var _recipe_pages: Array[Dictionary] = []
 func _ready() -> void:
 	clip_contents = true
 	focus_mode = Control.FOCUS_ALL
-	mouse_default_cursor_shape = Control.CURSOR_CROSS
-	resized.connect(func() -> void:
-		_stroke.clear()
-		_drawing = false
-		queue_redraw()
-	)
+	mouse_default_cursor_shape = Control.CURSOR_ARROW
+	resized.connect(queue_redraw)
 
 
 func bind(value: Journal) -> void:
@@ -57,7 +48,6 @@ func set_section(value: StringName) -> void:
 	section = value
 	_pending_group = &""
 	_pending_evidence.clear()
-	_stroke.clear()
 	queue_redraw()
 
 
@@ -67,7 +57,7 @@ func finish_edit(_cancel: bool = false) -> bool:
 
 
 func default_hint() -> String:
-	return "Удерживать ЛКМ — обвести связанные слова замкнутым контуром · Esc — отменить выбор" if section == &"notes" else "Угол страницы / PgUp / PgDn — листать · рецепты появляются по мере знакомства с баром"
+	return "Точка у готовой группы — сделать вывод · Esc — отменить выбор" if section == &"notes" else "Угол страницы / PgUp / PgDn — листать · рецепты появляются по мере знакомства с баром"
 
 
 func can_request_page(direction: int) -> bool:
@@ -83,7 +73,6 @@ func request_page(direction: int) -> bool:
 	if not can_request_page(direction):
 		return false
 	_pending_group = &""
-	_stroke.clear()
 	if section == &"notes":
 		sheet += direction
 	elif recipe_page + direction >= 0 and recipe_page + direction < _recipe_pages.size():
@@ -129,7 +118,7 @@ func get_pending_group() -> StringName:
 
 
 func choose_option(index: int) -> bool:
-	if not editing_enabled or journal == null or not is_visible_in_tree():
+	if section != &"notes" or not editing_enabled or journal == null or not is_visible_in_tree():
 		return false
 	for group in journal.get_reasoning_groups(sheet):
 		if group.id == str(_pending_group) and group.ready and group.conclusion.is_empty() and index >= 0 and index < group.options.size():
@@ -140,65 +129,51 @@ func choose_option(index: int) -> bool:
 	return false
 
 
-func _complete_stroke() -> void:
-	if _stroke.size() < 12 or _stroke[0].distance_to(_stroke[-1]) > 45:
-		hint_changed.emit("Замкните обводку вокруг связанных слов.")
-		return
-	var area := 0.0
-	for index in _stroke.size():
-		var next := _stroke[(index + 1) % _stroke.size()]
-		area += _stroke[index].cross(next)
-	if absf(area) < 1800:
-		return
-	var candidates: Array = []
-	var evidence := PackedStringArray()
+func get_conclusion_button_rect(group: Dictionary) -> Rect2:
+	var rect := group_rect(group)
+	var center := Vector2(minf(rect.end.x + 12, size.x - 18), rect.get_center().y)
+	return Rect2(center - Vector2(18, 18), Vector2(36, 36))
+
+
+func get_visible_links() -> Array:
+	return journal.reasoning.get_links(sheet) if journal != null else []
+
+
+func open_conclusion(group_id: StringName) -> bool:
+	if section != &"notes" or not editing_enabled or journal == null or not is_visible_in_tree():
+		return false
 	for group in journal.get_reasoning_groups(sheet):
-		var selected := PackedStringArray()
-		var rects := get_word_rects(group)
-		for index in rects.size():
-			if Geometry2D.is_point_in_polygon(rects[index].get_center(), _stroke):
-				selected.append(group.terms[index])
-		if not selected.is_empty():
-			candidates.append(group)
-			evidence = selected
-	if candidates.size() != 1:
-		hint_changed.emit("Обведите одну группу связанных слов.")
-		return
-	var group: Dictionary = candidates[0]
-	if not group.conclusion.is_empty():
-		hint_changed.emit("По этим словам вывод уже сделан.")
-	elif not group.ready or evidence.size() < group.minimum_terms:
-		hint_changed.emit("Пока недостаточно сведений. Продолжите разговоры и наблюдения.")
-	else:
-		_pending_group = StringName(group.id)
-		_pending_evidence = evidence
-		hint_changed.emit("Какой вывод следует из обведённых слов? Выберите вариант на бумаге.")
+		if group.id == str(group_id) and group.ready and group.conclusion.is_empty():
+			_pending_group = group_id
+			_pending_evidence = PackedStringArray(group.terms)
+			hint_changed.emit("Какой вывод следует из этих слов? Выберите вариант на бумаге.")
+			queue_redraw()
+			return true
+	return false
 
 
 func _gui_input(event: InputEvent) -> void:
 	if not editing_enabled or journal == null:
 		return
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_ESCAPE and (_pending_group != &"" or _drawing):
+		if event.keycode == KEY_ESCAPE and _pending_group != &"":
 			_pending_group = &""
-			_stroke.clear()
-			_drawing = false
 			hint_changed.emit(default_hint())
 			queue_redraw()
 			accept_event()
 		elif _pending_group != &"" and event.keycode >= KEY_1 and event.keycode <= KEY_4:
 			choose_option(event.keycode - KEY_1)
 			accept_event()
-	if event is InputEventMouseMotion and _drawing and _stroke.size() < 2048:
-		if _stroke.is_empty() or _stroke[-1].distance_to(event.position) >= 2:
-			_stroke.append(event.position)
-		queue_redraw()
-	if not event is InputEventMouseButton or event.button_index != MOUSE_BUTTON_LEFT:
+	if event is InputEventMouseMotion and section == &"notes":
+		mouse_default_cursor_shape = Control.CURSOR_ARROW
+		for group in journal.get_reasoning_groups(sheet):
+			if group.ready and group.conclusion.is_empty() and get_conclusion_button_rect(group).has_point(event.position):
+				mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	if not event is InputEventMouseButton or event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
 		return
-	if event.pressed:
-		grab_focus()
+	grab_focus()
 	if section == &"recipes":
-		if event.pressed and event.position.x < size.x * 0.44:
+		if event.position.x < size.x * 0.44:
 			var index := floori((event.position.y - 90) / 37) + floori(recipe_index / 8.0) * 8
 			if index >= 0 and index < journal.get_journal_recipes().size():
 				recipe_index = index
@@ -207,20 +182,14 @@ func _gui_input(event: InputEvent) -> void:
 				navigation_changed.emit()
 		return
 	if _pending_group != &"":
-		if event.pressed:
-			for index in 4:
-				if get_option_rect(index).has_point(event.position):
-					choose_option(index)
+		for index in 4:
+			if get_option_rect(index).has_point(event.position):
+				choose_option(index)
 		return
-	if event.pressed:
-		_stroke = PackedVector2Array([event.position])
-		_drawing = true
-	elif _drawing:
-		_stroke.append(event.position)
-		_drawing = false
-		_complete_stroke()
-		_stroke.clear()
-	queue_redraw()
+	for group in journal.get_reasoning_groups(sheet):
+		if get_conclusion_button_rect(group).has_point(event.position) and open_conclusion(StringName(group.id)):
+			accept_event()
+			return
 
 
 func _write(text: String, rect: Rect2, font_size: int = 27, color: Color = _ink) -> void:
@@ -254,14 +223,19 @@ func _draw() -> void:
 	_write("Слова и связи", Rect2(20, 0, size.x * 0.4, 45), 38)
 	_write("Что из этого следует?", Rect2(size.x * 0.56, 8, size.x * 0.4, 45), 29)
 	var groups := journal.get_reasoning_groups(sheet)
+	_draw_links(groups)
 	for group in groups:
 		var rect := group_rect(group)
 		_write(group.title, Rect2(rect.position + Vector2(16, 2), Vector2(rect.size.x - 32, 42)), 26)
 		var rects := get_word_rects(group)
 		for index in rects.size():
 			_write(journal.get_definition(StringName(group.terms[index])).title, rects[index], 25)
-		if not group.conclusion.is_empty() or group.id == str(_pending_group):
+		if group.ready:
 			_oval(rect)
+			if group.conclusion.is_empty():
+				var point := get_conclusion_button_rect(group).get_center()
+				draw_circle(point, 8, Color(_ink, 0.13))
+				draw_circle(point, 3.8, _ink)
 		if not group.conclusion.is_empty():
 			var text := ""
 			for option in group.options:
@@ -275,8 +249,6 @@ func _draw() -> void:
 будут появляться здесь.
 
 Связанные сведения — рядом.", Rect2(size.x * 0.08, size.y * 0.3, size.x * 0.34, 180), 29, Color(_ink, 0.5))
-	if _stroke.size() > 1:
-		draw_polyline(_stroke, _ink, 1.5, true)
 	if _pending_group != &"":
 		var rect := _options_rect()
 		draw_rect(rect.grow(8), Color("ddcfac"))
@@ -287,6 +259,48 @@ func _draw() -> void:
 					_write(str(index + 1) + ". " + group.options[index].text, get_option_rect(index), 27)
 	_write(str(sheet * 2 + 1), Rect2(20, size.y - 32, 80, 30), 22)
 	_write(str(sheet * 2 + 2), Rect2(size.x - 50, size.y - 32, 50, 30), 22)
+
+
+func _draw_links(groups: Array) -> void:
+	for link in get_visible_links():
+		var a := Rect2()
+		var b := Rect2()
+		for group in groups:
+			if group.id == link.from:
+				a = group_rect(group)
+			if group.id == link.to:
+				b = group_rect(group)
+		if a.size == Vector2.ZERO or b.size == Vector2.ZERO:
+			continue
+		var direction := a.get_center().direction_to(b.get_center())
+		if direction.is_zero_approx():
+			continue
+		var a_radius := 1.0 / sqrt(pow(direction.x / (a.size.x * 0.5), 2) + pow(direction.y / (a.size.y * 0.5), 2))
+		var b_radius := 1.0 / sqrt(pow(direction.x / (b.size.x * 0.5), 2) + pow(direction.y / (b.size.y * 0.5), 2))
+		var start := a.get_center() + direction * (a_radius + 4)
+		var end := b.get_center() - direction * (b_radius + 4)
+		var points := PackedVector2Array()
+		for index in 13:
+			var t := index / 12.0
+			points.append(start.lerp(end, t) + direction.orthogonal() * sin(t * PI) * 10)
+		draw_polyline(points, _ink, 1.3, true)
+		var tangent := points[-2].direction_to(end)
+		draw_line(end, end - tangent.rotated(0.4) * 11, _ink, 1.3, true)
+		draw_line(end, end - tangent.rotated(-0.4) * 11, _ink, 1.3, true)
+
+
+func get_page_preview(direction: int) -> Dictionary:
+	if not can_request_page(direction):
+		return {}
+	var state := {"sheet": sheet, "recipe_index": recipe_index, "recipe_page": recipe_page}
+	if section == &"notes":
+		state.sheet += direction
+	elif recipe_page + direction >= 0 and recipe_page + direction < _recipe_pages.size():
+		state.recipe_page += direction
+	else:
+		state.recipe_index += direction
+		state.recipe_page = 0
+	return state
 
 
 func _recipe_rect() -> Rect2:

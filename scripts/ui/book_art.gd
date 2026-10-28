@@ -17,12 +17,8 @@ var turn_amount: float = 0.0:
 var turn_direction: float = 1.0
 var turn_texture: Texture2D
 var texture_region := Rect2(0, 0, 1, 1)
-var under_enabled: bool = false
-var under_title: String = ""
-var under_source: String = ""
-var under_text: String = ""
-var under_rects: Array[Rect2] = []
-var under_font: Font = preload("res://assets/fonts/caveat/Caveat.ttf")
+var target_texture: Texture2D
+var hold_target: bool = false
 var bookmarked: bool = false:
 	set(value):
 		bookmarked = value
@@ -33,11 +29,14 @@ func _draw() -> void:
 	var w := size.x
 	var h := size.y
 	if leaf_only:
+		if hold_target and target_texture != null:
+			_draw_texture_half(target_texture, 0, 1)
+			return
 		if turn_amount <= 0.001 or turn_amount >= 0.999:
 			return
 		_draw_turn()
 		return
-	var width := lerpf(w * 0.46, w, open_amount)
+	var width := w
 	var left := (w - width) * 0.5
 	# Отбрасываемая тень, кожаный футляр и видимые кромки листов.
 	_rect(Rect2(left + 9, 10, width, h), Color(0, 0, 0, 0.48), 10)
@@ -48,13 +47,6 @@ func _draw() -> void:
 	for y in range(14, int(h) - 15, 8):
 		draw_line(Vector2(left + 11, y), Vector2(left + 11, y + 3), Color("877252"), 1.0)
 		draw_line(Vector2(left + width - 11, y), Vector2(left + width - 11, y + 3), Color("877252"), 1.0)
-	if open_amount < 0.12:
-		var font := ThemeDB.fallback_font
-		var title := "ДНЕВНИК"
-		var text_size := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 27)
-		draw_string(font, Vector2(w * 0.5 - text_size.x * 0.5, h * 0.46), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, Color("bca575"))
-		draw_rect(Rect2(left + 35, 38, width - 70, h - 90), Color("8a7350"), false, 1)
-		return
 	for index in range(5, 0, -1):
 		_rect(Rect2(left + 15, 17 + index * 2, width - 30, h - 43), Color(0.52 + index * 0.025, 0.48 + index * 0.025, 0.37 + index * 0.025), 3)
 	var page := Rect2(left + 18, 16, width - 36, h - 42)
@@ -84,22 +76,12 @@ func _draw() -> void:
 		draw_line(Vector2(center - 3, y), Vector2(center + 3, y + 4), Color("a38e6b"), 1)
 	# Лента у корешка и подогнутый нижний угол; табы остаются вне области текста.
 	draw_colored_polygon(PackedVector2Array([Vector2(center + 8, h - 110), Vector2(center + 18, h - 110), Vector2(center + 23, h + 4), Vector2(center + 16, h - 2), Vector2(center + 11, h + 8)]), Color("713e37"))
-	if open_amount > 0.97:
-		draw_colored_polygon(PackedVector2Array([Vector2(w - 44, h - 26), Vector2(w - 18, h - 52), Vector2(w - 18, h - 26)]), Color("b9aa87"))
-		draw_colored_polygon(PackedVector2Array([Vector2(18, h - 52), Vector2(44, h - 26), Vector2(18, h - 26)]), Color("b9aa87"))
+	draw_colored_polygon(PackedVector2Array([Vector2(w - 44, h - 26), Vector2(w - 18, h - 52), Vector2(w - 18, h - 26)]), Color("b9aa87"))
+	draw_colored_polygon(PackedVector2Array([Vector2(18, h - 52), Vector2(44, h - 26), Vector2(18, h - 26)]), Color("b9aa87"))
 	if show_sketch and open_amount > 0.8:
 		_draw_sketch(Rect2(w * 0.105, h * 0.53, w * 0.22, h * 0.25))
 	if bookmarked:
 		draw_colored_polygon(PackedVector2Array([Vector2(w * 0.87, 4), Vector2(w * 0.87 + 19, 4), Vector2(w * 0.87 + 19, 72), Vector2(w * 0.87 + 9, 62), Vector2(w * 0.87, 72)]), Color("7b392c"))
-
-	if open_amount < 0.98:
-		var angle := open_amount * PI
-		var outer := center + cos(angle) * width * 0.47
-		var arch := sin(angle) * 32
-		var cover := PackedVector2Array([Vector2(center, 12), Vector2(outer, 12 - arch), Vector2(outer, h - 22 + arch * 0.25), Vector2(center, h - 22)])
-		if absf(outer - center) > 0.5:
-			draw_colored_polygon(cover, Color("343b30") if open_amount < 0.5 else Color("d2c49f"))
-		draw_line(Vector2(outer, 12 - arch), Vector2(outer, h - 22 + arch * 0.25), Color("817352"), 2, true)
 
 
 func _draw_turn() -> void:
@@ -108,15 +90,9 @@ func _draw_turn() -> void:
 	var theta := turn_amount * PI
 	var lift := sin(theta)
 	var width := w * 0.46
-	if under_enabled:
-		# Следующая страница только как изображение: прогресс фиксируется в конце анимации.
-		draw_rect(Rect2(w * 0.5 + 2, 17, w * 0.5 - 21, h - 44), Color("ddcfac"))
-		if turn_direction < 0:
-			draw_rect(Rect2(19, 17, w * 0.5 - 21, h - 44), Color("ddcfac"))
-		if under_rects.size() == 3:
-			_draw_preview_text(under_title, under_rects[0], 38)
-			_draw_preview_text(under_source, under_rects[1], 14)
-			_draw_preview_text(under_text, under_rects[2], 27)
+	if turn_texture != null and target_texture != null:
+		_draw_texture_half(turn_texture if turn_direction > 0 else target_texture, 0, 0.5)
+		_draw_texture_half(target_texture if turn_direction > 0 else turn_texture, 0.5, 1)
 	# Мягкая движущаяся тень на нижних листах.
 	for band in range(12, 0, -1):
 		var shadow_width := width * absf(cos(theta)) + band * 2
@@ -133,15 +109,15 @@ func _draw_turn() -> void:
 			var arch := lift * 29 * pow(corner.x, 1.3)
 			var y := lerpf(18 - arch, h - 28 + arch * 0.3, corner.y)
 			points.append(Vector2(x, y))
-			var original := Vector2(0.5 + turn_direction * distance / w, lerpf(18, h - 28, corner.y) / h)
+			var face_direction := turn_direction if turn_amount < 0.5 else -turn_direction
+			var original := Vector2(0.5 + face_direction * distance / w, lerpf(18, h - 28, corner.y) / h)
 			uvs.append(texture_region.position + texture_region.size * original)
 		var shade := 0.88 + 0.12 * cos(strip / 32.0 * PI * 0.7 + theta * 0.5)
-		if turn_texture != null and turn_amount < 0.5:
-			draw_polygon(points, PackedColorArray([Color(shade, shade, shade)]), uvs, turn_texture)
+		var texture := turn_texture if turn_amount < 0.5 else target_texture
+		if texture != null:
+			draw_polygon(points, PackedColorArray([Color(shade, shade, shade)]), uvs, texture)
 		else:
 			draw_colored_polygon(points, Color(0.86 * shade, 0.81 * shade, 0.67 * shade))
-			if turn_texture != null:
-				draw_polygon(points, PackedColorArray([Color(1, 1, 1, 0.07)]), uvs, turn_texture)
 		edge.append(points[0])
 		if strip == 31:
 			edge.append(points[1])
@@ -149,13 +125,11 @@ func _draw_turn() -> void:
 		draw_polyline(edge, Color(0.42, 0.35, 0.22, 0.6), 1.2, true)
 
 
-func _draw_preview_text(text: String, rect: Rect2, font_size: int) -> void:
-	var paragraph := TextParagraph.new()
-	paragraph.width = rect.size.x
-	paragraph.line_spacing = 4
-	paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
-	paragraph.add_string(text, under_font, font_size)
-	paragraph.draw(get_canvas_item(), rect.position, Color("353129"))
+func _draw_texture_half(texture: Texture2D, begin: float, end: float) -> void:
+	var target := Rect2(size.x * begin, 0, size.x * (end - begin), size.y)
+	var region := Rect2(texture_region.position + texture_region.size * Vector2(begin, 0), texture_region.size * Vector2(end - begin, 1))
+	var pixels := Vector2(texture.get_width(), texture.get_height())
+	draw_texture_rect_region(texture, target, Rect2(region.position * pixels, region.size * pixels))
 
 
 func _draw_sketch(rect: Rect2) -> void:

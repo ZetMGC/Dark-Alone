@@ -19,6 +19,8 @@ func validate(glossary: Variant, documents: Array, glossary_source: String = "gl
 			for group in groups:
 				for option in group.options:
 					_conclusion_ids[option.id] = true
+			if not JournalReasoning.validate_links(glossary.get("reasoning_links", []), groups):
+				_error(glossary_source + ".reasoning_links", "invalid group link, sheet or conclusion condition")
 		_validate_recipes(glossary.get("journal_recipes", []), terms, glossary_source)
 	var dialogue_ids: Dictionary = {}
 	if documents.is_empty():
@@ -84,7 +86,7 @@ func _document(value: Variant, collection: String, path: String) -> bool:
 	if not value is Dictionary:
 		_error(path, "expected document object")
 		return false
-	_fields(value, ["schema_version", "test_content", collection], ["reasoning_groups", "journal_recipes"] if collection == "terms" else [], path)
+	_fields(value, ["schema_version", "test_content", collection], ["reasoning_groups", "reasoning_links", "journal_recipes"] if collection == "terms" else [], path)
 	var version: Variant = value.get("schema_version")
 	if typeof(version) not in [TYPE_INT, TYPE_FLOAT] or version != 1:
 		_error(path + ".schema_version", "supported version is 1")

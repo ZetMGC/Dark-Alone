@@ -33,6 +33,8 @@ var _motion_control: OptionButton
 var _sound_control: HSlider
 var _sound_label: Label
 var current_section: StringName = &"words"
+var preview_mode: bool = false
+var _preview_viewport: SubViewport
 const INK_TOOLS: Array[StringName] = [&"select", &"underline", &"circle", &"erase"]
 
 
@@ -83,7 +85,6 @@ func select_section(value: StringName) -> bool:
 		return false
 	if not %PaperPages.finish_edit():
 		return false
-	%Leaf.under_rects.clear()
 	_play_motion(&"turn", func() -> void:
 		current_section = value
 		%PaperPages.set_section(value)
@@ -91,7 +92,7 @@ func select_section(value: StringName) -> bool:
 		_update_controls()
 		if value == &"words" and _journal != null and _journal.selected_term_id != &"":
 			entry_requested.emit(_journal.selected_term_id)
-	)
+	, {"section": value})
 	return true
 
 
@@ -258,11 +259,8 @@ func _select_entry_at(index: int) -> void:
 	var id := _ids[index]
 	if id == _journal.selected_term_id:
 		return
-	var entry := _journal.get_entry(id)
-	var preview := BookPaginator.paginate(entry.description, %Description.get_theme_font("normal_font"), %Description.get_theme_font_size("normal_font_size"), %Description.size - Vector2(12, 10))
-	_prepare_turn_preview(entry, preview[BookPaginator.page_for_offset(preview, entry.reading_offset)].text)
 	%Leaf.turn_direction = 1.0 if index > _ids.find(_journal.selected_term_id) else -1.0
-	_play_motion(&"turn", func() -> void: entry_requested.emit(id))
+	_play_motion(&"turn", func() -> void: entry_requested.emit(id), {"section": &"words", "term": id})
 
 
 func request_page(direction: int) -> bool:
@@ -277,7 +275,7 @@ func request_page(direction: int) -> bool:
 		_play_motion(&"turn", func() -> void:
 			%PaperPages.request_page(direction)
 			_update_controls()
-		)
+		, %PaperPages.get_page_preview(direction))
 		return true
 	if _layout_pending:
 		_paginate()
@@ -285,9 +283,8 @@ func request_page(direction: int) -> bool:
 	if target >= 0 and target < _pages.size():
 		var id := _journal.selected_term_id
 		var offset := int(_pages[target].start)
-		_prepare_turn_preview(_journal.get_entry(id), _pages[target].text)
 		%Leaf.turn_direction = float(direction)
-		_play_motion(&"turn", func() -> void: reading_position_requested.emit(id, offset))
+		_play_motion(&"turn", func() -> void: reading_position_requested.emit(id, offset), {"section": &"words", "term": id, "offset": offset})
 		return true
 	var index := _ids.find(_journal.selected_term_id)
 	var next_index := index + direction if index >= 0 else 0
@@ -361,6 +358,12 @@ func _word_selected(word: String) -> void:
 
 func set_open(value: bool) -> void:
 	screen.visible = value
+	if is_instance_valid(_preview_viewport):
+		_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if value else SubViewport.UPDATE_DISABLED
+	if preview_mode:
+		%BookArt.open_amount = 1.0
+		_update_controls()
+		return
 	if not value:
 		%Description.editing_enabled = false
 		%PaperPages.editing_enabled = false
@@ -404,53 +407,111 @@ func reset_scroll() -> void:
 	pass
 
 
-func _play_motion(kind: StringName, completion: Callable) -> void:
+func _play_motion(kind: StringName, completion: Callable, target: Dictionary = {}) -> void:
 	_cancel_motion()
 	_motion = kind
-	%Leaf.under_enabled = kind == &"turn" and current_section == &"words"
-	if kind == &"turn" and motion_mode == &"full" and DisplayServer.get_name() != "headless":
-		var snapshot := get_viewport().get_texture().get_image()
-		if not snapshot.is_empty():
-			%Leaf.turn_texture = ImageTexture.create_from_image(snapshot)
-			%Leaf.texture_region = Rect2(%Leaf.get_global_rect().position / screen.size, %Leaf.size / screen.size)
 	_completion = completion
 	_open_start = %BookArt.open_amount
 	_update_controls()
+	if motion_mode == &"off":
+		# Шелест — отдельное предпочтение, не отключается вместе с движением.
+		if page_volume > 0 and AudioServer.get_driver_name() != "Dummy":
+			$PageSound.volume_db = linear_to_db(page_volume)
+			$PageSound.play()
+		_complete_motion()
+		return
+	if kind == &"turn" and motion_mode == &"full" and DisplayServer.get_name() != "headless":
+		_capture_turn.call_deferred(target, _motion_serial)
+	else:
+		_start_motion_tween()
+
+
+func _start_motion_tween() -> void:
 	if page_volume > 0 and AudioServer.get_driver_name() != "Dummy":
 		$PageSound.volume_db = linear_to_db(page_volume)
 		$PageSound.play()
-	if motion_mode == &"off":
-		_complete_motion()
-		return
-	var duration := 0.58 if kind == &"turn" else 0.62 if kind == &"open" else 0.48
+	var duration := 0.58 if _motion == &"turn" else 0.62 if _motion == &"open" else 0.48
 	if motion_mode == &"reduced":
 		duration = 0.06
 	_motion_frame(0.0)
 	_tween = create_tween()
 	_tween.tween_method(_motion_frame, 0.0, 1.0, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_tween.tween_callback(_complete_motion.bind(_motion_serial))
+	if not screen.visible:
+		_tween.pause()
+
+
+func _capture_current(serial: int) -> bool:
+	return is_inside_tree() and serial == _motion_serial and _motion == &"turn" and motion_mode == &"full"
+
+
+func _capture_turn(target: Dictionary, serial: int) -> void:
+	# Снимок от того же дерева UI и тех же шрифтов, не ручная имитация текста.
+	while _capture_current(serial) and not screen.visible:
+		await get_tree().process_frame
+	if not _capture_current(serial):
+		return
+	await RenderingServer.frame_post_draw
+	if not _capture_current(serial):
+		return
+	var source := get_viewport().get_texture().get_image()
+	if source.is_empty():
+		_start_motion_tween()
+		return
+	%Leaf.turn_texture = ImageTexture.create_from_image(source)
+	%Leaf.texture_region = Rect2(%Leaf.get_global_rect().position / screen.size, %Leaf.size / screen.size)
+	var viewport := SubViewport.new()
+	_preview_viewport = viewport
+	viewport.disable_3d = true
+	viewport.transparent_bg = true
+	viewport.size = source.get_size()
+	viewport.size_2d_override = Vector2i(screen.size)
+	viewport.size_2d_override_stretch = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(viewport)
+	var preview := (load("res://scenes/ui/journal_panel.tscn") as PackedScene).instantiate() as JournalPanel
+	preview.preview_mode = true
+	viewport.add_child(preview)
+	var copy := _journal.make_visual_copy()
+	if target.has("term"):
+		copy.select_entry(StringName(target.term))
+		if target.has("offset"):
+			copy.set_reading_offset(StringName(target.term), int(target.offset))
+	preview.current_section = StringName(target.get("section", current_section))
+	preview.get_node("%PaperPages").set_section(preview.current_section)
+	for property in ["sheet", "recipe_index", "recipe_page"]:
+		preview.get_node("%PaperPages").set(property, target.get(property, %PaperPages.get(property)))
+	for property in ["offset_left", "offset_top", "offset_right", "offset_bottom"]:
+		preview.get_node("%Card").set(property, %Card.get(property))
+	preview.render(copy, false)
+	preview.set_open(true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	while _capture_current(serial):
+		await RenderingServer.frame_post_draw
+		if screen.visible:
+			break
+	if not _capture_current(serial) or not is_instance_valid(viewport):
+		return
+	%Leaf.target_texture = ImageTexture.create_from_image(viewport.get_texture().get_image())
+	viewport.queue_free()
+	_preview_viewport = null
+	_start_motion_tween()
 
 
 func _motion_frame(value: float) -> void:
 	if _motion == &"open" or _motion == &"close":
-		var amount := value if _motion == &"open" else 1.0 - value
 		%BookArt.open_amount = lerpf(_open_start, 1.0, value) if _motion == &"open" else _open_start * (1.0 - value)
-		if motion_mode == &"reduced":
-			%BookArt.open_amount = 1.0
-		var reveal := clampf((%BookArt.open_amount - 0.64) / 0.36, 0.0, 1.0) if motion_mode == &"full" else amount
-		%Card.modulate.a = reveal
-		%PaperPages.modulate.a = reveal
-		for control in [%NotesTab.get_parent(), %WritingTools, %Previous, %Next, %Bookmark, %Close, %Hint]:
-			control.modulate.a = reveal
 		%BookRoot.pivot_offset = screen.size * 0.5
-		var lift: float = 1.0 - %BookArt.open_amount if motion_mode == &"full" else 0.0
-		%BookRoot.position = Vector2(0, 75 * lift)
-		%BookRoot.scale = Vector2.ONE * (1.0 - 0.06 * lift)
-		%BookRoot.rotation = -0.035 * lift
+		if motion_mode == &"full":
+			var lift: float = 1.0 - %BookArt.open_amount
+			%BookRoot.position = Vector2(0, (screen.size.y + 40) * lift)
+			%BookRoot.scale = Vector2.ONE * (1.0 - 0.04 * lift)
+			%BookRoot.rotation = -0.025 * lift
+		else:
+			%BookRoot.modulate.a = value if _motion == &"open" else 1.0 - value
 	else:
 		%Leaf.turn_amount = value if motion_mode == &"full" else 0.0
-		%Detail.modulate.a = 1.0
-		%PaperPages.modulate.a = 1.0
 
 
 func _complete_motion(serial: int = -1) -> void:
@@ -458,19 +519,20 @@ func _complete_motion(serial: int = -1) -> void:
 		return
 	var kind := _motion
 	var completion := _completion
+	if is_instance_valid(_preview_viewport):
+		_preview_viewport.queue_free()
+		_preview_viewport = null
+	var handoff: bool = kind == &"turn" and %Leaf.target_texture != null and motion_mode == &"full"
 	_motion = &""
 	_completion = Callable()
 	_finish_on_resume = false
 	%Leaf.turn_amount = 0.0
-	%Leaf.turn_texture = null
-	%BookRoot.position = Vector2.ZERO
-	%BookRoot.scale = Vector2.ONE
-	%BookRoot.rotation = 0.0
-	%PaperPages.modulate.a = 1.0
-	%Card.modulate.a = 1.0
-	%Detail.modulate.a = 1.0
-	for control in [%NotesTab.get_parent(), %WritingTools, %Previous, %Next, %Bookmark, %Close, %Hint]:
-		control.modulate.a = 1.0
+	%Leaf.hold_target = handoff
+	%Leaf.queue_redraw()
+	if not handoff:
+		%Leaf.turn_texture = null
+		%Leaf.target_texture = null
+	_reset_book_pose()
 	%BookArt.open_amount = 0.0 if kind == &"close" else 1.0
 	if kind == &"close":
 		_opened = false
@@ -479,37 +541,52 @@ func _complete_motion(serial: int = -1) -> void:
 		opened.emit()
 	if completion.is_valid():
 		completion.call()
+	if handoff:
+		_motion = &"settle"
+		_update_controls()
+		_finish_turn_handoff.call_deferred(_motion_serial)
+
+
+func _finish_turn_handoff(serial: int) -> void:
+	# Держать точное изображение до реальной пагинации/раскладки после commit.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	if serial != _motion_serial or _motion != &"settle":
+		return
+	_motion = &""
+	%Leaf.hold_target = false
+	%Leaf.turn_texture = null
+	%Leaf.target_texture = null
+	%Leaf.queue_redraw()
+	_update_controls()
+
+
+func _reset_book_pose() -> void:
+	%BookRoot.position = Vector2.ZERO
+	%BookRoot.scale = Vector2.ONE
+	%BookRoot.rotation = 0.0
+	%BookRoot.modulate.a = 1.0
+	%Card.modulate.a = 1.0
+	%Detail.modulate.a = 1.0
+	%PaperPages.modulate.a = 1.0
 
 
 func _cancel_motion() -> void:
 	_motion_serial += 1
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
+	if is_instance_valid(_preview_viewport):
+		_preview_viewport.queue_free()
+		_preview_viewport = null
 	_motion = &""
 	_completion = Callable()
 	_finish_on_resume = false
 	%Leaf.turn_amount = 0.0
+	%Leaf.hold_target = false
 	%Leaf.turn_texture = null
-	%BookRoot.position = Vector2.ZERO
-	%BookRoot.scale = Vector2.ONE
-	%BookRoot.rotation = 0.0
-	%PaperPages.modulate.a = 1.0
-	%Card.modulate.a = 1.0
-	%Detail.modulate.a = 1.0
-	for control in [%NotesTab.get_parent(), %WritingTools, %Previous, %Next, %Bookmark, %Close, %Hint]:
-		control.modulate.a = 1.0
-
-
-func _prepare_turn_preview(entry: Dictionary, text: String) -> void:
-	%Leaf.under_title = str(entry.get("title", ""))
-	var source: Dictionary = entry.get("source", {})
-	%Leaf.under_source = "" if source.is_empty() else "Смена %d. Услышал от %s." % [source.shift, source.speaker]
-	%Leaf.under_text = text
-	var areas: Array[Rect2] = []
-	for control in [%EntryTitle, %Source, %Description]:
-		var inset := Vector2(6, 5) if control == %Description else Vector2.ZERO
-		areas.append(Rect2(control.global_position - %Leaf.global_position + inset, control.size - inset * 2))
-	%Leaf.under_rects = areas
+	%Leaf.target_texture = null
+	_reset_book_pose()
 
 
 func _focus_close() -> void:

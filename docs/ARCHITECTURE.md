@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-067: круг/точка готовой группы и стрелки после выводов вычисляются автоматически, ручного жеста нет. Catalog/Reasoning принимают optional reasoning_links. Перелистывание рисуется из source/target одного JournalPanel; target готовится в SubViewport на Journal.make_visual_copy без изменения знаний. После commit изображение удерживается в фазе settle до раскладки живого UI. Открытие — подъём цельного разворота, без меняющейся ширины/прозрачности текста. [ADR-0030](decisions/0030-automatic-groups-stable-pages.md), JOURNAL_REASONING.
+
 DA-066: JournalReasoning хранит авторские группы и отдельно выбранные интерпретации/evidence. Catalogue валидирует optional reasoning_groups/journal_recipes; Runner проверяет required_conclusions. PaperPages теперь без TextEdit/перемещаемых блоков: замкнутая обводка слов → выбор. Notebook DA-065 только legacy-архив. BookRoot/BookArt дают раскрытие/изгиб 32 полос/снимок текста и preview без раннего commit. [Контракт](JOURNAL_REASONING.md), ADR-0029; этот вариант заменяет свободное письмо DA-065.
 
 DA-065: Journal владеет JournalNotebook (личный текст/позиции/стрелки/рецепты); JournalPanel переключает словарь и отдельный JournalPaperPages, WritingTools рисует предметы письма. Search/Section/служебная панель удалены из journal_panel.tscn. Сохранение добавляет опциональный notebook в прежний progress. Main блокирует игровые клавиши при TextEdit, Session не читает скрытый словарь. [Контракт](PERSONAL_JOURNAL.md), ADR-0028.

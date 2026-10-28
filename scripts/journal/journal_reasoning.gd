@@ -5,6 +5,7 @@ extends RefCounted
 signal changed
 var _groups: Array = []
 var _records: Array = []
+var _links: Array = []
 
 
 static func validate_groups(data: Variant, terms: PackedStringArray) -> bool:
@@ -45,12 +46,60 @@ static func valid_id(value: Variant) -> bool:
 	return value is String and value.length() <= 80 and RegEx.create_from_string("^[a-z][a-z0-9_]*$").search(value) != null
 
 
+static func validate_links(data: Variant, groups: Array) -> bool:
+	if not data is Array or data.size() > 64:
+		return false
+	var by_id: Dictionary = {}
+	var options: Dictionary = {}
+	for group in groups:
+		by_id[group.id] = group
+		for option in group.options:
+			options[option.id] = true
+	var seen: Array = []
+	for link in data:
+		if not link is Dictionary or link.size() not in [2, 3] or not link.get("from") is String or not link.get("to") is String or not by_id.has(link.from) or not by_id.has(link.to) or link.from == link.to:
+			return false
+		if link.size() == 3 and not link.has("required_conclusions"):
+			return false
+		if by_id[link.from].sheet != by_id[link.to].sheet or [link.from, link.to] in seen or not link.get("required_conclusions", []) is Array:
+			return false
+		var required: Array = []
+		for id in link.get("required_conclusions", []):
+			if not id is String or not options.has(id) or id in required:
+				return false
+			required.append(id)
+		seen.append([link.from, link.to])
+	return true
+
+
 static func integer(value: Variant) -> int:
 	return int(value) if (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= 1000000000 and value == floorf(float(value)) else -1
 
 
-func configure(groups: Array) -> void:
+func configure(groups: Array, links: Array = []) -> void:
 	_groups = groups.duplicate(true)
+	_links = links.duplicate(true)
+
+
+func get_link_definitions() -> Array:
+	return _links.duplicate(true)
+
+
+func get_links(sheet: int) -> Array:
+	var result: Array = []
+	for link in _links:
+		if get_record(StringName(link.from)).is_empty() or get_record(StringName(link.to)).is_empty():
+			continue
+		var same_sheet := false
+		for group in _groups:
+			if group.id == link.from:
+				same_sheet = group.sheet == sheet
+		var available := same_sheet
+		for id in link.get("required_conclusions", []):
+			available = available and has_conclusion(StringName(id))
+		if available:
+			result.append(link.duplicate(true))
+	return result
 
 
 func get_definitions() -> Array:
@@ -121,7 +170,7 @@ func restore_data(data: Variant, known: PackedStringArray) -> bool:
 	if not data is Array or data.size() > _groups.size():
 		return false
 	var staged := JournalReasoning.new()
-	staged.configure(_groups)
+	staged.configure(_groups, _links)
 	for record in data:
 		if not record is Dictionary or record.size() != 3 or not record.get("group_id") is String or not record.get("option_id") is String or not record.get("evidence") is Array:
 			return false

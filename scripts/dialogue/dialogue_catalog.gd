@@ -9,6 +9,7 @@ var _dialogues: Dictionary = {}
 var _nodes: Dictionary = {}
 var _loaded: bool = false
 var _reasoning_groups: Array = []
+var _reasoning_links: Array = []
 var _journal_recipes: Array = []
 
 
@@ -46,6 +47,7 @@ func load_data(glossary: Variant, documents: Array, glossary_source: String = "g
 			new_nodes[dialogue.id] = node_index
 	_terms = new_terms
 	_reasoning_groups = glossary.get("reasoning_groups", []).duplicate(true)
+	_reasoning_links = glossary.get("reasoning_links", []).duplicate(true)
 	_journal_recipes = glossary.get("journal_recipes", []).duplicate(true)
 	_dialogues = new_dialogues
 	_nodes = new_nodes
@@ -59,6 +61,10 @@ func is_loaded() -> bool:
 
 func get_reasoning_groups() -> Array:
 	return _reasoning_groups.duplicate(true)
+
+
+func get_reasoning_links() -> Array:
+	return _reasoning_links.duplicate(true)
 
 
 func get_journal_recipes() -> Array:

@@ -122,7 +122,7 @@ func configure(catalog: DialogueCatalog) -> bool:
 		return false
 	for id in catalog.get_term_ids():
 		_definitions[id] = catalog.get_term(StringName(id))
-	reasoning.configure(catalog.get_reasoning_groups())
+	reasoning.configure(catalog.get_reasoning_groups(), catalog.get_reasoning_links())
 	_recipe_definitions = catalog.get_journal_recipes()
 	_configured = true
 	return true
@@ -138,7 +138,19 @@ func matches_catalog(catalog: DialogueCatalog) -> bool:
 	for id in catalog.get_term_ids():
 		if not _definitions.has(id) or _definitions[id] != catalog.get_term(StringName(id)):
 			return false
-	return reasoning.get_definitions() == catalog.get_reasoning_groups() and _recipe_definitions == catalog.get_journal_recipes()
+	return reasoning.get_definitions() == catalog.get_reasoning_groups() and reasoning.get_link_definitions() == catalog.get_reasoning_links() and _recipe_definitions == catalog.get_journal_recipes()
+
+
+func make_visual_copy() -> Journal:
+	# Изолированный снимок для отрисовки следующего листа: оригинал не читается/не меняется.
+	var copy := Journal.new()
+	copy._definitions = _definitions.duplicate(true)
+	copy._recipe_definitions = _recipe_definitions.duplicate(true)
+	copy._configured = _configured
+	copy.reasoning.configure(reasoning.get_definitions(), reasoning.get_link_definitions())
+	if not copy.restore_progress(export_progress()):
+		push_error("Не удалось подготовить изображение страницы дневника")
+	return copy
 
 
 func choose_conclusion(group_id: StringName, option_id: StringName, evidence: PackedStringArray = []) -> bool:
@@ -339,7 +351,7 @@ func restore_progress(data: Dictionary) -> bool:
 	if not ink.valid:
 		return false
 	var deductions := JournalReasoning.new()
-	deductions.configure(reasoning.get_definitions())
+	deductions.configure(reasoning.get_definitions(), reasoning.get_link_definitions())
 	if not deductions.restore_data(data.get("conclusions", []), order):
 		return false
 	_known = known
