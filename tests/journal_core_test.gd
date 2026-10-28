@@ -111,7 +111,7 @@ func _test_shifts_and_ui() -> void:
 			session.choose_for_node(&"test_guest_intro", &"explanation", &"finish")
 		else:
 			session.choose_for_node(&"test_guest_intro", &"opening", &"leave")
-		session.open_journal()
+		session.open_journal(true)
 		_expect(session.journal.get_unread_count() == (0 if number == 1 else 1), "Only shown entry becomes read")
 		if number == 2:
 			panel.get_node("%Next").pressed.emit()

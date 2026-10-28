@@ -143,6 +143,7 @@ func _run() -> void:
 	_expect(catalog.load_data(glossary, [dialogue]), "TEST catalog configured without changing authored content")
 	_model()
 	_paper_model()
+	_chain_model()
 	session = NarrativeSession.new()
 	panel = (load("res://scenes/ui/journal_panel.tscn") as PackedScene).instantiate()
 	var speech := (load("res://scenes/ui/dialogue_panel.tscn") as PackedScene).instantiate()
@@ -156,6 +157,14 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"off"
 	session.open_journal()
 	await _settle()
+	_expect(not panel.are_pages_open() and panel.get_node("%Cover").visible and not panel.get_node("%Card").visible, "Default journal raises closed cover, hides all paper")
+	_expect(not session.select_journal_entry(&"test_marker") and not panel.request_page(1), "Closed journal rejects reading and paging")
+	var cover: Control = panel.get_node("%Cover")
+	await _snap("closed-cover")
+	await _click(cover.get_global_rect().get_center(), true)
+	await _click(cover.get_global_rect().get_center(), false)
+	await _settle()
+	_expect(panel.are_pages_open() and not cover.visible, "Actual cover click reveals pages")
 	var text: Control = panel.get_node("%Description")
 	_expect(text.editing_enabled and panel.get_page_count() > 1, "Interactive handwriting is paginated")
 	var point := _word_point(0, 6)
@@ -227,10 +236,11 @@ func _run() -> void:
 	await _snap("04-returned")
 	session.close_journal()
 	_expect(not text.editing_enabled and session.mode == NarrativeSession.EXPLORATION, "Close releases journal and blocks hidden input")
-	session.open_journal()
+	session.open_journal(true)
 	await _settle()
 	_expect(text.marks == saved and session.shift.remaining == 2, "Reopen retains marks and spends no shift time")
 	await _paper_ui()
+	await _closed_book_ui()
 	for child in get_children():
 		child.queue_free()
 	await get_tree().process_frame
@@ -398,7 +408,7 @@ func _paper_ui() -> void:
 	_expect(not paper.open_conclusion(&"test_cluster_group_1"), "A stale point command cannot open conclusions on recipe pages")
 	await _snap("07-readonly-recipe")
 	session.close_journal()
-	session.open_journal()
+	session.open_journal(true)
 	await _settle()
 	_expect(session.journal.has_conclusion(&"test_different_subjects") and session.shift.remaining == 2, "Reopen preserves conclusion without costing shift time")
 	panel.select_section(&"notes")
@@ -431,7 +441,7 @@ func _paper_ui() -> void:
 	await _settle()
 	JournalPanel.motion_mode = &"full"
 	session.close_journal()
-	session.open_journal()
+	session.open_journal(true)
 	await get_tree().create_timer(0.14).timeout
 	_expect(panel.is_transitioning() and panel.get_node("%Card").modulate.a == 1.0 and panel.get_node("%PaperPages").modulate.a == 1.0, "Opening moves intact pages without threshold text opacity")
 	await _settle()
@@ -458,3 +468,69 @@ func _page_mismatch(target: Image, live: Image) -> float:
 				bad += 1
 			total += 1
 	return float(bad) / maxi(1, total)
+
+
+func _chain_model() -> void:
+	var demo := DialogueCatalog.new()
+	_expect(demo.load_files("res://content/glossary/test_war_cinema_terms.json", ["res://content/dialogues/test_war_cinema_guest.json"]), "Fictional TEST bundle validates")
+	for path in [["test_veteran", "test_hidden_arms", "arms", "arms_reply"], ["test_cinema", "test_props", "props", "props_reply"], ["test_veteran", "test_keepsakes", "keepsakes", "keepsakes_reply"], ["test_cinema", "test_set", "set", "set_reply"]]:
+		var journal := Journal.new()
+		journal.configure(demo)
+		var runner := DialogueRunner.new()
+		runner.configure(demo, journal)
+		_expect(runner.start(&"test_war_cinema_guest") and journal.get_known_term_ids().size() == 2, "Conversation first reveals war and battle words")
+		_expect(runner.choose(&"more") and journal.get_known_term_ids().size() == 4, "Second line reveals weapon and crate words")
+		_expect(not runner.choose(StringName(path[2])) and not journal.choose_conclusion(&"test_arsenal", StringName(path[1])), "Dialogue and dependent deduction locked before premise")
+		_expect(journal.get_reasoning_groups(0)[1].words_ready and not journal.get_reasoning_groups(0)[1].ready, "Enough words circle target without premature choices")
+		_expect(journal.choose_conclusion(&"test_memories", StringName(path[0])), "First interpretation accepted")
+		var target: Dictionary = journal.get_reasoning_groups(0)[1]
+		_expect(target.ready and target.options.size() == 2 and journal.reasoning.get_links(0, journal.get_known_term_ids()).size() == 1, "Source interpretation draws circle-to-circle arrow and unlocks two matching deductions")
+		var opposite := &"test_props" if path[0] == "test_veteran" else &"test_hidden_arms"
+		_expect(not journal.choose_conclusion(&"test_arsenal", opposite), "Opposite premise cannot be bypassed through API")
+		_expect(journal.choose_conclusion(&"test_arsenal", StringName(path[1])), "Matching second interpretation accepted")
+		var saved := journal.export_progress()
+		_expect(saved.conclusions[1].premises == [path[0]], "Dependent deduction records its premise")
+		saved.conclusions.reverse()
+		var restored := Journal.new()
+		restored.configure(demo)
+		_expect(restored.restore_progress(JSON.parse_string(JSON.stringify(saved))) and restored.has_conclusion(StringName(path[1])), "Dependent deductions restore atomically in either order")
+		var forged := saved.duplicate(true)
+		forged.conclusions[0].premises = []
+		_expect(not restored.restore_progress(forged) and restored.has_conclusion(StringName(path[1])), "Forged premise rejected without changing previous progress")
+		_expect(runner.choose(StringName(path[2])) and runner.current_node_id == StringName(path[3]), "Chosen deduction opens corresponding fictional NPC response")
+	var groups := demo.get_reasoning_groups()
+	groups[0].options[0]["required_conclusions"] = ["test_hidden_arms"]
+	_expect(not JournalReasoning.validate_groups(groups, demo.get_term_ids()), "Cyclic deduction dependencies rejected")
+	groups = demo.get_reasoning_groups()
+	groups[1].options[0].required_conclusions = ["unknown"]
+	_expect(not JournalReasoning.validate_groups(groups, demo.get_term_ids()), "Unknown prerequisite rejected")
+
+
+func _closed_book_ui() -> void:
+	for mode in [&"full", &"reduced", &"off"]:
+		session.close_journal()
+		JournalPanel.motion_mode = mode
+		_expect(session.open_journal(), "Closed-book entry accepted: " + str(mode))
+		await _settle()
+		_expect(not panel.are_pages_open() and not panel.get_node("%PaperPages").visible, "Lift finishes with pages still hidden: " + str(mode))
+		_expect(panel.open_cover() and not panel.open_cover(), "Only one cover opening can run: " + str(mode))
+		var target: Image
+		if mode == &"full":
+			await get_tree().create_timer(0.13).timeout
+			session.open_menu()
+			var progress: float = panel.get_node("%Leaf").turn_amount
+			await get_tree().create_timer(0.07).timeout
+			_expect(is_equal_approx(progress, panel.get_node("%Leaf").turn_amount), "Cover opening pauses while menu hides book")
+			session.resume_menu()
+			if DisplayServer.get_name() != "headless":
+				while panel.is_transitioning() and panel.get_node("%Leaf").target_texture == null:
+					await get_tree().process_frame
+				_expect(panel.get_node("%Leaf").target_texture != null, "Cover unfolds into actual rendered target pages")
+				target = panel.get_node("%Leaf").target_texture.get_image()
+		await _settle()
+		_expect(panel.are_pages_open() and not panel.get_node("%Cover").visible and not panel.is_transitioning(), "Cover settles into interactive pages: " + str(mode))
+		if target != null:
+			await RenderingServer.frame_post_draw
+			var mismatch := _page_mismatch(target, get_viewport().get_texture().get_image())
+			print("Cover handoff mismatch: %.6f" % mismatch)
+			_expect(mismatch < 0.005, "Cover target hands off without page/glyph flash")

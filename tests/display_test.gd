@@ -103,7 +103,7 @@ func _run() -> void:
 		_expect(_fits(hud.get_node("%Resume").get_global_rect(), bounds) and _fits(hud.get_node("%Quit").get_global_rect(), bounds), "Menu actions fit " + str(size))
 		_capture("menu_%dx%d" % [size.x, size.y])
 		session.resume_menu()
-		session.open_journal()
+		session.open_journal(true)
 		await _settle()
 		_expect(_fits(journal.get_node("%BookArt").get_global_rect(), bounds) and _fits(journal.get_node("%Close").get_global_rect(), bounds), "Book fits " + str(size))
 		_capture("book_%dx%d" % [size.x, size.y])

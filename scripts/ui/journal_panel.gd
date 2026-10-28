@@ -34,6 +34,8 @@ var _sound_control: HSlider
 var _sound_label: Label
 var current_section: StringName = &"words"
 var preview_mode: bool = false
+var _pages_open: bool = false
+var _unfold_drawing: bool = false
 var _preview_viewport: SubViewport
 const INK_TOOLS: Array[StringName] = [&"select", &"underline", &"circle", &"erase"]
 
@@ -50,6 +52,7 @@ func _ready() -> void:
 		tab.add_theme_stylebox_override("disabled", paper)
 	for style in ["selected", "selected_focus", "focus"]:
 		%Index.add_theme_stylebox_override(style, StyleBoxEmpty.new())
+	%Cover.pressed.connect(open_cover)
 	%Close.pressed.connect(func() -> void: close_requested.emit())
 	%Index.item_selected.connect(_select_index)
 	%Previous.pressed.connect(func() -> void: request_page(-1))
@@ -72,6 +75,23 @@ func _ready() -> void:
 	$PageSound.stream = _rustle
 
 
+func prepare_book(open_pages_immediately: bool = false) -> void:
+	_pages_open = open_pages_immediately
+	_unfold_drawing = false
+
+
+func are_pages_open() -> bool:
+	return _pages_open
+
+
+func open_cover() -> bool:
+	if _pages_open or is_transitioning() or not screen.visible or preview_mode:
+		return false
+	%Leaf.turn_direction = 1.0
+	_play_motion(&"unfold", Callable(), {"section": current_section})
+	return true
+
+
 func set_ink_tool(index: int) -> void:
 	if index < 0 or index >= INK_TOOLS.size() or not _can_edit_ink():
 		return
@@ -81,7 +101,7 @@ func set_ink_tool(index: int) -> void:
 
 
 func select_section(value: StringName) -> bool:
-	if value not in [&"words", &"notes", &"recipes"] or is_transitioning() or not screen.visible:
+	if not _pages_open or value not in [&"words", &"notes", &"recipes"] or is_transitioning() or not screen.visible:
 		return false
 	if not %PaperPages.finish_edit():
 		return false
@@ -254,7 +274,7 @@ func _select_index(index: int) -> void:
 
 
 func _select_entry_at(index: int) -> void:
-	if _rendering or is_transitioning() or index < 0 or index >= _ids.size() or not screen.visible:
+	if not _pages_open or _rendering or is_transitioning() or index < 0 or index >= _ids.size() or not screen.visible:
 		return
 	var id := _ids[index]
 	if id == _journal.selected_term_id:
@@ -264,7 +284,7 @@ func _select_entry_at(index: int) -> void:
 
 
 func request_page(direction: int) -> bool:
-	if _journal == null or is_transitioning() or not screen.visible or direction not in [-1, 1]:
+	if not _pages_open or _journal == null or is_transitioning() or not screen.visible or direction not in [-1, 1]:
 		return false
 	if current_section != &"words":
 		if not %PaperPages.finish_edit():
@@ -295,7 +315,7 @@ func request_page(direction: int) -> bool:
 
 
 func _update_controls() -> void:
-	var blocked := is_transitioning()
+	var blocked := is_transitioning() or not _pages_open
 	%Index.mouse_filter = Control.MOUSE_FILTER_IGNORE if blocked else Control.MOUSE_FILTER_STOP
 	%Index.focus_mode = Control.FOCUS_NONE if blocked else Control.FOCUS_ALL
 	var selected := -1 if _journal == null else _ids.find(_journal.selected_term_id)
@@ -305,10 +325,10 @@ func _update_controls() -> void:
 	var ink_enabled := _can_edit_ink()
 	%Description.editing_enabled = ink_enabled
 	%WritingTools.enabled = ink_enabled
-	%WritingTools.visible = current_section == &"words"
-	%Card.visible = current_section == &"words"
-	%Bookmark.visible = current_section == &"words"
-	%PaperPages.visible = current_section != &"words"
+	%WritingTools.visible = _pages_open and current_section == &"words"
+	%Card.visible = _pages_open and current_section == &"words"
+	%Bookmark.visible = _pages_open and current_section == &"words"
+	%PaperPages.visible = _pages_open and current_section != &"words"
 	%PaperPages.editing_enabled = not blocked and screen.visible and current_section != &"words"
 	for tab in [%NotesTab, %RecipesTab, %WordsTab]:
 		tab.disabled = blocked
@@ -316,10 +336,21 @@ func _update_controls() -> void:
 		%Previous.disabled = blocked or not %PaperPages.can_request_page(-1)
 		%Next.disabled = blocked or not %PaperPages.can_request_page(1)
 	%BookArt.show_sketch = false
+	%BookArt.closed = not _pages_open
+	%BookArt.visible = not (_motion == &"unfold" and _unfold_drawing)
+	%Cover.visible = not _pages_open and not _unfold_drawing
+	%Cover.disabled = is_transitioning()
+	%NotesTab.get_parent().visible = _pages_open
+	%Previous.visible = _pages_open
+	%Next.visible = _pages_open
+	%Close.visible = _pages_open
+	if not _pages_open:
+		%Hint.text = "Нажмите на обложку, чтобы открыть · J / Esc — убрать"
+
 
 
 func _can_edit_ink() -> bool:
-	return current_section == &"words" and not is_transitioning() and not _layout_pending and screen.visible and _journal != null and _journal.selected_term_id != &"" and %Description.entry_id == _journal.selected_term_id
+	return _pages_open and current_section == &"words" and not is_transitioning() and not _layout_pending and screen.visible and _journal != null and _journal.selected_term_id != &"" and %Description.entry_id == _journal.selected_term_id
 
 
 func _add_ink(kind: StringName, start: int, end: int) -> void:
@@ -361,6 +392,7 @@ func set_open(value: bool) -> void:
 	if is_instance_valid(_preview_viewport):
 		_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if value else SubViewport.UPDATE_DISABLED
 	if preview_mode:
+		_pages_open = true
 		%BookArt.open_amount = 1.0
 		_update_controls()
 		return
@@ -397,6 +429,7 @@ func force_closed() -> void:
 	%Description.editing_enabled = false
 	%PaperPages.editing_enabled = false
 	_opened = false
+	_pages_open = false
 	%BookArt.open_amount = 0.0
 	screen.visible = false
 	$PageSound.stop()
@@ -420,7 +453,7 @@ func _play_motion(kind: StringName, completion: Callable, target: Dictionary = {
 			$PageSound.play()
 		_complete_motion()
 		return
-	if kind == &"turn" and motion_mode == &"full" and DisplayServer.get_name() != "headless":
+	if kind in [&"turn", &"unfold"] and motion_mode == &"full" and DisplayServer.get_name() != "headless":
 		_capture_turn.call_deferred(target, _motion_serial)
 	else:
 		_start_motion_tween()
@@ -430,7 +463,7 @@ func _start_motion_tween() -> void:
 	if page_volume > 0 and AudioServer.get_driver_name() != "Dummy":
 		$PageSound.volume_db = linear_to_db(page_volume)
 		$PageSound.play()
-	var duration := 0.58 if _motion == &"turn" else 0.62 if _motion == &"open" else 0.48
+	var duration := 0.58 if _motion in [&"turn", &"unfold"] else 0.62 if _motion == &"open" else 0.48
 	if motion_mode == &"reduced":
 		duration = 0.06
 	_motion_frame(0.0)
@@ -442,7 +475,7 @@ func _start_motion_tween() -> void:
 
 
 func _capture_current(serial: int) -> bool:
-	return is_inside_tree() and serial == _motion_serial and _motion == &"turn" and motion_mode == &"full"
+	return is_inside_tree() and serial == _motion_serial and _motion in [&"turn", &"unfold"] and motion_mode == &"full"
 
 
 func _capture_turn(target: Dictionary, serial: int) -> void:
@@ -485,6 +518,8 @@ func _capture_turn(target: Dictionary, serial: int) -> void:
 		preview.get_node("%Card").set(property, %Card.get(property))
 	preview.render(copy, false)
 	preview.set_open(true)
+	var preview_leaf: Control = preview.get_node("%Leaf")
+	%Leaf.target_region = Rect2(preview_leaf.get_global_rect().position / preview.screen.size, preview_leaf.size / preview.screen.size)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	while _capture_current(serial):
@@ -496,6 +531,10 @@ func _capture_turn(target: Dictionary, serial: int) -> void:
 	%Leaf.target_texture = ImageTexture.create_from_image(viewport.get_texture().get_image())
 	viewport.queue_free()
 	_preview_viewport = null
+	if _motion == &"unfold":
+		_unfold_drawing = true
+		%Leaf.unfolding = true
+		_update_controls()
 	_start_motion_tween()
 
 
@@ -505,13 +544,15 @@ func _motion_frame(value: float) -> void:
 		%BookRoot.pivot_offset = screen.size * 0.5
 		if motion_mode == &"full":
 			var lift: float = 1.0 - %BookArt.open_amount
-			%BookRoot.position = Vector2(0, (screen.size.y + 40) * lift)
+			%BookRoot.position = Vector2(0 if _pages_open else -%Leaf.size.x * 0.23, (screen.size.y + 40) * lift)
 			%BookRoot.scale = Vector2.ONE * (1.0 - 0.04 * lift)
 			%BookRoot.rotation = -0.025 * lift
 		else:
 			%BookRoot.modulate.a = value if _motion == &"open" else 1.0 - value
 	else:
 		%Leaf.turn_amount = value if motion_mode == &"full" else 0.0
+		if _motion == &"unfold":
+			%BookRoot.position.x = -%Leaf.size.x * 0.23 * (1.0 - value)
 
 
 func _complete_motion(serial: int = -1) -> void:
@@ -522,7 +563,11 @@ func _complete_motion(serial: int = -1) -> void:
 	if is_instance_valid(_preview_viewport):
 		_preview_viewport.queue_free()
 		_preview_viewport = null
-	var handoff: bool = kind == &"turn" and %Leaf.target_texture != null and motion_mode == &"full"
+	var handoff: bool = kind in [&"turn", &"unfold"] and %Leaf.target_texture != null and motion_mode == &"full"
+	if kind == &"unfold":
+		_pages_open = true
+		_unfold_drawing = false
+	%Leaf.unfolding = false
 	_motion = &""
 	_completion = Callable()
 	_finish_on_resume = false
@@ -537,7 +582,7 @@ func _complete_motion(serial: int = -1) -> void:
 	if kind == &"close":
 		_opened = false
 	_update_controls()
-	if kind == &"open":
+	if kind == &"unfold" or (kind == &"open" and _pages_open):
 		opened.emit()
 	if completion.is_valid():
 		completion.call()
@@ -563,7 +608,7 @@ func _finish_turn_handoff(serial: int) -> void:
 
 
 func _reset_book_pose() -> void:
-	%BookRoot.position = Vector2.ZERO
+	%BookRoot.position = Vector2(0 if _pages_open else -%Leaf.size.x * 0.23, 0)
 	%BookRoot.scale = Vector2.ONE
 	%BookRoot.rotation = 0.0
 	%BookRoot.modulate.a = 1.0
@@ -574,6 +619,8 @@ func _reset_book_pose() -> void:
 
 func _cancel_motion() -> void:
 	_motion_serial += 1
+	_unfold_drawing = false
+	%Leaf.unfolding = false
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	if is_instance_valid(_preview_viewport):
@@ -591,7 +638,9 @@ func _cancel_motion() -> void:
 
 func _focus_close() -> void:
 	if is_inside_tree() and screen.is_visible_in_tree() and not get_viewport().gui_get_focus_owner() is TextEdit:
-		if current_section == &"words":
+		if not _pages_open:
+			%Cover.grab_focus()
+		elif current_section == &"words":
 			%Close.grab_focus()
 		else:
 			%PaperPages.grab_focus()

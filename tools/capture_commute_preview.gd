@@ -44,7 +44,7 @@ func _capture() -> void:
 	session.resume_menu()
 	panel.get_node("%Skip").pressed.emit()
 	await _save("home")
-	session.open_journal()
+	session.open_journal(true)
 	await _save("home_journal")
 	session.close_journal()
 	session.go_to_work()

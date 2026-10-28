@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "test_content": true,
+  "terms": [
+    {
+      "id": "test_war",
+      "title": "Война",
+      "description": "Гость возвращается к разговорам о войне. Это пока не доказывает, что он участвовал."
+    },
+    {
+      "id": "test_battles",
+      "title": "Битвы",
+      "description": "Подробно помнит отдельные битвы и ошибки командиров."
+    },
+    {
+      "id": "test_weapons",
+      "title": "Оружие",
+      "description": "Говорит о старом оружии и следах на металле."
+    },
+    {
+      "id": "test_crates",
+      "title": "Ящики",
+      "description": "Дома стоят закрытые ящики. Просит не трогать их без него."
+    }
+  ],
+  "reasoning_groups": [
+    {
+      "id": "test_memories",
+      "title": "Разговор о прошлом",
+      "terms": [
+        "test_war",
+        "test_battles"
+      ],
+      "minimum_terms": 2,
+      "sheet": 0,
+      "position": [
+        0.24,
+        0.42
+      ],
+      "options": [
+        {
+          "id": "test_veteran",
+          "text": "Он был на войне."
+        },
+        {
+          "id": "test_cinema",
+          "text": "Он увлекается военным кино."
+        }
+      ]
+    },
+    {
+      "id": "test_arsenal",
+      "title": "Что он хранит дома?",
+      "terms": [
+        "test_weapons",
+        "test_crates"
+      ],
+      "minimum_terms": 2,
+      "sheet": 0,
+      "position": [
+        0.75,
+        0.42
+      ],
+      "options": [
+        {
+          "id": "test_hidden_arms",
+          "text": "Тайно хранит оружие с войны.",
+          "required_conclusions": [
+            "test_veteran"
+          ]
+        },
+        {
+          "id": "test_keepsakes",
+          "text": "Бережёт обезвреженные трофеи.",
+          "required_conclusions": [
+            "test_veteran"
+          ]
+        },
+        {
+          "id": "test_props",
+          "text": "Собирает муляжи оружия.",
+          "required_conclusions": [
+            "test_cinema"
+          ]
+        },
+        {
+          "id": "test_set",
+          "text": "Хранит реквизит со съёмок.",
+          "required_conclusions": [
+            "test_cinema"
+          ]
+        }
+      ]
+    }
+  ],
+  "reasoning_links": [
+    {
+      "from": "test_memories",
+      "to": "test_arsenal",
+      "when": "source_conclusion"
+    }
+  ]
+}

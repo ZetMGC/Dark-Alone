@@ -27,7 +27,7 @@ func _capture() -> void:
 	root.add_child(main)
 	current_scene = main
 	var session := main.get_node("NarrativeSession") as NarrativeSession
-	session.open_journal()
+	session.open_journal(true)
 	await _save("empty")
 	session.close_journal()
 	var rig := main.get_node("AnchorCamera") as AnchorCamera
@@ -35,7 +35,7 @@ func _capture() -> void:
 	await rig.anchor_reached
 	main.start_test_dialogue()
 	session.choose_for_node(&"test_guest_intro", &"opening", &"ask_more")
-	session.open_journal()
+	session.open_journal(true)
 	await _save("index")
 	var panel := main.get_node("JournalPanel") as JournalPanel
 	panel.select_section(&"notes")
@@ -58,7 +58,7 @@ func _capture() -> void:
 	await process_frame
 	await process_frame
 	var fresh := current_scene
-	fresh.get_node("NarrativeSession").open_journal()
+	fresh.get_node("NarrativeSession").open_journal(true)
 	await _save("retained")
 	fresh.get_node("NarrativeSession").close_journal()
 	# Стресс-данные только в памяти, исходные пакеты не меняются.

@@ -86,21 +86,29 @@ func request_page(direction: int) -> bool:
 
 
 func group_rect(group: Dictionary) -> Rect2:
-	var extent := Vector2(minf(380, size.x * 0.37), 88 + ceilf(group.terms.size() / 2.0) * 42)
+	var width := minf(380, size.x * 0.37)
+	var height := 92 + ceilf(group.terms.size() / 2.0) * 38
+	if not group.conclusion.is_empty():
+		height += 100
+	var extent := Vector2(width, height)
 	var center := Vector2(group.position[0], group.position[1]) * size
-	center = center.clamp(extent * 0.5 + Vector2(8, 55), size - extent * 0.5 - Vector2(8, 55))
+	center = center.clamp(extent * 0.5 + Vector2(8, 52), size - extent * 0.5 - Vector2(8, 38))
 	return Rect2(center - extent * 0.5, extent)
+
+
+func conclusion_rect(group: Dictionary) -> Rect2:
+	var rect := group_rect(group)
+	return Rect2(rect.position + Vector2(32, 74 + ceilf(group.terms.size() / 2.0) * 38), Vector2(rect.size.x - 64, 82))
 
 
 func get_word_rects(group: Dictionary) -> Array[Rect2]:
 	var result: Array[Rect2] = []
 	var rect := group_rect(group)
+	var column_width := (rect.size.x - 72) * 0.5
 	for index in group.terms.size():
-		var column: int = index % 2
-		var row := floori(index / 2.0)
 		var title: String = journal.get_definition(StringName(group.terms[index])).title
-		var ink_width := minf(rect.size.x * 0.46, _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 25).x + 2)
-		result.append(Rect2(rect.position + Vector2(18 + column * (rect.size.x * 0.48), 52 + row * 42), Vector2(ink_width, 35)))
+		var width := minf(column_width, _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x + 2)
+		result.append(Rect2(rect.position + Vector2(32 + (index % 2) * (column_width + 8), 62 + floori(index / 2.0) * 38), Vector2(width, 35)))
 	return result
 
 
@@ -136,7 +144,7 @@ func get_conclusion_button_rect(group: Dictionary) -> Rect2:
 
 
 func get_visible_links() -> Array:
-	return journal.reasoning.get_links(sheet) if journal != null else []
+	return journal.reasoning.get_links(sheet, journal.get_known_term_ids()) if journal != null else []
 
 
 func open_conclusion(group_id: StringName) -> bool:
@@ -210,7 +218,7 @@ func _oval(rect: Rect2) -> void:
 	var points := PackedVector2Array()
 	for index in 65:
 		var angle := TAU * index / 64.0
-		points.append(rect.get_center() + Vector2(cos(angle) * (rect.size.x * 0.5 + sin(angle * 5) * 1.5), sin(angle) * rect.size.y * 0.5))
+		points.append(rect.get_center() + Vector2(signf(cos(angle)) * pow(absf(cos(angle)), 0.5) * rect.size.x * 0.5, signf(sin(angle)) * pow(absf(sin(angle)), 0.5) * rect.size.y * 0.5))
 	draw_polyline(points, _ink, 1.4, true)
 
 
@@ -226,13 +234,13 @@ func _draw() -> void:
 	_draw_links(groups)
 	for group in groups:
 		var rect := group_rect(group)
-		_write(group.title, Rect2(rect.position + Vector2(16, 2), Vector2(rect.size.x - 32, 42)), 26)
+		_write(group.title, Rect2(rect.position + Vector2(32, 22), Vector2(rect.size.x - 64, 34)), 26)
 		var rects := get_word_rects(group)
 		for index in rects.size():
-			_write(journal.get_definition(StringName(group.terms[index])).title, rects[index], 25)
-		if group.ready:
+			_write(journal.get_definition(StringName(group.terms[index])).title, rects[index], 24)
+		if group.get("words_ready", group.ready):
 			_oval(rect)
-			if group.conclusion.is_empty():
+			if group.ready and group.conclusion.is_empty():
 				var point := get_conclusion_button_rect(group).get_center()
 				draw_circle(point, 8, Color(_ink, 0.13))
 				draw_circle(point, 3.8, _ink)
@@ -241,9 +249,9 @@ func _draw() -> void:
 			for option in group.options:
 				if option.id == group.conclusion.option_id:
 					text = option.text
-			var point := rect.position + Vector2(12, rect.size.y + 22)
-			draw_line(rect.get_center() + Vector2(0, rect.size.y * 0.5), point + Vector2(15, -2), _ink, 1.2, true)
-			_write("→ " + text, Rect2(point, Vector2(rect.size.x - 24, 90)), 25)
+			var area := conclusion_rect(group)
+			draw_line(area.position - Vector2(0, 6), area.position + Vector2(area.size.x, -6), Color(_ink, 0.3), 1)
+			_write(text, area, 25)
 	if groups.is_empty():
 		_write("Новые слова из разговоров
 будут появляться здесь.
@@ -275,8 +283,8 @@ func _draw_links(groups: Array) -> void:
 		var direction := a.get_center().direction_to(b.get_center())
 		if direction.is_zero_approx():
 			continue
-		var a_radius := 1.0 / sqrt(pow(direction.x / (a.size.x * 0.5), 2) + pow(direction.y / (a.size.y * 0.5), 2))
-		var b_radius := 1.0 / sqrt(pow(direction.x / (b.size.x * 0.5), 2) + pow(direction.y / (b.size.y * 0.5), 2))
+		var a_radius := pow(pow(absf(direction.x) / (a.size.x * 0.5), 4) + pow(absf(direction.y) / (a.size.y * 0.5), 4), -0.25)
+		var b_radius := pow(pow(absf(direction.x) / (b.size.x * 0.5), 4) + pow(absf(direction.y) / (b.size.y * 0.5), 4), -0.25)
 		var start := a.get_center() + direction * (a_radius + 4)
 		var end := b.get_center() - direction * (b_radius + 4)
 		var points := PackedVector2Array()

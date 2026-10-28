@@ -80,7 +80,7 @@ func _test_main() -> void:
 	var home_id := session.commute.trip_id
 	_expect(session.mode == NarrativeSession.TRAVEL and panel.get_node("Screen").visible, "Summary button begins home trip")
 	_expect(not session.go_home() and not main.restart_shift(), "Double departure and reset during travel rejected")
-	_expect(not session.open_journal() and not main.start_test_dialogue() and not main.open_service_menu(), "Travel blocks journal and game actions")
+	_expect(not session.open_journal(true) and not main.start_test_dialogue() and not main.open_service_menu(), "Travel blocks journal and game actions")
 	_expect(not rig.request_move(&"entry"), "Travel blocks camera")
 	await process_frame
 	session.open_menu()

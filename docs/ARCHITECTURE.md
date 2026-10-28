@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-068: двухэтапный дневник (подъём закрытой книги → клик/раскрытие), вывод внутри группы и зависимые варианты/предпосылки. Публичные расширения Session/Panel/Reasoning, потребители и восстановление — [JOURNAL_REASONING](JOURNAL_REASONING.md), [ADR-0031](decisions/0031-closed-book-reasoning-chains.md). Новый TEST — отдельная наследованная сцена/пара каталогов, обычный Main и его hash не изменены.
+
 DA-067: круг/точка готовой группы и стрелки после выводов вычисляются автоматически, ручного жеста нет. Catalog/Reasoning принимают optional reasoning_links. Перелистывание рисуется из source/target одного JournalPanel; target готовится в SubViewport на Journal.make_visual_copy без изменения знаний. После commit изображение удерживается в фазе settle до раскладки живого UI. Открытие — подъём цельного разворота, без меняющейся ширины/прозрачности текста. [ADR-0030](decisions/0030-automatic-groups-stable-pages.md), JOURNAL_REASONING.
 
 DA-066: JournalReasoning хранит авторские группы и отдельно выбранные интерпретации/evidence. Catalogue валидирует optional reasoning_groups/journal_recipes; Runner проверяет required_conclusions. PaperPages теперь без TextEdit/перемещаемых блоков: замкнутая обводка слов → выбор. Notebook DA-065 только legacy-архив. BookRoot/BookArt дают раскрытие/изгиб 32 полос/снимок текста и preview без раннего commit. [Контракт](JOURNAL_REASONING.md), ADR-0029; этот вариант заменяет свободное письмо DA-065.

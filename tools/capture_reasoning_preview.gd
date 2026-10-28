@@ -2,7 +2,7 @@ extends SceneTree
 ## Визуальная проверка книги/анимаций на TEST-данных без файлов игрока.
 
 var panel: JournalPanel
-var output := "res://artifacts/da066-motion"
+var output := "res://artifacts/da068-motion"
 
 
 func _initialize() -> void:
@@ -19,23 +19,26 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(output)
 	root.size = Vector2i(1280, 720)
 	JournalPanel.motion_mode = &"full"
-	var scene := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	var scene := (load("res://scenes/main/reasoning_demo.tscn") as PackedScene).instantiate()
 	scene.checkpoint_enabled = false
 	scene.preferences_enabled = false
 	root.add_child(scene)
 	current_scene = scene
 	var session: NarrativeSession = scene.get_node("NarrativeSession")
 	panel = scene.get_node("JournalPanel")
-	session.journal.add_term(&"test_signal")
-	session.journal.add_term(&"test_marker")
+	for id in [&"test_war", &"test_battles", &"test_weapons", &"test_crates"]:
+		session.journal.add_term(id)
 	await process_frame
 	session.open_journal()
-	await _record("open")
+	await _record("raise")
+	panel.open_cover()
+	await _record("unfold")
 	panel.request_page(1)
 	await _record("turn")
 	panel.select_section(&"notes")
 	await _record("section")
-	session.journal.choose_conclusion(&"test_terms_connection", &"test_same_subject")
+	session.journal.choose_conclusion(&"test_memories", &"test_cinema")
+	session.journal.choose_conclusion(&"test_arsenal", &"test_props")
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(output.path_join("notes.png"))
 	session.request_close_journal()
