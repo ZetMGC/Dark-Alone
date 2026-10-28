@@ -101,7 +101,7 @@ func _run() -> void:
 	home.close_inspection(false)
 	_expect(not home.state.has_observed(&"home_desk"), "Cancelled inspection does not mark observation")
 	home.inspect(&"home_desk")
-	session.open_journal()
+	session.open_journal(true)
 	_expect(not home.close_inspection(true) and session.mode == NarrativeSession.JOURNAL, "Hidden inspection cannot commit behind journal")
 	await _save("journal")
 	session.close_journal()

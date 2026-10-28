@@ -134,7 +134,7 @@ func _run() -> void:
 	]:
 		await _use(item[0], item[1], item[2])
 		_expect(home.get_node("%Inspection").visible and not home.interaction.try_interact(), "House inspection modal: " + item[0])
-		session.open_journal()
+		session.open_journal(true)
 		_expect(not home.close_inspection(true), "Cannot close hidden inspection")
 		session.close_journal()
 		_expect(home.close_inspection(true), "House inspection returns from journal and closes")

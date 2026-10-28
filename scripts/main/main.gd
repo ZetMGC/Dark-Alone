@@ -204,12 +204,15 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	# Поиск дневника получает буквы J/T/B, не игровые горячие клавиши.
-	if get_viewport().gui_get_focus_owner() is LineEdit and not event.is_action_pressed("toggle_menu"):
+	if (get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit) and not event.is_action_pressed("toggle_menu"):
 		return
 	if is_instance_valid(_home) and _home.handle_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_menu"):
+		if _session.mode == NarrativeSession.MENU and _hud.close_settings():
+			get_viewport().set_input_as_handled()
+			return
 		if free_roam_enabled and _narrative_ready and _session.mode in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] and (_rig as FreeRoamCamera).leave_focus():
 			get_viewport().set_input_as_handled()
 			return

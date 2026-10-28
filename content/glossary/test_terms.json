@@ -12,5 +12,45 @@
       "title": "[TEST] Второй термин",
       "description": "Техническая запись для проверки отдельной ветки. Не часть канона."
     }
+  ],
+  "reasoning_groups": [
+    {
+      "id": "test_terms_connection",
+      "title": "[TEST] Слова одного разговора",
+      "terms": [
+        "test_signal",
+        "test_marker"
+      ],
+      "minimum_terms": 2,
+      "sheet": 0,
+      "position": [
+        0.24,
+        0.33
+      ],
+      "options": [
+        {
+          "id": "test_same_subject",
+          "text": "[TEST] Оба слова описывают одно явление."
+        },
+        {
+          "id": "test_different_subjects",
+          "text": "[TEST] Это два независимых явления."
+        },
+        {
+          "id": "test_uncertain_subject",
+          "text": "[TEST] Связь есть, но её смысл пока неясен."
+        }
+      ]
+    }
+  ],
+  "journal_recipes": [
+    {
+      "id": "test_layered_trial",
+      "title": "[TEST] Проба двух слоёв",
+      "text": "[TEST] Проба двух слоёв\n\nСначала плотный компонент.\nЗатем лёгкий — мягко по ложке у края.\n\nЕсли струя слишком сильная, совместимые жидкости смешаются. Ложка не удержит тяжёлый слой поверх лёгкого.\n\nЭто техническая памятка по текущим инструментам, не утверждённая рецептура мира.",
+      "required_terms": [
+        "test_marker"
+      ]
+    }
   ]
 }

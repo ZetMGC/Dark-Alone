@@ -43,7 +43,7 @@ func _capture() -> void:
 	session.choose_for_node(&"test_guest_intro", &"opening", &"leave")
 	session.finish_for_node(&"test_guest_intro", &"goodbye")
 	await _save("summary")
-	session.open_journal()
+	session.open_journal(true)
 	await _save("journal")
 	session.close_journal()
 	main.restart_shift()

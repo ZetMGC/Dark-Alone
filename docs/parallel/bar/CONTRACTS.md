@@ -1,5 +1,9 @@
 # DA-060: изменённые контракты и потребители
 
+DA-073: DrinkWorkbench добавляет get_shaker_state() -> StringName (open/sealed/straining), toggle_shaker_lid() -> bool, toggle_shaker_cap() -> bool. Изменение крышки только когда предмет не удерживается, верстак активен/в фокусе/порция не выдана; closed автоматически cap_on. Вращение корпуса встряхивает только sealed, stream_info отдаёт выход из шейкера только straining. Receiving rim/крышка учитываются в stream_info; optional blocked=true означает попадание на закрытую крышку (hit=false, target пустой), реальный расход идёт в пятно. Cup drop больше не команда transfer; используется непрерывный общий stream. Лёд/ложка не проходят крышку. Потребители: UI кнопки ShakerLid/ShakerCap и workbench_test (обновлён на реальный поток/проверку крышки). DrinkPreparation public API и checkpoint не меняются. [ADR-0035](../../decisions/0035-shaker-lid-and-straining.md).
+
+DA-064 (2026-10-28): публичные API и ключи stream_info не меняются. Реальный rate используется также для капель/толщины/бликов/всплеска; приватная _is_spoon_hit общая для налива и подсказки. _pour_hint не изменяет модель и не обещает слой без проверки плотности. Потребители: DrinkWorkbench/workbench_test. [ADR-0027](../../decisions/0027-pour-intensity-feedback.md).
+
 ## WORKBENCH-04: независимые смеси и техники, 2026-10-27
 
 Основание — BARTENDING_RESEARCH.md с профессиональными источниками/разделением фактов и коэффициентов. Прежнее требование ложки WORKBENCH-02 заменено: ложка расширяет допуск, очень мягкий низкий налив у стенки тоже допускает слой. Главный критерий — плотность выходящей смеси и энергия струи.

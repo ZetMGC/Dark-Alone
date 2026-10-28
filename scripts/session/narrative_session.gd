@@ -85,6 +85,10 @@ func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_
 	runner.dialogue_cancelled.connect(_on_dialogue_closed)
 	journal.term_added.connect(_on_term_added)
 	journal.entry_changed.connect(func(_id: StringName) -> void: journal_changed.emit(journal.get_known_term_ids().size()))
+	journal.reasoning.changed.connect(func() -> void:
+		_dialogue_panel.render(runner, journal)
+		journal_changed.emit(journal.get_known_term_ids().size())
+	)
 	_configured = true
 	_sync_panels()
 	return true
@@ -199,11 +203,12 @@ func cancel_dialogue() -> bool:
 	return accepted
 
 
-func open_journal() -> bool:
+func open_journal(open_pages_immediately: bool = false) -> bool:
 	if not _configured or _changing or (_mode not in [EXPLORATION, DIALOGUE, SHIFT_COMPLETE, HOME] and not (concurrent_service_enabled and _mode == SERVICE)):
 		return false
 	_changing = true
 	_journal_return = _mode
+	_journal_panel.prepare_book(open_pages_immediately)
 	_journal_panel.render(journal, (_journal_return == DIALOGUE or (_journal_return == SERVICE and runner.active)), _journal_return == SHIFT_COMPLETE, _journal_return == HOME)
 	_journal_panel.reset_scroll()
 	_set_mode(JOURNAL)
@@ -212,13 +217,13 @@ func open_journal() -> bool:
 
 
 func _on_journal_opened() -> void:
-	if _mode == JOURNAL and journal.selected_term_id != &"":
+	if _mode == JOURNAL and _journal_panel.current_section == &"words" and journal.selected_term_id != &"":
 		journal.select_entry(journal.selected_term_id)
 		_render_journal()
 
 
 func select_journal_entry(term_id: StringName) -> bool:
-	if not _configured or _changing or _mode != JOURNAL or _journal_panel.is_transitioning():
+	if not _configured or _changing or _mode != JOURNAL or _journal_panel.is_transitioning() or not _journal_panel.are_pages_open():
 		return false
 	_changing = true
 	var accepted := journal.select_entry(term_id)
@@ -229,7 +234,7 @@ func select_journal_entry(term_id: StringName) -> bool:
 
 
 func bookmark_journal_entry(term_id: StringName, value: bool) -> bool:
-	if not _configured or _changing or _mode != JOURNAL or _journal_panel.is_transitioning() or term_id != journal.selected_term_id:
+	if not _configured or _changing or _mode != JOURNAL or _journal_panel.is_transitioning() or not _journal_panel.are_pages_open() or term_id != journal.selected_term_id:
 		return false
 	_changing = true
 	var accepted := journal.set_bookmarked(term_id, value)
@@ -240,7 +245,7 @@ func bookmark_journal_entry(term_id: StringName, value: bool) -> bool:
 
 
 func set_journal_reading_position(term_id: StringName, offset: int) -> bool:
-	if not _configured or _changing or _mode != JOURNAL or _journal_panel.is_transitioning() or term_id != journal.selected_term_id:
+	if not _configured or _changing or _mode != JOURNAL or _journal_panel.is_transitioning() or not _journal_panel.are_pages_open() or term_id != journal.selected_term_id:
 		return false
 	_changing = true
 	var accepted := journal.set_reading_offset(term_id, offset)

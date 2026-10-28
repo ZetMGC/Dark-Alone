@@ -4,11 +4,24 @@ extends RefCounted
 
 var _errors: PackedStringArray = []
 var _id_pattern := RegEx.create_from_string("^[a-z][a-z0-9_]*$")
+var _conclusion_ids: Dictionary = {}
 
 
 func validate(glossary: Variant, documents: Array, glossary_source: String = "glossary", sources: PackedStringArray = []) -> PackedStringArray:
 	_errors = []
+	_conclusion_ids = {}
 	var terms := _validate_glossary(glossary, glossary_source)
+	if glossary is Dictionary:
+		var groups: Variant = glossary.get("reasoning_groups", [])
+		if not JournalReasoning.validate_groups(groups, PackedStringArray(terms.keys())):
+			_error(glossary_source + ".reasoning_groups", "invalid groups, terms, positions or conclusion options")
+		else:
+			for group in groups:
+				for option in group.options:
+					_conclusion_ids[option.id] = true
+			if not JournalReasoning.validate_links(glossary.get("reasoning_links", []), groups):
+				_error(glossary_source + ".reasoning_links", "invalid group link, sheet or conclusion condition")
+		_validate_recipes(glossary.get("journal_recipes", []), terms, glossary_source)
 	var dialogue_ids: Dictionary = {}
 	if documents.is_empty():
 		_error("dialogues", "at least one document is required")
@@ -32,6 +45,26 @@ func validate(glossary: Variant, documents: Array, glossary_source: String = "gl
 	return _errors.duplicate()
 
 
+func _validate_recipes(data: Variant, terms: Dictionary, path: String) -> void:
+	if not data is Array or data.size() > 32:
+		_error(path + ".journal_recipes", "expected at most 32 authored recipes")
+		return
+	var ids: Dictionary = {}
+	for index in data.size():
+		var item: Variant = data[index]
+		var location := path + ".journal_recipes[%d]" % index
+		if not item is Dictionary:
+			_error(location, "expected recipe object")
+			continue
+		_fields(item, ["id", "title", "text", "required_terms"], [], location)
+		_register_id(item.get("id"), ids, location + ".id")
+		_text(item.get("title"), location + ".title")
+		_text(item.get("text"), location + ".text")
+		if item.get("text") is String and item.text.length() > 4000:
+			_error(location, "recipe too long")
+		_term_list(item.get("required_terms"), terms, location + ".required_terms")
+
+
 func _validate_glossary(document: Variant, path: String) -> Dictionary:
 	var terms: Dictionary = {}
 	if not _document(document, "terms", path):
@@ -53,7 +86,7 @@ func _document(value: Variant, collection: String, path: String) -> bool:
 	if not value is Dictionary:
 		_error(path, "expected document object")
 		return false
-	_fields(value, ["schema_version", "test_content", collection], [], path)
+	_fields(value, ["schema_version", "test_content", collection], ["reasoning_groups", "reasoning_links", "journal_recipes"] if collection == "terms" else [], path)
 	var version: Variant = value.get("schema_version")
 	if typeof(version) not in [TYPE_INT, TYPE_FLOAT] or version != 1:
 		_error(path + ".schema_version", "supported version is 1")
@@ -115,11 +148,12 @@ func _validate_node(node: Dictionary, terms: Dictionary, effects: Dictionary, pa
 			if not choice is Dictionary:
 				_error(choice_path, "expected object")
 				continue
-			_fields(choice, ["id", "text", "target"], ["required_terms"], choice_path)
+			_fields(choice, ["id", "text", "target"], ["required_terms", "required_conclusions"], choice_path)
 			_register_id(choice.get("id"), choice_ids, choice_path + ".id")
 			_text(choice.get("text"), choice_path + ".text")
 			_id(choice.get("target"), choice_path + ".target")
 			_term_list(choice.get("required_terms", []), terms, choice_path + ".required_terms")
+			_term_list(choice.get("required_conclusions", []), _conclusion_ids, choice_path + ".required_conclusions")
 	var node_effects: Variant = node.get("effects", [])
 	if not node_effects is Array:
 		_error(path + ".effects", "expected array")

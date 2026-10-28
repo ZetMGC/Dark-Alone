@@ -46,6 +46,8 @@ func render(runner: DialogueRunner, journal: Journal) -> void:
 			var titles: PackedStringArray = []
 			for id in choice.missing_terms:
 				titles.append(str(journal.get_definition(StringName(id)).get("title", id)))
+			if not choice.get("missing_conclusions", []).is_empty():
+				titles.append("собственный вывод по сведениям")
 			var hint := Label.new()
 			hint.text = "Нужны записи в дневнике: " + ", ".join(titles)
 			hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

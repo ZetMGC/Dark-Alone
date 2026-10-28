@@ -122,7 +122,7 @@ func _test_scene() -> void:
 	_key(KEY_B)
 	await process_frame
 	_expect(session.mode == NarrativeSession.SERVICE and panel.screen.visible and _buttons(panel).size() == 2, "B opens short menu at counter")
-	_expect(not rig.request_move(&"table") and not main.start_test_dialogue() and not session.open_journal(), "Service locks world, dialogue and journal")
+	_expect(not rig.request_move(&"table") and not main.start_test_dialogue() and not session.open_journal(true), "Service locks world, dialogue and journal")
 	var look_before := rig.view.rotation
 	rig.apply_look_delta(Vector2.ONE)
 	_expect(rig.view.rotation == look_before, "Service blocks camera look")

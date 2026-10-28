@@ -43,7 +43,7 @@ func _run() -> void:
 	_expect(main.open_service_menu(), "New preparation opens with active dialogue")
 	var bench: DrinkWorkbench = main.get_node("ServicePanel").workbench
 	_expect(bench != null and session.runner.active, "Workbench and runner coexist")
-	_expect(session.open_journal() and session.select_journal_entry(&"test_signal"), "New book opens during preparation")
+	_expect(session.open_journal(true) and session.select_journal_entry(&"test_signal"), "New book opens during preparation")
 	for frame in 4:
 		await get_tree().process_frame
 	var text = main.get_node("JournalPanel/%Description")
@@ -63,7 +63,7 @@ func _run() -> void:
 	_expect(session.go_home() and session.finish_commute(session.commute.trip_id), "Commute reaches new home")
 	await get_tree().process_frame
 	_expect(session.mode == NarrativeSession.HOME and main.get_node("HomeExploration").visible, "New home is active")
-	_expect(session.open_journal(), "Home journal opens")
+	_expect(session.open_journal(true), "Home journal opens")
 	for frame in 4:
 		await get_tree().process_frame
 	_expect(session.journal.get_annotations(&"test_signal") == marks, "Ink survives bar to home")

@@ -41,7 +41,7 @@ func _capture() -> void:
 	await rig.anchor_reached
 	main.start_test_dialogue()
 	session.choose_for_node(&"test_guest_intro", &"opening", &"ask_more")
-	session.open_journal()
+	session.open_journal(true)
 	await _save("cover")
 	await _settle(panel)
 	await _save("open")
@@ -66,7 +66,7 @@ func _capture() -> void:
 	session.serve_drink(&"test_water")
 	session.go_home()
 	session.finish_commute(session.commute.trip_id)
-	session.open_journal()
+	session.open_journal(true)
 	await _settle(panel)
 	await _save("home")
 	session.close_journal()
