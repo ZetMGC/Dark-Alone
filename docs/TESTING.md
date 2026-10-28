@@ -1,5 +1,7 @@
 # Проверки
 
+DA-071: dialogue_bubble_test проверяет доступные номера после вывода, сохранение выбранного ID, реальные цифры 1/2, колесо/F, terminal/no-available/inactive Runner, повторное появление списка после открытия условий. Source headless 123 / GPU 132 на размер; bar_service_dialogue 52. Команды/фактические общие результаты — [протокол](worklog/2026-10-28-08-dialogue-replies.md).
+
 DA-068: `tools/check_journal_ink.ps1 -Godot <Godot> -Graphics` проверяет также закрытую обложку/реальный клик/full/reduced/off/паузу и четыре цепочки TEST-диалога. Исторические fixtures вызывают open_journal(true) для прямого чтения; default false проверяется отдельно. `tools/validate_content.gd` проверяет два независимых bundle. `tools/capture_reasoning_preview.gd` снимает raise/unfold/turn/section/close отдельной demo-сцены. Фактические source/Windows результаты — [протокол DA-068](worklog/2026-10-28-05-closed-book-reasoning-chains.md).
 
 DA-067: профиль journal_ink_test — 169 headless / 180 GPU на размер. Реальные клики точки вместо рисования, автоматические круги/стрелки после обоих выводов/условия версий, независимость preview, запрет stale команды на странице рецептов. GPU сравнивает кадр target с живыми страницами заметок/словаря после передачи (порог <0.5% пикселей внутренней области), проверяет два снимка и неизменную прозрачность букв при открытии. Source и Windows Validation — один профиль. Результаты — worklog/2026-10-28-04-auto-groups-stable-pages.md, кадры открытия/листов — capture_reasoning_preview.

@@ -55,7 +55,14 @@ func render(runner: DialogueRunner, journal: Journal) -> void:
 		_page_index = 0
 		_show_page()
 	_terminal = runner.is_terminal()
-	_choices_data = runner.get_choices()
+	# Индекс всегда относится к видимому списку; выбранная реплика переживает вставку новых по ID.
+	var selected_id := str(_choices_data[selected_index].id) if not fresh and selected_index >= 0 and selected_index < _choices_data.size() else ""
+	_choices_data = runner.get_choices().filter(func(choice: Dictionary) -> bool: return choice.available)
+	selected_index = -1
+	for index in _choices_data.size():
+		if str(_choices_data[index].id) == selected_id:
+			selected_index = index
+			break
 	if fresh or selected_index < 0 or selected_index >= _choices_data.size() or not _choices_data[selected_index].available:
 		selected_index = -1
 		for index in _choices_data.size():
@@ -66,7 +73,7 @@ func render(runner: DialogueRunner, journal: Journal) -> void:
 	_update_layout()
 
 
-func _rebuild_choices(journal: Journal) -> void:
+func _rebuild_choices(_journal: Journal) -> void:
 	for child in %VoiceChoices.get_children():
 		%VoiceChoices.remove_child(child)
 		child.queue_free()
@@ -76,13 +83,8 @@ func _rebuild_choices(journal: Journal) -> void:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		label.text = "%d. %s" % [index + 1, choice.text]
-		if not choice.available:
-			var titles := PackedStringArray()
-			for id in choice.missing_terms:
-				titles.append(str(journal.get_definition(StringName(id)).get("title", id)))
-			if not choice.get("missing_conclusions", []).is_empty():
-				titles.append("вывод в дневнике")
-			label.text += " · Нужны записи: " + ", ".join(titles)
+		label.add_theme_font_override("font", %VoiceText.get_theme_font("normal_font"))
+		label.add_theme_font_size_override("font_size", 18)
 		%VoiceChoices.add_child(label)
 	_refresh_selection()
 
@@ -200,8 +202,7 @@ func confirm() -> bool:
 func _refresh_selection() -> void:
 	for index in %VoiceChoices.get_child_count():
 		var label := %VoiceChoices.get_child(index) as Label
-		var available: bool = _choices_data[index].available
-		label.modulate = Color(1.0, 0.84, 0.53) if index == selected_index else (Color.WHITE if available else Color(0.5, 0.53, 0.55))
+		label.modulate = Color(0.88, 0.87, 0.79) if index == selected_index else Color(0.63, 0.66, 0.64)
 		label.text = ("› " if index == selected_index else "  ") + label.text.trim_prefix("› ").trim_prefix("  ")
 
 
@@ -216,6 +217,11 @@ func _process(delta: float) -> void:
 
 func _update_layout() -> void:
 	if not bubble_enabled or not screen.visible:
+		return
+	if _runner == null or not _runner.active:
+		%VoiceBubble.hide()
+		%VoiceReplies.hide()
+		%VoiceHint.hide()
 		return
 	if not is_instance_valid(_camera) or not is_instance_valid(_speaker):
 		looking_at_speaker = false
@@ -251,13 +257,23 @@ func _update_layout() -> void:
 	if not clear and not behind:
 		%VoiceDirection.text = "Голос за преградой · посмотрите на говорящего"
 	%VoiceTail.visible = not edge_mode
-	%VoiceReplies.visible = can_answer()
+	%VoiceReplies.visible = can_answer() and not _terminal and not _choices_data.is_empty()
+	var reply_width := minf(680, area.x - 48)
+	%VoiceReplies.offset_left = -reply_width * 0.5
+	%VoiceReplies.offset_right = reply_width * 0.5
+	var reply_height := clampf(%VoiceChoices.get_combined_minimum_size().y + 44, 70, minf(220, area.y * 0.32))
+	%VoiceReplies.offset_top = -60 - reply_height
+	%VoiceReplies.offset_bottom = -60
 	if %VoiceReplies.visible and selected_index >= 0 and selected_index < %VoiceChoices.get_child_count():
 		(%VoiceChoices.get_parent() as ScrollContainer).ensure_control_visible(%VoiceChoices.get_child(selected_index))
 	%VoiceReplyHelp.text = "F — закончить разговор" if _terminal else "1–9 — ответить · Колесо — выбор · F — подтвердить"
 	%VoiceHint.text = "F — показать реплику целиком · J — дневник · Esc — меню" if not is_line_complete() else ("Посмотрите на говорящего, чтобы ответить" if not looking_at_speaker else "J — дневник · Esc — меню · Backspace — прервать")
 	if is_line_complete() and not is_speech_complete():
 		%VoiceHint.text = "F — следующий пузырёк · J — дневник · Esc — меню"
+	if _terminal and can_answer():
+		%VoiceHint.text = "F — закончить разговор · J — дневник"
+	elif is_speech_complete() and looking_at_speaker and _choices_data.is_empty():
+		%VoiceHint.text = "J — дневник · Backspace — прервать разговор"
 	%VoiceHint.visible = not _service_overlay
 	if not _response_input_enabled:
 		%VoiceHint.text = "Esc — отойти от стойки и продолжить разговор"

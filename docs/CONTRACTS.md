@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-071: selected_index/submit_choice(index) в DialogueBubblePanel относятся к отфильтрованным **доступным видимым ответам**, нумерация 1…N; выбор сохраняется по choice_id при появлении вариантов после вывода. Terminal/no choices скрывают VoiceReplies, F завершает через VoiceHint. Потребители/исключение can_answer terminal — [DIALOGUE_BUBBLES](DIALOGUE_BUBBLES.md), [ADR-0033](decisions/0033-available-dialogue-replies.md). Модальный fallback/модель/сохранения прежние.
+
 DA-070: варианты вывода выбираются мышью в пузырьке у точки группы; hit bounds get_option_rect соответствуют новым строкам, для неверного индекса пустой Rect2. Потребители/семантика отмены — [JOURNAL_REASONING](JOURNAL_REASONING.md), [ADR-0032](decisions/0032-conclusion-popup.md). Модель/сохранения прежние.
 
 DA-068: двухэтапный дневник (подъём закрытой книги → клик/раскрытие), вывод внутри группы и зависимые варианты/предпосылки. Публичные расширения Session/Panel/Reasoning, потребители и восстановление — [JOURNAL_REASONING](JOURNAL_REASONING.md), [ADR-0031](decisions/0031-closed-book-reasoning-chains.md). Новый TEST — отдельная наследованная сцена/пара каталогов, обычный Main и его hash не изменены.
