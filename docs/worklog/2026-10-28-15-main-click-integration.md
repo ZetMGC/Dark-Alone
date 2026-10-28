@@ -14,4 +14,30 @@ Godot 4.7.2, Windows RTX 4060. Полный source check PASS на объеди�
 
 ## Продолжение
 
-Отправить итог в main, проверить Windows-комплект и обновить прежнюю установку; удалить только собственные уже слитые ветки с проверкой точных вершин и lease. Авторство проверено через Git: собственные вершины ZetMGC, три ветки Henta14 (da062-home-object-targets, interactive-journal, test-visitor-model) сохраняются. Нового GitHub-релиза нет. Критерии удаления/установки ещё выполняются.
+Итог отправлен в main, Windows-комплект проверен и прежняя установка обновлена. Собственные слитые ветки удалены с проверкой точных вершин и lease. Авторство проверено через Git: собственные вершины ZetMGC, три ветки Henta14 (da062-home-object-targets, interactive-journal, test-visitor-model) сохраняются. Нового GitHub-релиза нет. Все критерии выполнены.
+
+## Завершение
+
+Локальный и origin/main содержат UI и CHAR-01–06, source 71c6bbe59eeb747c5692d69a0d08ba856908fa25. Windows-комплект windows-20261028-231659-16d29b65, source_dirty=false. Windows Validation bubble-check 140/0 (реальные viewport-нажатия, цифры не выбирают ответы), лог artifacts/da080-windows-dialogue.log. Установленные файлы сверены по SHA256, обычный EXE графически запущен вне репозитория без ошибок; da080-installed.log. Та же папка/ярлык, новых пользовательских установок и ярлыков нет. Старые файлы в игнорируемой da080-install-backup/.
+
+Перед удалением каждая собственная вершина проверена как предок origin/main. Удаление 13 удалённых refs выполнено одной atomic-операцией с индивидуальными force-with-lease, чтобы не удалить новые чужие коммиты при гонке. Затем локальная codex/da076-quiet-interface удалена обычным branch -d. Локально осталась main; удалённо main и три ветки Henta14. Alpha-теги/релизы не менялись. Все удалённые коммиты остаются достижимы из main.
+
+Удалённые ветки (точки восстановления):
+
+| Ветка | Вершина |
+| --- | --- |
+| codex/da060-bar-service-dialogue | 1d2fbd080c6a7276cf6473a9966f7004608717da |
+| codex/da064-pour-feedback | c4ccfccc86e4c88bb18ba5619bf80b784229c574 |
+| codex/da065-paper-journal | 2e2b3af8f1a2641e54c2030ae98d8ed3ffc08e22 |
+| codex/da067-stable-journal-pages | 9f695f0d54adc728cc57061726e9ef060d7365bd |
+| codex/da068-closed-journal-reasoning-chains | 6427b979cc4c3edf51ee33c3f1b9e48a7114b08b |
+| codex/da076-quiet-interface | 654e9eb85b10c042eb9ba517740e4c4c1e71e2f7 |
+| codex/drink-core | 52cb53bc15d585534be35644405535f73d38b98c |
+| codex/drink-mode-design | 457b3b70d04e06dab2401290f6f190c602bd17a7 |
+| codex/drink-system-plan | bf7510fe72ad176af51e92c06e9700bc0a061b5a |
+| codex/drink-workbench | 49ab5d5943c993a3ab34c5e9f8bfcad6581c80a3 |
+| codex/mixing-vessels | c8988a8ee53ace10bad53cf3704ad89e2df3c24a |
+| codex/workbench-interactions | e351a9a9a753ed2c36db0901968d061c37bccc1f |
+| codex/workbench-physics | 0f6d6f67196f12bb6e7c2b76218a01353fcbcb5b |
+
+DA-080 done, STATUS/BACKLOG/HANDOFF/карточка обновлены, частичных критериев нет. Следующий шаг — оценка владельцем объединённого билда через обычный ярлык. Последующий коммит только документирует результат.
