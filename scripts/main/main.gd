@@ -10,6 +10,7 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export var free_roam_enabled: bool = true
 @export var drink_workbench_enabled: bool = true
 @export var preferences_enabled: bool = true
+@export var visitor_behavior_enabled: bool = false
 var checkpoint_store := CheckpointStore.new()
 var preference_store := PreferenceStore.new()
 @export var drink_options: Array[Dictionary] = [
@@ -189,6 +190,11 @@ func _ready() -> void:
 	$JournalPanel.configure_controls(_hud)
 	$DisplaySettings.configure_controls(_hud)
 	$DialogueTrigger/Body.configure_controls(_hud)
+	if visitor_behavior_enabled:
+		var behavior := VisitorBehavior.new()
+		behavior.name = "VisitorBehavior"
+		add_child(behavior)
+		behavior.configure(_trigger, _rig.view, _session)
 	_rig.configure_controls(_hud)
 	_preferences = PreferenceController.new()
 	_preferences.name = "PreferenceController"

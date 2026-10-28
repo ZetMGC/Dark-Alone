@@ -1,5 +1,7 @@
 # Проверки
 
+CHAR-07: tests/visitor_behavior_test.tscn добавлен в check.ps1. Приход/повороты/остановка, опора стопы в мировых координатах (1.5 см), взгляд/реакции/стакан/pause/уход; GPU снимает behavior_walking/sip.png. [Протокол](worklog/2026-10-28-12-visitor-behavior.md).
+
 DA-072–074: общий check PASS; bubble profile 128 headless/137 GPU на размер (анимация/задний сектор); check_workbench -Graphics 139/151/151 (реальный налив в шейкер/крышка/колпачок/расход в пролив/новые PNG); preference profile 37 headless/42 GPU (отдельная страница и actual default scene). Дополнительно default entry проверен в двух процессах через --default-entry --preference-probe=write/read и изолированный user://preference_tests/process_<id>, PASS 2/3. Команды/логи — [протокол](worklog/2026-10-28-09-speech-shaker-settings.md).
 
 DA-071: dialogue_bubble_test проверяет доступные номера после вывода, сохранение выбранного ID, реальные цифры 1/2, колесо/F, terminal/no-available/inactive Runner, повторное появление списка после открытия условий. Source headless 123 / GPU 132 на размер; bar_service_dialogue 52. Команды/фактические общие результаты — [протокол](worklog/2026-10-28-08-dialogue-replies.md).

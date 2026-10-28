@@ -1,5 +1,6 @@
 class_name ServiceGuest
 extends DialogueTrigger
+signal drink_presented
 ## Заменяемая low-poly-заготовка гостя; состояние заказа хранит GuestService.
 
 @export var guest_id: StringName = &"test_guest"
@@ -10,6 +11,16 @@ var _target_size: Vector2
 var _walk_size: Vector2
 var _target_origin: Vector3
 var _walk_origin: Vector3
+var motion_available: bool = true
+
+
+func is_available() -> bool:
+	return motion_available and super.is_available()
+
+
+func interact() -> void:
+	if motion_available:
+		super.interact()
 
 
 func configure_body_scale(multiplier: float) -> bool:
@@ -49,6 +60,7 @@ func show_served(drink_title: String) -> void:
 	$ServedGlass.visible = true
 	$Marker/Label.text = "[TEST] Гость · напиток подан"
 	$ServedGlass/Label.text = drink_title
+	drink_presented.emit()
 
 
 func show_prepared(result: Dictionary, surface_position: Vector3) -> void:
@@ -107,7 +119,10 @@ func show_prepared(result: Dictionary, surface_position: Vector3) -> void:
 			cube.position = Vector3((index - 1) * radius * 0.45, minf(height / 2 - 0.015, bottom), 0)
 			$ServedGlass.add_child(cube)
 	$ServedGlass/Label.text = "Напиток подан · шот" if shot else "Напиток подан · стакан"
+	drink_presented.emit()
 
 
 func get_prompt() -> String:
+	if not motion_available:
+		return "[TEST] Гость идёт к своему месту" if visible else ""
 	return "E — поговорить с [TEST] гостем"
