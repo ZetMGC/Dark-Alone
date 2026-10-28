@@ -34,15 +34,70 @@ func _run() -> void:
 	for index in model.skeleton.get_bone_count():
 		var origin := model.skeleton.get_bone_global_pose(index).origin
 		_expect(origin.is_finite(), "Finite bone transform")
-	_expect(model.skeleton.get_bone_global_pose(2).origin.y > -0.01, "Head rest pose above pelvis")
+	_expect(model.skeleton.get_bone_global_pose(2).origin.y > model.skeleton.get_bone_global_pose(1).origin.y, "Head rest pose above chest")
 	var count := 0
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		count += 1
 		_expect(node.mesh != null and node.mesh.get_aabb().size.length() > 0, "Nonempty mesh")
-	_expect(count > 30, "Full body with clothing and fingers")
-	var hand_before := model.skeleton.get_bone_pose_rotation(model.skeleton.find_bone("ForearmR"))
+	var character: MeshInstance3D = model.get_node("CharacterMesh")
+	_expect(character.skin != null and character.skin.get_bind_count() == 15, "Real skin with fifteen inverse rest binds")
+	_expect(character.mesh.get_surface_count() == 3, "Skin, clothing and leather surfaces")
+	var blended := 0
+	var vertex_count := 0
+	var clothing_arrays: Array = []
+	for surface in character.mesh.get_surface_count():
+		var arrays: Array = character.mesh.surface_get_arrays(surface)
+		var material: StandardMaterial3D = character.mesh.surface_get_material(surface)
+		if material.albedo_texture and material.albedo_texture.resource_path.ends_with("clothing_atlas_v2.png"):
+			clothing_arrays = arrays
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		vertex_count += vertices.size()
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		var coordinates: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+		var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+		var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+		_expect(bones.size() == vertices.size() * 4 and weights.size() == vertices.size() * 4, "Every vertex is bound")
+		var valid := true
+		for vertex in vertices.size():
+			var total: float = 0
+			for influence in 4:
+				var index := vertex * 4 + influence
+				valid = valid and bones[index] >= 0 and bones[index] < 15 and is_finite(weights[index]) and weights[index] >= 0
+				total += weights[index]
+			valid = valid and absf(total - 1.0) < 0.0001 and vertices[vertex].is_finite()
+			valid = valid and normals[vertex].is_finite() and absf(normals[vertex].length() - 1.0) < 0.001
+			valid = valid and coordinates[vertex].is_finite() and Rect2(-0.001, -0.001, 1.002, 1.002).has_point(coordinates[vertex])
+			if weights[vertex * 4] > 0 and weights[vertex * 4 + 1] > 0:
+				blended += 1
+		_expect(valid, "Finite skin vertices normals UV and normalized weights")
+	_expect(blended > 100, "Soft transitions across elbows knees and waist")
+	_expect(vertex_count < 15000, "Prototype vertex budget remains bounded")
+	# Освещение должно видеть наружную сторону рукавов, а не внутреннюю изнанку.
+	for suffix in ["L", "R"]:
+		var start := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("UpperArm" + suffix)).origin
+		var end := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("Forearm" + suffix)).origin
+		var outward := (end - start).cross(Vector3.RIGHT).normalized()
+		var target := start.lerp(end, 0.32) + outward * 0.081
+		var distance := INF
+		var facing := -1.0
+		for index in clothing_arrays[Mesh.ARRAY_VERTEX].size():
+			var candidate: Vector3 = clothing_arrays[Mesh.ARRAY_VERTEX][index]
+			if candidate.distance_to(target) < distance:
+				distance = candidate.distance_to(target)
+				facing = clothing_arrays[Mesh.ARRAY_NORMAL][index].dot(outward)
+		_expect(distance < 0.01 and facing > 0.5, "Sleeve normals face outwards " + suffix)
+	var hand_before := model.skeleton.get_bone_pose_rotation(model.skeleton.find_bone("Head"))
 	await get_tree().create_timer(0.3).timeout
-	_expect(model.skeleton.get_bone_pose_rotation(model.skeleton.find_bone("ForearmR")) != hand_before, "Idle pose evolves")
+	_expect(model.skeleton.get_bone_pose_rotation(model.skeleton.find_bone("Head")) != hand_before, "Idle pose evolves")
+	var frozen := model.skeleton.get_bone_pose_rotation(2)
+	model.hide()
+	await get_tree().create_timer(0.18).timeout
+	_expect(model.skeleton.get_bone_pose_rotation(2) == frozen, "Hidden model freezes animation")
+	model.show()
+	get_tree().paused = true
+	await get_tree().create_timer(0.18, true).timeout
+	_expect(model.skeleton.get_bone_pose_rotation(2) == frozen, "Tree pause freezes animation")
+	get_tree().paused = false
 	var collider: Shape3D = guest.get_node("Collision").shape
 	var transform_before := guest.transform
 	var control: OptionButton = main.get_node("NavigationHUD/%TestFace")
@@ -72,6 +127,27 @@ func _run() -> void:
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		_expect(get_viewport().get_texture().get_image().save_png("res://artifacts/visitor/bar.png") == OK, "Capture actual bar view")
+		guest.get_node("Marker").hide()
+		rig.view.fov = 35
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		_expect(get_viewport().get_texture().get_image().save_png("res://artifacts/visitor/bar_close.png") == OK, "Capture inspection zoom without moving camera")
+	var deadline := Time.get_ticks_msec() + 6000
+	while not model.is_blinking and Time.get_ticks_msec() < deadline:
+		await get_tree().create_timer(0.015).timeout
+	_expect(model.is_blinking, "Blink occurs during live animation")
+	var blink_texture_found := false
+	for surface in character.mesh.get_surface_count():
+		var material: StandardMaterial3D = character.mesh.surface_get_material(surface)
+		if material.albedo_texture and material.albedo_texture.resource_path.ends_with("head_blink_v2.png"):
+			blink_texture_found = true
+			_expect(material.albedo_texture.get_size() == Vector2(512, 512), "Blink atlas matches open atlas size")
+	_expect(blink_texture_found, "Blink changes actual diffuse texture, no overlay")
+	deadline = Time.get_ticks_msec() + 1000
+	while model.is_blinking and Time.get_ticks_msec() < deadline:
+		await get_tree().create_timer(0.015).timeout
+	_expect(not model.is_blinking, "Blink reopens eyes")
+	print("Visitor geometry: ", vertex_count, " vertices, ", blended, " blended vertices")
 	main.queue_free()
 	await get_tree().process_frame
 	main = preload("res://scenes/main/main.tscn").instantiate()

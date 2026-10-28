@@ -1,5 +1,7 @@
 # Архитектура
 
+CHAR-02 заменяет внутренние жёсткие детали VisitorModel одним CharacterMesh/ArrayMesh с реальным Skin и тремя поверхностями. Skeleton3D сохраняет 15 костей; Body API и игровые модели прежние. Head wrap/open/closed и clothing atlas импортируются 512px; blink — смена diffuse-текстуры. [Описание](CHARACTER_PROTOTYPE.md), ADR-0028. Нижняя запись CHAR-01 описывает предыдущий макет.
+
 CHAR-01: отдельная scenes/characters/visitor_model.tscn строит TEST-геометрию/15-костный Skeleton3D через visitor_model.gd. GuestArt переключает весь видимый Body между D и прежними A/B/C, подписывается на Session.mode_changed только для амплитуды жеста. Коллизии и игровые модели не принадлежат этому арту. [Описание и ограничения](CHARACTER_PROTOTYPE.md).
 
 DA-063: текущий бар использует ServicePanel/DrinkWorkbench с тремя DrinkPreparation (подача, смесительный стакан, шейкер), DrinkBottleStock и DrinkSpillSurface; NarrativeSession сохраняет речь в SERVICE. GuestService запечатывает фактический состав и испускает прежнее одноразовое событие смены. Подробные API/потребители — [контракт бара](parallel/bar/CONTRACTS.md), решения/исследование — parallel/bar. Новый дом и Journal annotations коллеги сохранены; общий default-цикл проверяет release_integration_test. [ADR-0026](decisions/0026-bar-home-journal-integration.md).

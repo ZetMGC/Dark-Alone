@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+CHAR-02: внешний GuestArt API/ID test_visitor остаётся прежним. VisitorModel теперь содержит CharacterMesh со Skin; внутренние BoneAttachment3D-детали удалены. is_blinking читают тест/съёмка, talking управляется Session. Обновлены visitor_model_test/capture_visitor; Main/ServiceGuest не зависят от внутреннего дерева. [Актуальный контракт](CHARACTER_PROTOTYPE.md).
+
 CHAR-01: GuestArt принимает новый ID test_visitor через прежний set_test_appearance; меню получает вариант D. TestFace.get_appearance_ids сохраняет только A/B/C. Смена внешности не меняет ServiceGuest/коллизии/Session. Полный контракт/потребители — [CHARACTER_PROTOTYPE](CHARACTER_PROTOTYPE.md).
 
 DA-063 объединяет действующие [барные контракты](parallel/bar/CONTRACTS.md) с домашними/дневниковыми ниже. DA-060 и WORKBENCH-01–04 включают одновременное обслуживание/речь, независимые составы и технологию смешивания. [ADR-0026](decisions/0026-bar-home-journal-integration.md) фиксирует совместимость и общие профили; checkpoint/preferences/Home API не меняются барной интеграцией.

@@ -1,81 +1,82 @@
 class_name VisitorModel
 extends Node3D
-## CHAR-01: собственный TEST-макет. +Z — лицо, ноги y=-1.65, центр головы y=0.
-## Жёсткие сегменты на Skeleton3D; это не готовый персонаж с мягкой деформацией.
+## CHAR-02: цельная UV, мягкие локти/колени, поза посетителя у стойки.
+## +Z — лицо. Геометрия в rest-пространстве, единый skinned ArrayMesh.
 
 var skeleton: Skeleton3D
 var talking: bool = false
 var _time: float = 0.0
 var _bones: Dictionary = {}
-var _skin: StandardMaterial3D
-var _cloth: StandardMaterial3D
-var _dark: StandardMaterial3D
-var _hair: StandardMaterial3D
+var _surfaces: Dictionary = {}
+var _skin_material: StandardMaterial3D
+var _cloth_material: StandardMaterial3D
+var _leather: StandardMaterial3D
+var is_blinking: bool = false
+var _open_texture: Texture2D
+var _closed_texture: Texture2D
+var _gesture: float = 0.0
 
 
 func _ready() -> void:
 	skeleton = Skeleton3D.new()
 	skeleton.name = "Skeleton3D"
 	add_child(skeleton)
-	_skin = _material(Color(0.52, 0.40, 0.30))
-	_cloth = _fabric(Color(0.25, 0.31, 0.29))
-	_dark = _fabric(Color(0.11, 0.12, 0.14))
-	_hair = _material(Color(0.075, 0.057, 0.046))
-	_bone("Pelvis", "", Vector3(0, -0.87, 0))
-	_bone("Chest", "Pelvis", Vector3(0, 0.40, 0))
-	_bone("Head", "Chest", Vector3(0, 0.47, 0))
-	var torso := _attachment("Chest")
-	_rings(torso, "Jacket", [Vector4(-0.38, 0.19, 0.12, 0), Vector4(-0.22, 0.20, 0.13, 0), Vector4(0.02, 0.23, 0.135, 0), Vector4(0.18, 0.225, 0.12, 0), Vector4(0.23, 0.13, 0.09, 0)], _cloth, 12)
-	_box(torso, "Undershirt", Vector3(0, 0.13, 0.118), Vector3(0.16, 0.21, 0.026), _dark)
+	_skin_material = _textured("res://assets/characters/test_visitor/head_wrap_v2.png")
+	_open_texture = _skin_material.albedo_texture
+	_closed_texture = load("res://assets/characters/test_visitor/head_blink_v2.png")
+	_cloth_material = _textured("res://assets/characters/test_visitor/clothing_atlas_v2.png")
+	_leather = StandardMaterial3D.new()
+	_leather.albedo_color = Color(0.065, 0.053, 0.043)
+	_leather.roughness = 0.88
+	_leather.albedo_texture = _leather_texture()
+	_leather.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+	_bone("Pelvis", "", Vector3(-0.018, -0.90, 0))
+	_bone("Chest", "Pelvis", Vector3(0.013, 0.42, 0.025))
+	_bone("Head", "Chest", Vector3(0.005, 0.41, 0.025))
 	for side in [-1, 1]:
 		var suffix := "L" if side < 0 else "R"
-		_bone("UpperArm" + suffix, "Chest", Vector3(side * 0.225, 0.13, 0))
-		_bone("Forearm" + suffix, "UpperArm" + suffix, Vector3(side * 0.055, -0.27, 0.045))
-		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(-side * 0.025, -0.24, 0.115))
-		var arm := _attachment("UpperArm" + suffix)
-		var shoulder := MeshInstance3D.new()
-		var cap := SphereMesh.new()
-		cap.radius = 0.085
-		cap.height = 0.17
-		cap.radial_segments = 8
-		cap.rings = 4
-		shoulder.mesh = cap
-		shoulder.material_override = _cloth
-		arm.add_child(shoulder)
-		_tube(arm, "Sleeve", Vector3.ZERO, Vector3(side * 0.055, -0.28, 0.045), 0.09, 0.070, _cloth)
-		var forearm := _attachment("Forearm" + suffix)
-		_tube(forearm, "Sleeve", Vector3.ZERO, Vector3(-side * 0.025, -0.24, 0.115), 0.073, 0.057, _cloth)
-		_tube(forearm, "Cuff", Vector3(-side * 0.023, -0.22, 0.105), Vector3(-side * 0.025, -0.245, 0.118), 0.059, 0.058, _dark)
-		var hand := _attachment("Hand" + suffix)
-		_tube(hand, "Palm", Vector3.ZERO, Vector3(0, -0.075, 0.025), 0.043, 0.039, _skin)
-		for finger in 4:
-			var x := (finger - 1.5) * 0.018
-			_tube(hand, "Finger%d" % finger, Vector3(x, -0.065, 0.035), Vector3(x, -0.12 + absf(finger - 1.5) * 0.012, 0.055), 0.010, 0.008, _skin, 5)
-		_tube(hand, "Thumb", Vector3(side * 0.038, -0.012, 0.015), Vector3(side * 0.053, -0.064, 0.043), 0.016, 0.011, _skin, 6)
-		_bone("Thigh" + suffix, "Pelvis", Vector3(side * 0.107, 0, 0))
-		_bone("Shin" + suffix, "Thigh" + suffix, Vector3(side * 0.018, -0.35, 0.028))
-		_bone("Foot" + suffix, "Shin" + suffix, Vector3(0, -0.34, -0.01))
-		_tube(_attachment("Thigh" + suffix), "Trouser", Vector3(0, 0.07, 0), Vector3(side * 0.018, -0.36, 0.028), 0.115, 0.083, _dark)
-		_tube(_attachment("Shin" + suffix), "Trouser", Vector3.ZERO, Vector3(0, -0.34, -0.01), 0.083, 0.065, _dark)
-		var foot := _attachment("Foot" + suffix)
-		var shoe := Node3D.new()
-		shoe.position.z = 0.05
-		foot.add_child(shoe)
-		_rings(shoe, "Shoe", [Vector4(-0.09, 0.07, 0.15, 0), Vector4(-0.065, 0.075, 0.15, 0), Vector4(-0.015, 0.067, 0.13, 0), Vector4(0.025, 0.052, 0.08, 0)], _hair, 10)
-		var pocket := _box(torso, "Pocket" + suffix, Vector3(side * 0.136, 0.015, 0.128), Vector3(0.103, 0.12, 0.018), _cloth)
-		pocket.rotation.z = side * 0.035
-		var collar := _box(torso, "Collar" + suffix, Vector3(side * 0.065, 0.183, 0.12), Vector3(0.068, 0.15, 0.025), _cloth)
-		collar.rotation.z = side * 0.48
-		for button in 4:
-			_box(torso, "Button%s%d" % [suffix, button], Vector3(side * 0.022, 0.06 - button * 0.11, 0.141), Vector3(0.009, 0.009, 0.005), _hair)
-	_tube(_attachment("Head"), "Neck", Vector3(0, -0.26, 0), Vector3(0, -0.10, 0), 0.065, 0.067, _skin)
-	var head_shape := Node3D.new()
-	head_shape.name = "HeadShape"
-	head_shape.scale = Vector3.ONE * 0.85
-	head_shape.position.y = -0.07
-	_attachment("Head").add_child(head_shape)
-	_build_head(head_shape)
+		_bone("UpperArm" + suffix, "Chest", Vector3(side * 0.205, 0.16, -0.005))
+		_bone("Forearm" + suffix, "UpperArm" + suffix, Vector3(side * 0.035, -0.265, 0.065))
+		# Разная высота рук: обе направлены к стойке, без симметричной T-позы.
+		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(-side * 0.045, 0.135 if side < 0 else 0.125, 0.235))
+		_bone("Thigh" + suffix, "Pelvis", Vector3(side * 0.095, 0, -0.005))
+		_bone("Shin" + suffix, "Thigh" + suffix, Vector3(side * 0.017, -0.34, 0.030 if side < 0 else 0.005))
+		_bone("Foot" + suffix, "Shin" + suffix, Vector3(side * 0.008, -0.32, -0.010))
 	skeleton.reset_bone_poses()
+	_build_torso()
+	_build_head()
+	for side in [-1, 1]:
+		_build_arm(side)
+		_build_leg(side)
+	_commit_mesh()
+	_pose(0.0)
+
+
+func _textured(path: String) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load(path)
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+	material.roughness = 0.94
+	return material
+
+
+func _leather_texture() -> ImageTexture:
+	# Собственная UV-фактура обуви: подошва, потёртый носок, шнуровка.
+	var image := Image.create(128, 128, true, Image.FORMAT_RGB8)
+	for y in 128:
+		for x in 128:
+			var u := minf(x, 128 - x) / 128.0
+			var v := y / 128.0
+			var grain := float((x * 31 + y * 17 + x * y * 11) % 23) / 23.0
+			var value := 0.64 + grain * 0.22
+			value += exp(-pow(u / 0.18, 2) - pow((v - 0.42) / 0.17, 2)) * 0.60
+			if y < 18:
+				value *= 0.50 if y < 14 else 1.1
+			if u < 0.10 and y in [72, 73, 83, 84, 94, 95]:
+				value = 2.0
+			image.set_pixel(x, y, Color(value, value, value))
+	image.generate_mipmaps()
+	return ImageTexture.create_from_image(image)
 
 
 func _bone(label: String, parent: String, offset: Vector3) -> void:
@@ -87,157 +88,229 @@ func _bone(label: String, parent: String, offset: Vector3) -> void:
 	skeleton.set_bone_rest(index, Transform3D(Basis.IDENTITY, offset))
 
 
-func _attachment(label: String) -> BoneAttachment3D:
-	var attachment := BoneAttachment3D.new()
-	attachment.name = label + "Parts"
-	attachment.bone_name = label
-	skeleton.add_child(attachment)
-	return attachment
+func _origin(label: String) -> Vector3:
+	return skeleton.get_bone_global_rest(_bones[label]).origin
 
 
-func _material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = 0.95
-	return material
+func _surface(label: String, material: Material) -> SurfaceTool:
+	if not _surfaces.has(label):
+		var tool := SurfaceTool.new()
+		tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+		tool.set_material(material)
+		tool.set_smooth_group(0)
+		_surfaces[label] = tool
+	return _surfaces[label]
 
 
-func _fabric(color: Color) -> StandardMaterial3D:
-	# Собственная кодовая фактура ткани; воспроизводима без сторонних изображений.
-	var image := Image.create(128, 128, false, Image.FORMAT_RGB8)
-	for y in 128:
-		for x in 128:
-			var grain := float((x * 17 + y * 31 + x * y * 7) % 19) / 19.0
-			var fold := pow(absf(sin(x * 0.17 + sin(y * 0.045) * 2.0)), 12.0)
-			image.set_pixel(x, y, Color.WHITE * (0.76 + grain * 0.16 - fold * 0.16))
-	var material := _material(color)
-	material.albedo_texture = ImageTexture.create_from_image(image)
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	return material
+func _vertex(tool: SurfaceTool, point: Vector3, uv: Vector2, bone: String, other: String = "", blend: float = 0.0) -> void:
+	tool.set_uv(uv)
+	tool.set_bones(PackedInt32Array([_bones[bone], _bones[other] if not other.is_empty() else _bones[bone], 0, 0]))
+	tool.set_weights(PackedFloat32Array([1.0 - blend, blend, 0.0, 0.0]))
+	tool.add_vertex(point)
 
 
-func _box(parent: Node3D, label: String, center: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	var part := MeshInstance3D.new()
-	part.name = label
-	part.mesh = mesh
-	part.material_override = material
-	part.position = center
-	parent.add_child(part)
-	return part
+func _commit_mesh() -> void:
+	var mesh := ArrayMesh.new()
+	for tool: SurfaceTool in _surfaces.values():
+		tool.generate_normals()
+		tool.index()
+		tool.commit(mesh)
+	_surfaces.clear()
+	var skin := Skin.new()
+	for index in skeleton.get_bone_count():
+		skin.add_bind(index, skeleton.get_bone_global_rest(index).affine_inverse())
+	var instance := MeshInstance3D.new()
+	instance.name = "CharacterMesh"
+	instance.mesh = mesh
+	instance.skin = skin
+	instance.skeleton = NodePath("../Skeleton3D")
+	instance.extra_cull_margin = 0.15
+	add_child(instance)
 
 
-func _tube(parent: Node3D, label: String, start: Vector3, end: Vector3, radius_a: float, radius_b: float, material: Material, segments: int = 8) -> void:
-	var length := start.distance_to(end)
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius_a
-	mesh.bottom_radius = radius_b
-	mesh.height = length
-	mesh.radial_segments = segments
-	mesh.rings = 2
-	var part := MeshInstance3D.new()
-	part.name = label
-	part.mesh = mesh
-	part.material_override = material
-	part.position = (start + end) * 0.5
-	part.quaternion = Quaternion(Vector3.UP, (start - end).normalized())
-	parent.add_child(part)
+func _body_uv(angle: float, vertical: float, front: bool) -> Vector2:
+	return Vector2((0.25 + sin(angle) * 0.244) if front else (0.75 - sin(angle) * 0.244), clampf(vertical, 0.008, 0.492))
 
 
-func _rings(parent: Node3D, label: String, rings: Array, material: Material, segments: int) -> void:
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+func _build_torso() -> void:
+	var tool := _surface("Clothing", _cloth_material)
+	# y, ширина, глубина: талия, грудь, покатые плечи, вырез воротника.
+	var rings := [Vector3(-0.40, 0.174, 0.105), Vector3(-0.32, 0.182, 0.115), Vector3(-0.20, 0.176, 0.112), Vector3(-0.08, 0.185, 0.123), Vector3(0.045, 0.212, 0.130), Vector3(0.13, 0.224, 0.115), Vector3(0.17, 0.210, 0.102), Vector3(0.205, 0.140, 0.078), Vector3(0.225, 0.061, 0.062)]
 	for row in rings.size() - 1:
-		for column in segments:
-			for corner in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
-				var ring: Vector4 = rings[row + corner.y]
-				var angle: float = TAU * (column + corner.x) / float(segments)
-				tool.set_uv(Vector2((column + corner.x) / float(segments), (row + corner.y) / float(rings.size() - 1)))
-				tool.add_vertex(Vector3(sin(angle) * ring.y, ring.x, cos(angle) * ring.z))
-	tool.generate_normals()
-	var part := MeshInstance3D.new()
-	part.name = label
-	part.mesh = tool.commit()
-	part.material_override = material
-	parent.add_child(part)
-
-
-func _build_head(parent: Node3D) -> void:
-	# Фронтальная проекция только на переднюю половину; затылок не повторяет лицо.
-	var face := _material(Color.WHITE)
-	face.albedo_texture = load("res://assets/characters/test_visitor/face.png")
-	face.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	face.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# y, ширина, глубина: подбородок -> темя.
-	var rings := [Vector3(-0.145, 0.060, 0.065), Vector3(-0.10, 0.095, 0.085), Vector3(-0.045, 0.115, 0.097), Vector3(0.015, 0.126, 0.105), Vector3(0.080, 0.123, 0.103), Vector3(0.145, 0.109, 0.091), Vector3(0.205, 0.060, 0.055), Vector3(0.22, 0.004, 0.004)]
-	var texture_widths := [0.10, 0.235, 0.275, 0.30, 0.335, 0.345, 0.23, 0.04]
-	for row in rings.size() - 1:
-		for column in 16:
+		for column in 24:
+			var front := cos(-PI + TAU * (column + 0.5) / 24.0) > 0
 			for corner in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
 				var ring: Vector3 = rings[row + corner.y]
-				var angle: float = -PI / 2 + PI * (column + corner.x) / 16.0
-				var x := sin(angle) * ring.y
-				var z := cos(angle) * ring.z
-				# Объём переносицы/носа, губ и надбровья — в самой геометрии.
-				z += exp(-pow(x / 0.025, 2)) * exp(-pow((ring.x + 0.025) / 0.042, 2)) * 0.043
-				z += exp(-pow(x / 0.05, 2)) * exp(-pow((ring.x + 0.085) / 0.018, 2)) * 0.009
-				tool.set_uv(Vector2(0.5 + sin(angle) * texture_widths[row + corner.y], 0.05 + (0.22 - ring.x) / 0.365 * 0.89))
-				tool.add_vertex(Vector3(x, ring.x, z))
-	tool.generate_normals()
-	var front := MeshInstance3D.new()
-	front.name = "Face"
-	front.mesh = tool.commit()
-	front.material_override = face
-	parent.add_child(front)
-	# Задняя половина головы, уши и отдельный объём волос.
-	var skull := SphereMesh.new()
-	skull.radius = 0.125
-	skull.height = 0.345
-	skull.radial_segments = 16
-	skull.rings = 8
-	var back := MeshInstance3D.new()
-	back.name = "Skull"
-	back.mesh = skull
-	back.material_override = _skin
-	back.position = Vector3(0, 0.035, -0.036)
-	back.scale.z = 0.79
-	parent.add_child(back)
+				var angle: float = -PI + TAU * (column + corner.x) / 24.0
+				var wrinkle := sin(angle * 7.0 + row * 1.3) * 0.0025
+				var point := _origin("Chest") + Vector3(sin(angle) * (ring.y + wrinkle), ring.x, cos(angle) * (ring.z + wrinkle))
+				var vertical := (0.225 - ring.x) / 0.625 * 0.484 + 0.008
+				_vertex(tool, point, _body_uv(angle, vertical, front), "Pelvis", "Chest", smoothstep(-0.38, -0.14, ring.x))
+	# Воротник — тонкие изогнутые лоскуты, без выступающих коробок.
 	for side in [-1, 1]:
-		var ear := MeshInstance3D.new()
-		var ear_mesh := SphereMesh.new()
-		ear_mesh.radius = 0.025
-		ear_mesh.height = 0.062
-		ear_mesh.radial_segments = 8
-		ear_mesh.rings = 4
-		ear.mesh = ear_mesh
-		ear.material_override = _skin
-		ear.position = Vector3(side * 0.123, 0.008, -0.012)
-		ear.scale.x = 0.55
-		parent.add_child(ear)
-	# Отдельный затылок с волосами: лоб и лицо не дублируются сзади.
-	var rear_hair := MeshInstance3D.new()
-	var rear_mesh := SphereMesh.new()
-	rear_mesh.radius = 0.127
-	rear_mesh.height = 0.25
-	rear_mesh.radial_segments = 14
-	rear_mesh.rings = 6
-	rear_hair.mesh = rear_mesh
-	rear_hair.material_override = _hair
-	rear_hair.position = Vector3(0, 0.085, -0.055)
-	rear_hair.scale.z = 0.70
-	parent.add_child(rear_hair)
-	_rings(parent, "Hair", [Vector4(0.105, 0.121, 0.075, 0), Vector4(0.175, 0.110, 0.065, 0), Vector4(0.224, 0.069, 0.040, 0), Vector4(0.24, 0.001, 0.001, 0)], _hair, 14)
+		var points := [Vector3(side * 0.025, 0.222, 0.063), Vector3(side * 0.076, 0.197, 0.089), Vector3(side * 0.092, 0.117, 0.133), Vector3(side * 0.043, 0.158, 0.124)]
+		var order := [0, 1, 3, 1, 2, 3] if side > 0 else [0, 3, 1, 1, 3, 2]
+		for index in order:
+			var p: Vector3 = points[index]
+			_vertex(tool, _origin("Chest") + p, Vector2(0.25 + p.x * 1.04, (0.225 - p.y) / 0.625 * 0.484 + 0.008), "Chest")
+	# Шея продолжает текстуру кожи, а не однотонный цилиндр другого цвета.
+	var neck := [_ring(_origin("Head") + Vector3(0, -0.205, -0.015), 0.053, 0.051, "Chest", "Head", 0.2, 0.0), _ring(_origin("Head") + Vector3(0, -0.155, -0.008), 0.049, 0.046, "Chest", "Head", 0.65, 0.5), _ring(_origin("Head") + Vector3(0, -0.105, 0), 0.047, 0.042, "Head", "", 0.0, 1.0)]
+	_loft("Skin", _skin_material, neck, 16, Rect2(0.39, 0.94, 0.22, 0.045), false)
+
+
+func _ring(center: Vector3, width: float, depth: float, bone: String, other: String, blend: float, vertical: float) -> Dictionary:
+	return {"center": center, "width": width, "depth": depth, "bone": bone, "other": other, "blend": blend, "v": vertical}
+
+
+func _loft(label: String, material: Material, rings: Array, segments: int, region: Rect2, follow: bool = true, caps: bool = false) -> void:
+	var tool := _surface(label, material)
+	# Ось кольца follow направлена вдоль убывающего y/к кончикам пальцев.
+	# Для такой системы базиса winding противоположен восходящим кольцам тела.
+	var corners := [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)] if follow else [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]
+	for row in rings.size() - 1:
+		for column in segments:
+			for corner in corners:
+				var row_index: int = row + corner.y
+				var ring: Dictionary = rings[row_index]
+				var center: Vector3 = ring.center
+				var forward := Vector3.BACK
+				if follow:
+					var tangent: Vector3 = rings[mini(row_index + 1, rings.size() - 1)].center - rings[maxi(row_index - 1, 0)].center
+					forward = tangent.cross(Vector3.RIGHT).normalized()
+				var angle: float = TAU * (column + corner.x) / float(segments)
+				var point := center + Vector3.RIGHT * sin(angle) * float(ring.width) + forward * cos(angle) * float(ring.depth)
+				var uv := region.position + region.size * Vector2((column + corner.x) / float(segments), ring.v)
+				_vertex(tool, point, uv, ring.bone, ring.other, ring.blend)
+	if caps:
+		for row_index in [0, rings.size() - 1]:
+			var ring: Dictionary = rings[row_index]
+			var center: Vector3 = ring.center
+			var forward := Vector3.BACK
+			if follow:
+				var tangent: Vector3 = rings[mini(row_index + 1, rings.size() - 1)].center - rings[maxi(row_index - 1, 0)].center
+				forward = tangent.cross(Vector3.RIGHT).normalized()
+			for column in segments:
+				var order := [-1, column, column + 1] if row_index == 0 else [-1, column + 1, column]
+				if follow:
+					order.reverse()
+				for index in order:
+					var angle: float = TAU * index / float(segments)
+					var point := center if index == -1 else center + Vector3.RIGHT * sin(angle) * float(ring.width) + forward * cos(angle) * float(ring.depth)
+					_vertex(tool, point, region.get_center(), ring.bone, ring.other, ring.blend)
+
+
+func _build_arm(side: int) -> void:
+	var suffix := "L" if side < 0 else "R"
+	var upper := "UpperArm" + suffix
+	var forearm := "Forearm" + suffix
+	var wrist := "Hand" + suffix
+	var shoulder := _origin(upper)
+	var elbow := _origin(forearm)
+	var hand := _origin(wrist)
+	var sleeve := [
+		_ring(shoulder + Vector3(0, 0.010, 0), 0.010, 0.040, upper, "", 0, 0),
+		_ring(shoulder - Vector3(0, 0.025, 0), 0.077, 0.082, upper, "", 0, 0.08),
+		_ring(shoulder.lerp(elbow, 0.32), 0.087, 0.081, upper, "", 0, 0.24),
+		_ring(shoulder.lerp(elbow, 0.72), 0.072, 0.070, upper, forearm, 0.1, 0.43),
+		_ring(elbow, 0.074, 0.075, upper, forearm, 0.5, 0.53),
+		_ring(elbow.lerp(hand, 0.20), 0.073, 0.067, upper, forearm, 0.95, 0.63),
+		_ring(elbow.lerp(hand, 0.55), 0.064, 0.061, forearm, "", 0, 0.77),
+		_ring(elbow.lerp(hand, 0.91), 0.050, 0.047, forearm, wrist, 0.05, 0.94),
+		_ring(hand, 0.051, 0.045, forearm, wrist, 0.15, 1.0)]
+	_loft("Clothing", _cloth_material, sleeve, 12, Rect2(0.008, 0.508, 0.484, 0.484))
+	var palm := [_ring(hand, 0.033, 0.017, wrist, "", 0, 0), _ring(hand + Vector3(0, -0.009, 0.039), 0.038, 0.018, wrist, "", 0, 0.4), _ring(hand + Vector3(0, -0.015, 0.076), 0.034, 0.014, wrist, "", 0, 1)]
+	_loft("Skin", _skin_material, palm, 10, Rect2(0.38, 0.94, 0.24, 0.045), true, true)
+	for finger in 4:
+		var x: float = (finger - 1.5) * 0.0175
+		var length: float = 0.052 - absf(finger - 1.4) * 0.008
+		var base := hand + Vector3(x, -0.012, 0.068)
+		var rings := [_ring(base, 0.010, 0.011, wrist, "", 0, 0), _ring(base + Vector3(0, -0.002, length * 0.45), 0.009, 0.010, wrist, "", 0, 0.4), _ring(base + Vector3(0, -0.015, length * 0.85), 0.008, 0.009, wrist, "", 0, 0.75), _ring(base + Vector3(0, -0.029, length * 0.82), 0.005, 0.006, wrist, "", 0, 1)]
+		_loft("Skin", _skin_material, rings, 8, Rect2(0.40, 0.94, 0.20, 0.045), true, true)
+	var thumb := [_ring(hand + Vector3(side * 0.032, -0.007, 0.012), 0.014, 0.013, wrist, "", 0, 0), _ring(hand + Vector3(side * 0.050, -0.018, 0.042), 0.012, 0.011, wrist, "", 0, 0.5), _ring(hand + Vector3(side * 0.046, -0.028, 0.066), 0.007, 0.008, wrist, "", 0, 1)]
+	_loft("Skin", _skin_material, thumb, 8, Rect2(0.41, 0.94, 0.18, 0.045), true, true)
+
+
+func _build_leg(side: int) -> void:
+	var suffix := "L" if side < 0 else "R"
+	var thigh := "Thigh" + suffix
+	var shin := "Shin" + suffix
+	var foot := "Foot" + suffix
+	var top := _origin(thigh)
+	var knee := _origin(shin)
+	var ankle := _origin(foot)
+	var leg := [_ring(top + Vector3(0, 0.065, 0), 0.097, 0.101, thigh, "", 0, 0), _ring(top, 0.103, 0.110, thigh, "", 0, 0.08), _ring(top.lerp(knee, 0.30), 0.100, 0.103, thigh, "", 0, 0.22), _ring(top.lerp(knee, 0.74), 0.078, 0.080, thigh, shin, 0.12, 0.43), _ring(knee, 0.076, 0.077, thigh, shin, 0.5, 0.54), _ring(knee.lerp(ankle, 0.22), 0.080, 0.081, thigh, shin, 0.93, 0.66), _ring(knee.lerp(ankle, 0.62), 0.072, 0.071, shin, "", 0, 0.83), _ring(ankle + Vector3(0, 0.035, 0), 0.061, 0.064, shin, foot, 0.05, 0.95), _ring(ankle, 0.065, 0.067, shin, foot, 0.15, 1)]
+	_loft("Clothing", _cloth_material, leg, 12, Rect2(0.508, 0.508, 0.484, 0.484))
+	var boot := [_ring(ankle + Vector3(0, -0.09, 0.045), 0.065, 0.132, foot, "", 0, 0), _ring(ankle + Vector3(0, -0.075, 0.047), 0.069, 0.132, foot, "", 0, 0.12), _ring(ankle + Vector3(0, -0.04, 0.043), 0.064, 0.122, foot, "", 0, 0.5), _ring(ankle + Vector3(0, 0.008, 0.012), 0.054, 0.087, foot, "", 0, 0.83), _ring(ankle + Vector3(0, 0.046, 0), 0.050, 0.059, foot, "", 0, 1)]
+	_loft("Leather", _leather, boot, 12, Rect2(0, 0, 1, 1), false, true)
+
+
+func _head_uv(angle: float, vertical: float) -> Vector2:
+	var normalized := absf(angle) / PI
+	var horizontal := normalized * 0.70 if normalized <= 0.5 else 0.35 + (normalized - 0.5) * 0.30
+	return Vector2(0.5 + signf(angle) * horizontal, vertical)
+
+
+func _head_point(ring: Vector4, angle: float) -> Vector3:
+	var x := sin(angle) * ring.y
+	var front := maxf(cos(angle), 0)
+	var depth := ring.z if front > 0 else ring.z + 0.012
+	var z := cos(angle) * depth
+	var nose := exp(-pow(x / 0.018, 2)) * exp(-pow((ring.x + 0.035) / 0.025, 2)) * 0.029
+	var lips := exp(-pow(x / 0.032, 2)) * exp(-pow((ring.x + 0.075) / 0.014, 2)) * 0.006
+	var eyes := (exp(-pow((x - 0.038) / 0.018, 2)) + exp(-pow((x + 0.038) / 0.018, 2))) * exp(-pow((ring.x - 0.015) / 0.014, 2)) * 0.005
+	z += (nose + lips - eyes) * pow(front, 4)
+	return Vector3(x, ring.x, z)
+
+
+func _build_head() -> void:
+	var tool := _surface("Skin", _skin_material)
+	# y, полуширина, глубина, v атласа. Один замкнутый череп вместо лицевой маски.
+	var rings := [Vector4(-0.14, 0.028, 0.035, 0.83), Vector4(-0.12, 0.056, 0.053, 0.79), Vector4(-0.095, 0.071, 0.065, 0.74), Vector4(-0.075, 0.077, 0.073, 0.68), Vector4(-0.045, 0.084, 0.081, 0.61), Vector4(-0.015, 0.088, 0.083, 0.53), Vector4(0.015, 0.091, 0.081, 0.445), Vector4(0.040, 0.092, 0.080, 0.37), Vector4(0.075, 0.091, 0.078, 0.28), Vector4(0.110, 0.086, 0.073, 0.18), Vector4(0.142, 0.064, 0.055, 0.08), Vector4(0.162, 0.022, 0.023, 0.015)]
+	for row in rings.size() - 1:
+		for column in 40:
+			for corner in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+				var ring: Vector4 = rings[row + corner.y]
+				var angle: float = -PI + TAU * (column + corner.x) / 40.0
+				_vertex(tool, _origin("Head") + _head_point(ring, angle), _head_uv(angle, ring.w), "Head")
+	# Темя закрыто треугольным веером, UV-шов остаётся сзади.
+	for column in 40:
+		for index in [-1, column + 1, column]:
+			var angle: float = -PI + TAU * index / 40.0
+			var point := Vector3(0, 0.167, 0) if index == -1 else _head_point(rings[-1], angle)
+			_vertex(tool, _origin("Head") + point, Vector2(0.5, 0.01) if index == -1 else _head_uv(angle, 0.01), "Head")
+	# Уши получают соответствующие участки UV, без однотонных вставок.
+	for side in [-1, 1]:
+		var center := _origin("Head") + Vector3(side * 0.091, -0.005, -0.004)
+		var corners := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)] if side > 0 else [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]
+		for row in 6:
+			for column in 10:
+				for corner in corners:
+					var latitude: float = PI * (row + corner.y + 0.01) / 6.02
+					var longitude: float = TAU * (column + corner.x) / 10.0
+					var p := Vector3(side * sin(latitude) * cos(longitude) * 0.013, cos(latitude) * 0.028, sin(latitude) * sin(longitude) * 0.017)
+					var uv := Vector2((0.175 if side < 0 else 0.825) + p.z * 1.5 * side, 0.495 - p.y * 2.8)
+					_vertex(tool, center + p, uv, "Head")
+
+
+func _pose(delta: float) -> void:
+	_gesture = move_toward(_gesture, 1.0 if talking else 0.0, delta * 2.5)
+	skeleton.set_bone_pose_rotation(_bones.Pelvis, Quaternion.from_euler(Vector3(0, 0.018, -0.025)))
+	skeleton.set_bone_pose_rotation(_bones.Chest, Quaternion.from_euler(Vector3(0.035 + sin(_time * 1.25) * 0.006, -0.025, 0.014)))
+	skeleton.set_bone_pose_rotation(_bones.Head, Quaternion.from_euler(Vector3(-0.025 + sin(_time * 0.75) * 0.009, 0.025 + sin(_time * 0.38) * 0.035, -0.018)))
+	var beat := sin(_time * 1.55) * 0.5 + 0.5
+	skeleton.set_bone_pose_rotation(_bones.ForearmR, Quaternion.from_euler(Vector3(-0.015 - _gesture * beat * 0.10, _gesture * 0.035, 0.015)))
+	skeleton.set_bone_pose_rotation(_bones.HandR, Quaternion.from_euler(Vector3(-0.07 + _gesture * beat * 0.08, 0.08, -0.07)))
+	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(-0.04, -0.12, 0.08)))
+	# Два совпадающих UV-кадра дают короткое закрытие глаз без накладок.
+	var phase := fmod(_time + 1.5, 4.8)
+	var blink_now := phase < 0.13
+	if is_blinking != blink_now:
+		is_blinking = blink_now
+		_skin_material.albedo_texture = _closed_texture if is_blinking else _open_texture
 
 
 func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	_time += delta
-	skeleton.set_bone_pose_rotation(_bones.Chest, Quaternion.from_euler(Vector3(sin(_time * 1.3) * 0.008, 0, 0)))
-	skeleton.set_bone_pose_rotation(_bones.Head, Quaternion.from_euler(Vector3(sin(_time * 0.8) * 0.012, sin(_time * 0.37) * 0.055, 0.012)))
-	var gesture := sin(_time * 1.7) * 0.10 if talking else sin(_time * 0.7) * 0.015
-	skeleton.set_bone_pose_rotation(_bones.ForearmR, Quaternion.from_euler(Vector3(-gesture, 0, -gesture * 0.4)))
-	skeleton.set_bone_pose_rotation(_bones.HandR, Quaternion.from_euler(Vector3(0, gesture * 0.5, 0)))
+	_pose(delta)

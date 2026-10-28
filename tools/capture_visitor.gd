@@ -24,6 +24,17 @@ func _run() -> void:
 	key.light_color = Color(1, 0.88, 0.73)
 	key.light_energy = 1.4
 	stage.add_child(key)
+	key.shadow_enabled = true
+	var floor := MeshInstance3D.new()
+	var floor_mesh := PlaneMesh.new()
+	floor_mesh.size = Vector2(8, 8)
+	floor.mesh = floor_mesh
+	floor.position.y = -1.65
+	var floor_material := StandardMaterial3D.new()
+	floor_material.albedo_color = Color(0.07, 0.08, 0.09)
+	floor_material.roughness = 1
+	floor.material_override = floor_material
+	stage.add_child(floor)
 	var camera := Camera3D.new()
 	stage.add_child(camera)
 	camera.position = Vector3(0.7, -0.45, 2.8)
@@ -44,6 +55,21 @@ func _run() -> void:
 		await process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://artifacts/visitor/face.png")
+		var deadline := Time.get_ticks_msec() + 6000
+		while not model.is_blinking:
+			await process_frame
+			if Time.get_ticks_msec() > deadline:
+				printerr("FAIL: blink capture timed out")
+				quit(1)
+				return
+		model.set_process(false)
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("res://artifacts/visitor/face_blink.png")
+		# Экспортируем открытые глаза и текущую позу, без запечённых движений.
+		model.set_process(true)
+		while model.is_blinking:
+			await process_frame
+		model.set_process(false)
 	# Статическая переносимая модель для Blender; анимация остаётся в native-сцене.
 	var document := GLTFDocument.new()
 	var state := GLTFState.new()
@@ -57,7 +83,9 @@ func _run() -> void:
 			var restored := document.generate_scene(round_trip)
 			var meshes := restored.find_children("*", "MeshInstance3D", true, false)
 			print("GLB round trip meshes: ", meshes.size())
-			if meshes.size() < 30:
+			var skeletons := restored.find_children("*", "Skeleton3D", true, false)
+			print("GLB round trip skeletons: ", skeletons.size())
+			if meshes.is_empty() or skeletons.size() != 1 or skeletons[0].get_bone_count() != 15:
 				result = ERR_INVALID_DATA
 			restored.free()
 	print("Visitor GLB export: ", result)
