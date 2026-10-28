@@ -10,7 +10,7 @@
 
 context_bubble_style.tres разделяется речью, объектами и карточкой стоящей бутылки. Прицел остаётся точкой для пассивного чтения и кольцом для доступного действия. Клавиши контекста не перехватывают ответы в диалоге. Метаданные не входят в save.
 
-Правило единой установки/ярлыка записано в AGENTS. Локальное обновление и запуск завершаются перед передачей; новых пользовательских ярлыков/установок не создаётся.
+Правило единой установки/ярлыка записано в AGENTS. Существующая основная установка обновлена на месте; обычный ярлык Dark Alone сохранён. Созданный ранее preview-ярлык скопирован в резервную папку и удалён; новых пользовательских ярлыков/установок не создано. Старые файлы установки сохранены в игнорируемой artifacts/da077-install-backup/. Настройки и игровые сохранения не затронуты.
 
 ## Проверки
 
@@ -20,6 +20,6 @@ Godot 4.7.2, Windows RTX 4060 Compatibility. Полный tools/check.ps1 PASS �
 
 ## Решения и продолжение
 
-ADR-0038; CONTRACTS/ARCHITECTURE обновлены. Проверить Windows export и обновить существующую локальную установку, затем владельцу оценить чтение/выбор на предметах. Субъективная оценка остаётся за владельцем. Нового GitHub-релиза в рамках задачи нет.
+ADR-0038; CONTRACTS/ARCHITECTURE обновлены. Чистый source 45528ac3f32a8b68d072b9ab0d01522b0e542031, комплект windows-20261028-222646-e75c50b6, source_dirty=false. Хеши установленного комплекта и обычный графический запуск вне проекта PASS. Windows Validation house-layout: GPU 108/0, финальный headless 108/0; логи da077-windows-house.log, da077-windows-house-final.log и da077-installed.log. Отдельно исправлено обновление сведений у чайника при готовности чая. DA-077 done, частично выполненных критериев нет, STATUS/BACKLOG/HANDOFF обновлены. Владельцу оценить чтение/выбор на предметах. Субъективная оценка остаётся за владельцем. Нового GitHub-релиза в рамках задачи нет.
 
 Основные файлы: interaction/interactable_3d.gd, interaction_controller.gd; ui/object_context_bubble.gd, context_bubble_style.tres; home/house_interior.gd, targets/house_action_target.gd, home_exploration.gd; main.gd, navigation_hud.gd, interaction_reticle.gd, drink_workbench.gd; tests/object_context_test.gd, parallel/home/house_layout_test.gd и tools/check.ps1.
