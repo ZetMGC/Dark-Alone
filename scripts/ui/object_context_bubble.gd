@@ -103,7 +103,7 @@ func _update_actions(area: Vector2) -> void:
 		choices.add_child(row)
 	for index in actions.size():
 		var row := choices.get_child(index) as Label
-		var binding := "[E / F]" if actions.size() == 1 else ("[%d]" % [index + 1] + ("  [E / F]" if index == selected else ""))
+		var binding := "[E]" if actions.size() == 1 else ("[%d]" % [index + 1] + ("  [E]" if index == selected else ""))
 		row.text = ("› " if index == selected else "  ") + binding + "  " + str(actions[index].text)
 		row.modulate = Color(0.88, 0.87, 0.79) if index == selected else Color(0.63, 0.66, 0.64)
 	action_panel.visible = not actions.is_empty()
@@ -133,8 +133,8 @@ func handle_input(event: InputEvent) -> bool:
 		return true
 	if event is InputEventKey and event.pressed:
 		var key: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
-		var index := selected if key in [KEY_E, KEY_F] else int(key - KEY_1)
-		if key not in [KEY_E, KEY_F] and (key < KEY_1 or key > KEY_9):
+		var index := selected if key == KEY_E else int(key - KEY_1)
+		if key != KEY_E and (key < KEY_1 or key > KEY_9):
 			return false
 		if index < 0 or index >= actions.size():
 			return false

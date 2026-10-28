@@ -282,14 +282,14 @@ func _run() -> void:
 	var desired: Vector3 = (main.get_node("DialogueTrigger").global_position - rig.view.global_position).normalized()
 	rig.apply_look_delta(Vector2(atan2(-desired.x, -desired.z) - atan2(-forward.x, -forward.z), 0))
 	await _snap("06-drink-at-guest")
-	await _key(KEY_F)
+	await _key(KEY_E)
 	await _key(KEY_2)
 	# Число страниц зависит от окна; каждое F раскрывает/перелистывает
 	# реальную реплику, пока терминальный узел не закончит разговор.
 	for page in 12:
 		if session.mode == NarrativeSession.SHIFT_COMPLETE:
 			break
-		await _key(KEY_F)
+		await _key(KEY_E)
 	if session.mode != NarrativeSession.SHIFT_COMPLETE:
 		printerr("DETAIL: mode=%s node=%s remaining=%d looking=%s can_answer=%s forward=%s" % [session.mode, session.runner.current_node_id, session.shift.remaining, panel.looking_at_speaker, panel.can_answer(), -rig.view.global_basis.z])
 	_expect(session.mode == NarrativeSession.SHIFT_COMPLETE and session.shift.remaining == 0 and session.shift.get_events().size() == 2, "Real prepared drink and dialogue finish same two-division shift")

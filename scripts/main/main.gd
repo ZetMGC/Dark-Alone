@@ -208,7 +208,7 @@ func _input(event: InputEvent) -> void:
 	# Поиск дневника получает буквы J/T/B, не игровые горячие клавиши.
 	if (get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit) and not event.is_action_pressed("toggle_menu"):
 		return
-	if free_roam_enabled and _session.mode == NarrativeSession.EXPLORATION and _hud.object_context.handle_input(event):
+	if free_roam_enabled and _session.mode in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] and _hud.object_context.handle_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	if is_instance_valid(_home) and _home.handle_input(event):
@@ -426,7 +426,7 @@ func _refresh_navigation() -> void:
 	if not _configured or not _narrative_ready:
 		return
 	var exploration := _session.mode == NarrativeSession.EXPLORATION
-	_hud.object_context.enabled = exploration
+	_hud.object_context.enabled = exploration or _session.mode == NarrativeSession.DIALOGUE
 	var walking_dialogue := free_roam_enabled and _session.mode == NarrativeSession.DIALOGUE
 	var focused := free_roam_enabled and (_rig as FreeRoamCamera).focus_active
 	($DialoguePanel as DialogueBubblePanel).set_response_input_enabled(not focused and _session.mode == NarrativeSession.DIALOGUE)

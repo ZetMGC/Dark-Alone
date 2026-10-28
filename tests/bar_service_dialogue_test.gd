@@ -125,8 +125,8 @@ func _test_conversation_service() -> void:
 	panel.characters_per_second = 20
 	_expect(main.start_test_dialogue(), "Starts conversation")
 	_expect(not main.open_service_menu(), "Walking conversation cannot serve remotely")
-	await _key(KEY_F)
-	await _key(KEY_F)
+	await _key(KEY_E)
+	await _key(KEY_E)
 	_expect(panel.get_page_count() > 2 and panel.get_page_index() == 1 and not panel.is_line_complete(), "Fixture on partially typed continuation")
 	var node := session.runner.current_node_id
 	var selected := panel.selected_index
@@ -139,9 +139,9 @@ func _test_conversation_service() -> void:
 	if DisplayServer.get_name() != "headless":
 		_expect(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "Workstation releases cursor")
 	await _still(rig, "dialogue workstation")
-	await _key(KEY_F)
+	await _key(KEY_E)
 	await _key(KEY_2)
-	_expect(panel.get_page_index() == 1 and session.runner.current_node_id == node and panel.selected_index == selected, "Workstation F and digits do not act on speech")
+	_expect(panel.get_page_index() == 1 and session.runner.current_node_id == node and panel.selected_index == selected, "Workstation E and digits do not act on speech")
 	await _point(rig, Vector3(-5.6, 1.12, -2))
 	await _key(KEY_E)
 	_expect(session.mode == NarrativeSession.SERVICE and session.runner.active and panel.screen.visible, "Cursor E opens drink menu with visible active speech")
@@ -149,7 +149,7 @@ func _test_conversation_service() -> void:
 	await get_tree().create_timer(0.15).timeout
 	_expect(text.visible_characters > typed and panel.get_page_index() == 1, "NPC continues typing inside service menu")
 	_expect(not panel.confirm() and not panel.submit_choice(0) and not panel.advance_page(), "Passive speech rejects direct UI commands")
-	await _key(KEY_F)
+	await _key(KEY_E)
 	await _key(KEY_1)
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
@@ -194,7 +194,7 @@ func _test_conversation_service() -> void:
 	for step in 40:
 		if panel.is_speech_complete():
 			break
-		await _key(KEY_F)
+		await _key(KEY_E)
 	_expect(panel.is_speech_complete() and panel.can_answer(), "Walking look at guest restores continuation and answers")
 	panel.select_relative(1)
 	selected = panel.selected_index
@@ -211,11 +211,11 @@ func _test_conversation_service() -> void:
 	await _snap("02-served-still-talking")
 	await _key(KEY_ESCAPE)
 	_aim(rig, main.get_node("DialogueTrigger").global_position)
-	await _key(KEY_F)
-	_expect(session.runner.current_node_id == &"goodbye", "F confirms preserved reply after returning gaze")
+	await _key(KEY_E)
+	_expect(session.runner.current_node_id == &"goodbye", "E confirms preserved reply after returning gaze")
 	await _snap("03-back-to-guest")
-	await _key(KEY_F)
-	await _key(KEY_F)
+	await _key(KEY_E)
+	await _key(KEY_E)
 	_expect(session.mode == NarrativeSession.SHIFT_COMPLETE and not session.runner.active and session.shift.remaining == 0 and session.shift.get_events().size() == 2, "Dialogue then finishes shift with exactly two completed events")
 	_expect(not session.finish_for_node(&"test_guest_intro", &"goodbye") and not session.open_service(), "Stale terminal and service requests rejected after shift")
 	await _dispose(main)

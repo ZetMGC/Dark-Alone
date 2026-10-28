@@ -89,8 +89,11 @@ func _run() -> void:
 		rig.reset_look()
 	_expect("**" not in text.get_parsed_text() and "тестовый термин" in text.get_parsed_text(), "Important markup removed from visible text")
 	await _snap("01-typing")
+	await _key(KEY_E)
+	_expect(session.runner.current_node_id == &"opening" and panel.is_line_complete() and panel.can_answer(), "First E reveals without choosing")
 	await _key(KEY_F)
-	_expect(session.runner.current_node_id == &"opening" and panel.is_line_complete() and panel.can_answer(), "First F reveals without choosing")
+	_expect(session.runner.current_node_id == &"opening", "Old F binding no longer confirms replies")
+	_expect(panel.get_node("%VoiceChoices").get_child(0).text.contains("[E]"), "Selected dialogue reply shows E binding")
 	await _snap("02-replies")
 	var position := rig.body.global_position
 	Input.action_press("move_forward")
@@ -118,7 +121,7 @@ func _run() -> void:
 	await get_tree().create_timer(0.18).timeout
 	_expect(voice.position.distance_to(panel._position_target) < distance, "Bubble eases towards edge while speech state remains intact")
 	await _key(KEY_2)
-	await _key(KEY_F)
+	_expect(not panel.confirm(), "Away confirmation cannot answer")
 	_expect(session.runner.current_node_id == &"opening", "Away keys cannot answer")
 	await _snap("03-behind")
 	rig.apply_look_delta(Vector2(-PI, 0))
@@ -129,10 +132,10 @@ func _run() -> void:
 	_expect(panel.selected_index == 1, "Wheel selects next response")
 	await _wheel(MOUSE_BUTTON_WHEEL_UP)
 	_expect(panel.selected_index == 0, "Wheel selects previous response")
-	await _key(KEY_F, true)
+	await _key(KEY_E, true)
 	_expect(session.runner.current_node_id == &"opening", "Held key echo ignored")
-	await _key(KEY_F)
-	_expect(session.runner.current_node_id == &"explanation" and not panel.is_line_complete(), "F confirms selected response and starts new text")
+	await _key(KEY_E)
+	_expect(session.runner.current_node_id == &"explanation" and not panel.is_line_complete(), "E confirms selected response and starts new text")
 	await get_tree().create_timer(0.1).timeout
 	var away_count: int = text.visible_characters
 	rig.apply_look_delta(Vector2(PI, 0))
@@ -162,14 +165,14 @@ func _run() -> void:
 	_expect(session.mode == NarrativeSession.JOURNAL and text.visible_characters == count, "Journal pauses line")
 	session.close_journal()
 	_expect(text.visible_characters == count, "Return keeps reading progress")
-	await _key(KEY_F)
+	await _key(KEY_E)
 	await _key(KEY_1)
 	_expect(session.runner.current_node_id == &"goodbye", "Number directly chooses available reply")
-	await _key(KEY_F)
+	await _key(KEY_E)
 	_expect(session.runner.active, "Terminal first F only reveals")
-	await _key(KEY_F)
+	await _key(KEY_E)
 	_expect(not session.runner.active and session.shift.remaining == 1, "Terminal confirmed once costs one division")
-	await _key(KEY_F)
+	await _key(KEY_E)
 	_expect(session.shift.remaining == 1, "Stale confirmation has no effect")
 	main.start_test_dialogue()
 	_expect(not panel.is_line_complete(), "Repeat dialogue starts animation afresh")
@@ -298,6 +301,8 @@ func _test_pagination(panel: DialogueBubblePanel) -> void:
 
 
 func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
+	# Изолированный runner проверяет свои ответы, а не действия фонового Main.
+	main.set_process_input(false)
 	var catalog := DialogueCatalog.new()
 	_expect(catalog.load_files("res://content/glossary/test_war_cinema_terms.json", ["res://content/dialogues/test_war_cinema_guest.json"]), "Reasoning dialogue fixture valid")
 	var journal := Journal.new()
@@ -333,14 +338,14 @@ func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
 	await _key(KEY_2)
 	_expect(emitted.back() == &"leave", "Actual digit two submits displayed fallback")
 	await _wheel(MOUSE_BUTTON_WHEEL_UP)
-	await _key(KEY_F)
-	_expect(bubble.selected_index == 0 and emitted.back() == &"props", "Wheel and F use the same visible indices after conclusion")
+	await _key(KEY_E)
+	_expect(bubble.selected_index == 0 and emitted.back() == &"props", "Wheel and E use the same visible indices after conclusion")
 	runner.choose(&"props")
 	bubble.render(runner, journal)
 	bubble.reveal_text()
 	await get_tree().process_frame
 	_expect(not bubble.get_node("%VoiceReplies").visible and bubble.get_node("%VoiceChoices").get_child_count() == 0, "Terminal speech never leaves empty reply card")
-	_expect(bubble.get_node("%VoiceHint").text.contains("F — закончить"), "Finish hint stays outside hidden answer card")
+	_expect(bubble.get_node("%VoiceHint").text.contains("E — закончить"), "Finish hint stays outside hidden answer card")
 	await _snap("07-terminal-no-card")
 	runner.finish()
 	await get_tree().process_frame

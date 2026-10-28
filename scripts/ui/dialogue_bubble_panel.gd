@@ -212,7 +212,7 @@ func _refresh_selection() -> void:
 	for index in %VoiceChoices.get_child_count():
 		var label := %VoiceChoices.get_child(index) as Label
 		label.modulate = Color(0.88, 0.87, 0.79) if index == selected_index else Color(0.63, 0.66, 0.64)
-		label.text = ("› " if index == selected_index else "  ") + label.text.trim_prefix("› ").trim_prefix("  ")
+		label.text = ("› [E] " if index == selected_index else "  ") + label.text.trim_prefix("› ").trim_prefix("  ").trim_prefix("[E] ")
 
 
 func _process(delta: float) -> void:
@@ -287,12 +287,12 @@ func _update_layout() -> void:
 	%VoiceReplies.offset_bottom = -60
 	if %VoiceReplies.visible and selected_index >= 0 and selected_index < %VoiceChoices.get_child_count():
 		(%VoiceChoices.get_parent() as ScrollContainer).ensure_control_visible(%VoiceChoices.get_child(selected_index))
-	%VoiceReplyHelp.text = "F — закончить разговор" if _terminal else "1–9 — ответить · Колесо — выбор · F — подтвердить"
-	%VoiceHint.text = "F — показать реплику целиком · J — дневник · Esc — меню" if not is_line_complete() else ("Посмотрите на говорящего, чтобы ответить" if not looking_at_speaker else "J — дневник · Esc — меню · Backspace — прервать")
+	%VoiceReplyHelp.text = "E — закончить разговор" if _terminal else "1–9 — ответить · Колесо — выбор · E — подтвердить"
+	%VoiceHint.text = "E — показать реплику целиком · J — дневник · Esc — меню" if not is_line_complete() else ("Посмотрите на говорящего, чтобы ответить" if not looking_at_speaker else "J — дневник · Esc — меню · Backspace — прервать")
 	if is_line_complete() and not is_speech_complete():
-		%VoiceHint.text = "F — следующий пузырёк · J — дневник · Esc — меню"
+		%VoiceHint.text = "E — следующий пузырёк · J — дневник · Esc — меню"
 	if _terminal and can_answer():
-		%VoiceHint.text = "F — закончить разговор · J — дневник"
+		%VoiceHint.text = "E — закончить разговор · J — дневник"
 	elif is_speech_complete() and looking_at_speaker and _choices_data.is_empty():
 		%VoiceHint.text = "J — дневник · Backspace — прервать разговор"
 	%VoiceHint.visible = false
@@ -312,7 +312,12 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed:
 		var key: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
-		if key == KEY_F:
+		if key == KEY_E:
+			# E у доступного предмета остаётся взаимодействием даже во время речи.
+			var interaction := get_parent().get_node_or_null("InteractionController") as InteractionController
+			var target: Interactable3D = interaction.get_target() if interaction != null else null
+			if is_instance_valid(target) and not target is DialogueTrigger and target.is_available():
+				return
 			confirm()
 		elif key >= KEY_1 and key <= KEY_9:
 			submit_choice(key - KEY_1)

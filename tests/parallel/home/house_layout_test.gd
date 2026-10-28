@@ -81,7 +81,7 @@ func _run() -> void:
 	await _use("HallSwitch", Vector3(-1.1, 0, 2.1), "HallSwitch")
 	_expect(not house.switches.HallSwitch and not house.get_node("HallLight").visible, "Switch turns hall light off")
 	home.object_context.refresh_context()
-	await _key(KEY_F)
+	await _key(KEY_E)
 	_expect(house.switches.HallSwitch, "Switch turns light back on")
 	await _snap("action-light")
 	await _use("Fridge", Vector3(-1.1, 0, -2.9), "FridgeHinge/FridgeDoor")
