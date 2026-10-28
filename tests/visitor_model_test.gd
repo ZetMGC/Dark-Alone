@@ -30,12 +30,12 @@ func _run() -> void:
 	var model: VisitorModel = art.get_node("VisitorModel")
 	_expect(art.get_test_appearance() == &"test_visitor" and model.visible, "New TEST model is default")
 	_expect(not art.get_node("TestFace").visible and not art.get_node("Torso").visible, "No overlapping legacy geometry")
-	_expect(model.scale.is_equal_approx(Vector3.ONE * 1.048), "Player height replaces temporary 1.3 scale")
+	_expect(model.scale.is_equal_approx(Vector3.ONE * (1.048 * 1.05)), "Five percent larger than player height iteration")
 	_expect(absf(model.to_global(Vector3(0, -1.65, 0)).y) < 0.001, "Scale is anchored at original floor")
 	var walking: CollisionShape3D = guest.get_node("WalkObstacle/Shape")
-	_expect(absf(walking.shape.radius - 0.26 * 1.048) < 0.001 and absf(walking.shape.height - 1.65 * 1.048) < 0.001, "Walking volume follows current body size")
+	_expect(absf(walking.shape.radius - 0.26 * 1.1004) < 0.001 and absf(walking.shape.height - 1.65 * 1.1004) < 0.001, "Walking volume follows current body size")
 	_expect(absf(walking.global_position.y - walking.shape.height / 2.0) < 0.001, "Walking collider remains grounded")
-	_expect(guest.get_dialogue_head_position().y > guest.get_dialogue_face_position().y and absf(guest.get_dialogue_face_position().y - 1.65) < 0.04, "Eyes and speech anchors match player height")
+	_expect(guest.get_dialogue_head_position().y > guest.get_dialogue_face_position().y and absf(guest.get_dialogue_face_position().y - 1.735) < 0.04, "Speech anchors follow slightly taller body")
 	_expect(not guest.configure_body_scale(NAN) and not guest.configure_body_scale(-1.0), "Invalid body scale is rejected")
 	_expect(model.skeleton.get_bone_count() == 15, "Fifteen bones for body, head, arms and legs")
 	for index in model.skeleton.get_bone_count():
@@ -54,6 +54,11 @@ func _run() -> void:
 	var clothing_arrays: Array = []
 	var palm_sum := Vector3.ZERO
 	var palm_count := 0
+	var nose_depth := 0.0
+	var chin_depth := 0.0
+	var mouth_depth := 0.0
+	var jaw_transition_depth := 0.0
+	var head_origin := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("Head")).origin
 	for surface in character.mesh.get_surface_count():
 		var arrays: Array = character.mesh.surface_get_arrays(surface)
 		var material: StandardMaterial3D = character.mesh.surface_get_material(surface)
@@ -68,6 +73,18 @@ func _run() -> void:
 		_expect(bones.size() == vertices.size() * 4 and weights.size() == vertices.size() * 4, "Every vertex is bound")
 		var valid := true
 		for vertex in vertices.size():
+			if bones[vertex * 4] == model.skeleton.find_bone("Head"):
+				var local := vertices[vertex] - head_origin
+				var source_y := (local.y + 0.016) / 0.92
+				if absf(local.x) < 0.002:
+					if source_y >= -0.052 and source_y <= -0.022:
+						nose_depth = maxf(nose_depth, local.z)
+					if source_y >= -0.135 and source_y <= -0.110:
+						chin_depth = maxf(chin_depth, local.z)
+					if source_y >= -0.09 and source_y <= -0.06:
+						mouth_depth = maxf(mouth_depth, local.z)
+					if source_y >= -0.10 and source_y <= -0.09:
+						jaw_transition_depth = maxf(jaw_transition_depth, local.z)
 			if bones[vertex * 4] == model.skeleton.find_bone("HandL") and weights[vertex * 4] > 0.99:
 				palm_sum += vertices[vertex]
 				palm_count += 1
@@ -83,6 +100,9 @@ func _run() -> void:
 				blended += 1
 		_expect(valid, "Finite skin vertices normals UV and normalized weights")
 	_expect(blended > 100, "Soft transitions across elbows knees and waist")
+	_expect(nose_depth - chin_depth > 0.012 and nose_depth - chin_depth < 0.045, "Profile has a separate nose and supported chin instead of a beak")
+	_expect(chin_depth > mouth_depth - 0.015, "Chin no longer collapses behind mouth")
+	_expect(jaw_transition_depth > mouth_depth - 0.012, "No deep notch between lower lip and chin")
 	var wrist := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("HandL")).origin
 	var elbow := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("ForearmL")).origin
 	_expect(palm_count > 20 and (palm_sum / maxf(palm_count, 1) - wrist).normalized().dot((wrist - elbow).normalized()) > 0.90, "Palm geometry follows forearm instead of sideways wrist")

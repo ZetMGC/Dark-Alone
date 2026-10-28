@@ -74,6 +74,19 @@ func _run() -> void:
 		await process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://artifacts/visitor/face.png")
+		for side in [-1, 1]:
+			camera.position = face + Vector3(side * 0.95, 0.015, 0)
+			camera.look_at(face)
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://artifacts/visitor/profile_%s.png" % ("left" if side < 0 else "right"))
+			model.get_node("CharacterMesh").material_override = clay
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://artifacts/visitor/clay_profile_%s.png" % ("left" if side < 0 else "right"))
+			model.get_node("CharacterMesh").material_override = null
+		camera.position = face + Vector3(0.18, 0.04, 1.08)
+		camera.look_at(face)
 		var deadline := Time.get_ticks_msec() + 6000
 		while not model.is_blinking:
 			await process_frame

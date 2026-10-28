@@ -1,10 +1,10 @@
 class_name VisitorModel
 extends Node3D
-## CHAR-03: силуэт и степень стилизации по CHARACTER_REFERENCE.
+## CHAR-05: согласованный профиль лица/единое ухо, силуэт по CHARACTER_REFERENCE.
 ## +Z — лицо. Геометрия в rest-пространстве, единый skinned ArrayMesh.
 
-# Рост ~1.80 м, глаза ~1.65 м: соответствует капсуле/камере игрока.
-const MODEL_SCALE: float = 1.048
+# На 5% больше CHAR-04: ~1.89 м; масштаб по-прежнему считается от пола.
+const MODEL_SCALE: float = 1.1004
 const FLOOR_Y: float = -1.65
 
 var skeleton: Skeleton3D
@@ -45,7 +45,7 @@ func _ready() -> void:
 		_bone("UpperArm" + suffix, "Chest", Vector3(side * 0.205, 0.16, -0.005))
 		_bone("Forearm" + suffix, "UpperArm" + suffix, Vector3(side * 0.035, -0.265, 0.065))
 		# Одна рука у живота, другая на стойке: разные жесты и контуры рук.
-		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(0.20, 0.035, 0.12) if side < 0 else Vector3(-0.045, 0.063, 0.235))
+		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(0.20, 0.035, 0.12) if side < 0 else Vector3(-0.045, 0.010, 0.235))
 		_bone("Thigh" + suffix, "Pelvis", Vector3(side * 0.095, 0, -0.005))
 		_bone("Shin" + suffix, "Thigh" + suffix, Vector3(side * 0.017, -0.34, 0.030 if side < 0 else 0.005))
 		_bone("Foot" + suffix, "Shin" + suffix, Vector3(side * 0.008, -0.32, -0.045 if side < 0 else -0.010))
@@ -275,11 +275,15 @@ func _head_uv(angle: float, vertical: float) -> Vector2:
 
 func _head_point(ring: Vector4, angle: float) -> Vector3:
 	var x := sin(angle) * ring.y
+	# Ухо вытянуто из самого черепа под существующий UV-рисунок: один контур.
+	var ear := exp(-pow((absf(angle) - 1.46) / 0.19, 2) - pow((ring.x + 0.005) / 0.031, 2)) * 0.013
+	x += signf(angle) * ear
 	var front := maxf(cos(angle), 0)
-	var depth := ring.z if front > 0 else ring.z + 0.012
+	var rear_depth := lerpf(0.030, 0.095, smoothstep(-0.145, -0.020, ring.x)) if ring.x < 0.075 else ring.z + 0.012
+	var depth := ring.z if front > 0 else rear_depth
 	var z := cos(angle) * depth
-	var nose := exp(-pow(x / 0.018, 2)) * exp(-pow((ring.x + 0.035) / 0.025, 2)) * 0.029
-	var lips := exp(-pow(x / 0.032, 2)) * exp(-pow((ring.x + 0.075) / 0.014, 2)) * 0.006
+	var nose := exp(-pow(x / 0.015, 2)) * exp(-pow((ring.x + 0.035) / 0.021, 2)) * 0.026
+	var lips := exp(-pow(x / 0.028, 2)) * (exp(-pow((ring.x + 0.069) / 0.009, 2)) * 0.004 + exp(-pow((ring.x + 0.083) / 0.009, 2)) * 0.004)
 	var eyes := (exp(-pow((x - 0.038) / 0.018, 2)) + exp(-pow((x + 0.038) / 0.018, 2))) * exp(-pow((ring.x - 0.015) / 0.014, 2)) * 0.005
 	z += (nose + lips - eyes) * pow(front, 4)
 	return Vector3(x, ring.x, z)
@@ -288,7 +292,7 @@ func _head_point(ring: Vector4, angle: float) -> Vector3:
 func _build_head() -> void:
 	var tool := _surface("Skin", _skin_material)
 	# y, полуширина, глубина, v атласа. Один замкнутый череп вместо лицевой маски.
-	var rings := [Vector4(-0.14, 0.028, 0.035, 0.83), Vector4(-0.12, 0.056, 0.053, 0.79), Vector4(-0.095, 0.071, 0.065, 0.74), Vector4(-0.075, 0.077, 0.073, 0.68), Vector4(-0.045, 0.084, 0.081, 0.61), Vector4(-0.015, 0.088, 0.083, 0.53), Vector4(0.015, 0.091, 0.081, 0.445), Vector4(0.040, 0.092, 0.080, 0.37), Vector4(0.075, 0.091, 0.078, 0.28), Vector4(0.110, 0.086, 0.073, 0.18), Vector4(0.142, 0.064, 0.055, 0.08), Vector4(0.162, 0.022, 0.023, 0.015)]
+	var rings := [Vector4(-0.145, 0.026, 0.054, 0.84), Vector4(-0.133, 0.046, 0.077, 0.816), Vector4(-0.115, 0.063, 0.081, 0.78), Vector4(-0.095, 0.074, 0.081, 0.74), Vector4(-0.081, 0.078, 0.082, 0.698), Vector4(-0.069, 0.079, 0.084, 0.666), Vector4(-0.055, 0.082, 0.080, 0.633), Vector4(-0.042, 0.084, 0.078, 0.602), Vector4(-0.025, 0.087, 0.077, 0.556), Vector4(-0.010, 0.089, 0.079, 0.516), Vector4(0.015, 0.091, 0.081, 0.445), Vector4(0.040, 0.092, 0.080, 0.37), Vector4(0.075, 0.091, 0.078, 0.28), Vector4(0.110, 0.086, 0.073, 0.18), Vector4(0.142, 0.064, 0.055, 0.08), Vector4(0.162, 0.022, 0.023, 0.015)]
 	for row in rings.size() - 1:
 		for column in 40:
 			for corner in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
@@ -301,18 +305,12 @@ func _build_head() -> void:
 			var angle: float = -PI + TAU * index / 40.0
 			var point := Vector3(0, 0.167, 0) if index == -1 else _head_point(rings[-1], angle)
 			_vertex(tool, _origin("Head") + point, Vector2(0.5, 0.01) if index == -1 else _head_uv(angle, 0.01), "Head")
-	# Уши получают соответствующие участки UV, без однотонных вставок.
-	for side in [-1, 1]:
-		var center := _origin("Head") + Vector3(side * 0.091, -0.005, -0.004)
-		var corners := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)] if side > 0 else [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]
-		for row in 6:
-			for column in 10:
-				for corner in corners:
-					var latitude: float = PI * (row + corner.y + 0.01) / 6.02
-					var longitude: float = TAU * (column + corner.x) / 10.0
-					var p := Vector3(side * sin(latitude) * cos(longitude) * 0.013, cos(latitude) * 0.028, sin(latitude) * sin(longitude) * 0.017)
-					var uv := Vector2((0.175 if side < 0 else 0.825) + p.z * 1.5 * side, 0.495 - p.y * 2.8)
-					_vertex(tool, center + p, uv, "Head")
+	# Закрытый низ челюсти перекрывается шеей без открытого среза.
+	for column in 40:
+		for index in [-1, column, column + 1]:
+			var angle: float = -PI + TAU * index / 40.0
+			var point := Vector3(0, -0.145, -0.005) if index == -1 else _head_point(rings[0], angle)
+			_vertex(tool, _origin("Head") + point, Vector2(0.5, 0.90) if index == -1 else _head_uv(angle, 0.84), "Head")
 
 
 func _build_hair() -> void:
