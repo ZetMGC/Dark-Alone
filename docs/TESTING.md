@@ -1,5 +1,7 @@
 # Проверки
 
+BAR-PLAN-01: reference_bar_test.tscn в check.ps1; включает 8 проёмов/рабочую зону, прибытие/уход NPC, unit scale якоря, доступ и открытие приготовления. GPU снимает entry/hall/plan в artifacts/reference_bar. [Протокол](worklog/2026-10-28-13-reference-bar.md).
+
 CHAR-07: tests/visitor_behavior_test.tscn добавлен в check.ps1. Приход/повороты/остановка, опора стопы в мировых координатах (1.5 см), взгляд/реакции/стакан/pause/уход; GPU снимает behavior_walking/sip.png. [Протокол](worklog/2026-10-28-12-visitor-behavior.md).
 
 DA-072–074: общий check PASS; bubble profile 128 headless/137 GPU на размер (анимация/задний сектор); check_workbench -Graphics 139/151/151 (реальный налив в шейкер/крышка/колпачок/расход в пролив/новые PNG); preference profile 37 headless/42 GPU (отдельная страница и actual default scene). Дополнительно default entry проверен в двух процессах через --default-entry --preference-probe=write/read и изолированный user://preference_tests/process_<id>, PASS 2/3. Команды/логи — [протокол](worklog/2026-10-28-09-speech-shaker-settings.md).

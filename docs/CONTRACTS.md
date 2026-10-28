@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+BAR-PLAN-01: Main.reference_bar_enabled включает ReferenceBar, VisitorBehavior.entrance/waypoints задают маршрут новой локации. Путь/ID поверхностей и якорей сохранены; рабочая точка и подача перенесены. [Контракт](BAR_REFERENCE.md), [ADR-0039](decisions/0039-reference-bar-layout.md).
+
 CHAR-07: опциональный Main.visitor_behavior_enabled, VisitorBehavior и ServiceGuest.drink_presented/motion_available, цели процедурных цепочек VisitorModel. [Полный контракт/потребители](decisions/0038-visitor-behavior.md), [инструкция](VISITOR_BEHAVIOR.md). Включено в reasoning_demo; данные диалога/дневника/заказа не меняются.
 
 DA-072–074: speech target/display разделены для плавного движения и hysteresis стороны, не меняя правила ответа. Новый временный UI-state крышки шейкера и API toggle/get — [барный контракт](parallel/bar/CONTRACTS.md). HUD.show_settings(bool)/close_settings()->bool — отдельная страница меню, Esc сначала обрабатывает возврат; пути % настроек прежние. Основная сцена вновь включает PreferenceStore, тестовые fixtures продолжают использовать отключение/изолированные хранилища. [Настройки](PLAYER_SETTINGS.md), [протокол](worklog/2026-10-28-09-speech-shaker-settings.md).

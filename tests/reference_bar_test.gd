@@ -1,0 +1,85 @@
+extends Node
+
+var failures := 0
+var checks := 0
+
+func expect(ok: bool, message: String) -> void:
+	checks += 1
+	if not ok:
+		failures += 1
+		printerr("FAIL: " + message)
+
+func _ready() -> void:
+	run.call_deferred()
+
+func run() -> void:
+	get_tree().create_timer(35, true, false, true).timeout.connect(func() -> void: get_tree().quit(1))
+	var main := preload("res://scenes/main/reasoning_demo.tscn").instantiate()
+	main.preferences_enabled = false
+	add_child(main)
+	var level: Node3D = main.get_node("BarLevel")
+	expect(level is ReferenceBar, "Reference layout enabled in normal entry")
+	expect(main._narrative_ready, "Narrative and workbench configured")
+	var rig: FreeRoamCamera = main.get_node("AnchorCamera")
+	rig.body.global_position = Vector3(-2.4, 0, 0.1)
+	Engine.time_scale = 5
+	var behavior: VisitorBehavior = main.get_node("VisitorBehavior")
+	var deadline := Time.get_ticks_msec() + 10000
+	while behavior.state != &"docked" and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+	expect(behavior.state == &"docked", "Guest reaches new counter: " + str(behavior.guest.global_position))
+	Engine.time_scale = 1
+	# Проверить проходы капсулой игрока в центрах дверей/рабочей зоны.
+	var shape := CapsuleShape3D.new()
+	shape.radius = 0.24
+	shape.height = 1.8
+	for point in [Vector3(-0.6, 0.95, 2.8), Vector3(2.2, 0.95, -1), Vector3(1.5, 0.95, -2.5), Vector3(3, 0.95, -2.5), Vector3(3, 0.95, -0.25), Vector3(3, 0.95, 1.15), Vector3(2.25, 0.95, 1.9), Vector3(-0.3, 0.95, -2.8)]:
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = shape
+		query.transform.origin = point
+		query.collision_mask = 1
+		expect(level.get_world_3d().direct_space_state.intersect_shape(query).is_empty(), "Passable doorway/work area: " + str(point))
+	var anchor := rig.get_anchor(&"back_counter")
+	expect(anchor.global_basis.get_scale().is_equal_approx(Vector3.ONE), "Workstation anchor has unit scale")
+	rig.body.global_position = anchor.global_position - Vector3.UP * 1.65
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var focused := rig.request_move(&"back_counter")
+	expect(focused, "Player can reach new workbench")
+	if focused:
+		await rig.anchor_reached
+		expect(main.open_service_menu(), "Preparation opens at relocated workbench")
+		main.get_node("NarrativeSession").close_service()
+		rig.leave_focus()
+	await capture(main, Vector3(-0.6, 1.7, 2.35), Vector3(-0.4, 1.3, -2), "entry")
+	await capture(main, Vector3(2.65, 1.7, 1.6), Vector3(-2.8, 1.1, -0.5), "hall")
+	level.get_node("Geometry/Ceiling").hide()
+	await capture(main, Vector3(0, 13, 0.01), Vector3.ZERO, "plan", true)
+	behavior.request_departure()
+	Engine.time_scale = 5
+	deadline = Time.get_ticks_msec() + 10000
+	while behavior.state != &"absent" and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+	expect(behavior.state == &"absent", "Guest returns through vestibule")
+	Engine.time_scale = 1
+	print("%s: reference bar, %d checks, %d failures" % ["PASS" if failures == 0 else "FAIL", checks, failures])
+	get_tree().quit(0 if failures == 0 else 1)
+
+func capture(main: Node, pos: Vector3, target: Vector3, label: String, plan: bool = false) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var camera := Camera3D.new()
+	main.add_child(camera)
+	camera.position = pos
+	camera.look_at(target)
+	if plan:
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.size = 12
+	camera.current = true
+	main.get_node("NavigationHUD/Screen").hide()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	DirAccess.make_dir_recursive_absolute("res://artifacts/reference_bar")
+	get_viewport().get_texture().get_image().save_png("res://artifacts/reference_bar/%s.png" % label)
+	camera.queue_free()

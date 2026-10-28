@@ -3,6 +3,8 @@ extends Node
 ## TEST-маршрут в текущем баре. Правила разговора/напитка остаются в Session.
 
 var state: StringName = &"docked"
+var entrance := Vector3(0, 1.65, 4)
+var waypoints: Array[Vector3] = [Vector3(-1.4, 1.65, 2.6), Vector3(-1.4, 1.65, -1.2)]
 var guest: ServiceGuest
 var model: VisitorModel
 var camera: Camera3D
@@ -44,8 +46,9 @@ func configure(actor: ServiceGuest, view: Camera3D, narrative: NarrativeSession)
 func start_visit() -> void:
 	state = &"arriving"
 	guest.show()
-	guest.global_position = Vector3(0, _dock.origin.y, 4.0)
-	_route = [Vector3(-1.4, _dock.origin.y, 2.6), Vector3(-1.4, _dock.origin.y, -1.2), _dock.origin]
+	guest.global_position = entrance
+	_route = waypoints.duplicate()
+	_route.append(_dock.origin)
 	model.support_weight = 0
 	_settle = 0
 	_speed = 0
@@ -92,7 +95,9 @@ func _physics_process(delta: float) -> void:
 		model.support_weight = 1.0 - smoothstep(0, 0.65, _settle)
 		if _settle > 0.7:
 			state = &"leaving"
-			_route = [Vector3(-1.4, _dock.origin.y, -1.2), Vector3(-1.4, _dock.origin.y, 2.6), Vector3(0, _dock.origin.y, 4.0)]
+			_route = waypoints.duplicate()
+			_route.reverse()
+			_route.append(entrance)
 	elif state == &"docked":
 		if _drink_time >= 0:
 			_drink(delta)

@@ -19,6 +19,7 @@ func run() -> void:
 	get_tree().create_timer(40, true, false, true).timeout.connect(func() -> void: get_tree().quit(1))
 	var main := preload("res://scenes/main/reasoning_demo.tscn").instantiate()
 	main.preferences_enabled = false
+	main.reference_bar_enabled = false
 	add_child(main)
 	var behavior: VisitorBehavior = main.get_node("VisitorBehavior")
 	var guest: ServiceGuest = main.get_node("DialogueTrigger")

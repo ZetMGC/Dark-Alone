@@ -11,6 +11,7 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export var drink_workbench_enabled: bool = true
 @export var preferences_enabled: bool = true
 @export var visitor_behavior_enabled: bool = false
+@export var reference_bar_enabled: bool = false
 var checkpoint_store := CheckpointStore.new()
 var preference_store := PreferenceStore.new()
 @export var drink_options: Array[Dictionary] = [
@@ -37,6 +38,17 @@ var _counter_target: WorkstationTarget
 
 
 func _ready() -> void:
+	if reference_bar_enabled:
+		var old_level := $BarLevel
+		remove_child(old_level)
+		old_level.queue_free()
+		var level := ReferenceBar.new()
+		level.name = "BarLevel"
+		add_child(level)
+		_anchors_root = level.get_node("Anchors")
+		_trigger.position = Vector3(-0.2, 1.65, -0.45)
+		_trigger.rotation.y = PI / 2
+		_trigger.get_node("ServedGlass").position = Vector3(0.7, -0.4, 0)
 	# Режим перемещения переживает обычную смену и тестовый сброс.
 	if get_tree().has_meta(RUN_HANDOFF):
 		var context: Variant = get_tree().get_meta(RUN_HANDOFF)
@@ -71,12 +83,17 @@ func _ready() -> void:
 	if free_roam_enabled:
 		var back := (load("res://scenes/levels/back_counter.tscn") as PackedScene).instantiate() as Node3D
 		add_child(back)
+		if reference_bar_enabled:
+			back.position = Vector3(-0.3, 0, -3.5)
+			back.rotation.y = -PI / 2
+			back.scale = Vector3(1, 1, 0.6)
 		var anchor := (load("res://scenes/navigation/anchor_point.tscn") as PackedScene).instantiate() as AnchorPoint
 		anchor.name = "BackCounter"
 		anchor.anchor_id = &"back_counter"
 		anchor.display_name = "Рабочая стойка у полок"
 		_anchors_root.add_child(anchor)
 		anchor.global_transform = back.get_node("WorkPosition").global_transform
+		anchor.global_basis = anchor.global_basis.orthonormalized()
 	if not _rig.configure(_anchors_root, &"entry"):
 		_fail_setup("Ошибка локации: " + "; ".join(_rig.validation_errors))
 		return
@@ -194,6 +211,9 @@ func _ready() -> void:
 		var behavior := VisitorBehavior.new()
 		behavior.name = "VisitorBehavior"
 		add_child(behavior)
+		if reference_bar_enabled:
+			behavior.entrance = Vector3(-0.6, 1.65, 3.4)
+			behavior.waypoints = [Vector3(-0.6, 1.65, 2.1), Vector3(-0.2, 1.65, 0.7)]
 		behavior.configure(_trigger, _rig.view, _session)
 	_rig.configure_controls(_hud)
 	_preferences = PreferenceController.new()
@@ -378,7 +398,7 @@ func _on_service_completed(_event_id: StringName, _guest_id: StringName, _drink_
 	var prepared := _session.service.get_prepared_drink()
 	if not prepared.is_empty():
 		var counter: Node3D = $BarLevel/Geometry/CounterTop
-		_trigger.show_prepared(prepared, counter.to_global(Vector3(0.25, 0.5, 0.1)))
+		_trigger.show_prepared(prepared, Vector3(-0.2, 1.16, -1.12) if reference_bar_enabled else counter.to_global(Vector3(0.25, 0.5, 0.1)))
 	_refresh_navigation()
 	_hud.show_notice("Напиток на стойке перед гостем. Esc — отойти и обернуться." if not prepared.is_empty() else "Гость получил: " + title)
 
