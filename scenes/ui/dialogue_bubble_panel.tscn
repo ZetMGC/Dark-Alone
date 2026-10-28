@@ -5,6 +5,8 @@
 
 [ext_resource type="StyleBox" path="res://scenes/ui/context_bubble_style.tres" id="context_style"]
 
+[ext_resource type="StyleBox" path="res://scenes/ui/context_actions_style.tres" id="actions_style"]
+
 [sub_resource type="SystemFont" id="SpeechRegular"]
 font_names = PackedStringArray("Arial", "Noto Sans", "DejaVu Sans")
 multichannel_signed_distance_field = true
@@ -13,22 +15,6 @@ multichannel_signed_distance_field = true
 font_names = PackedStringArray("Arial", "Noto Sans", "DejaVu Sans")
 font_weight = 700
 multichannel_signed_distance_field = true
-
-[sub_resource type="StyleBoxFlat" id="BubbleStyle"]
-bg_color = Color(0.075, 0.085, 0.09, 0.58)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.55, 0.57, 0.51, 0.16)
-corner_radius_top_left = 7
-corner_radius_top_right = 7
-corner_radius_bottom_left = 7
-corner_radius_bottom_right = 7
-content_margin_left = 16.0
-content_margin_right = 16.0
-content_margin_top = 7.0
-content_margin_bottom = 7.0
 
 
 [node name="DialoguePanel" instance=ExtResource("1")]
@@ -92,7 +78,7 @@ anchor_bottom = 1.0
 offset_top = -220.0
 offset_bottom = -65.0
 mouse_filter = 2
-theme_override_styles/panel = SubResource("BubbleStyle")
+theme_override_styles/panel = ExtResource("actions_style")
 
 [node name="Content" type="VBoxContainer" parent="Screen/VoiceReplies"]
 layout_mode = 2

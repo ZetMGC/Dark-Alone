@@ -52,10 +52,15 @@ func run() -> void:
 	bubble.refresh_context()
 	expect(bubble.visible and bubble.text_label.text.contains("00:00"), "Object description follows current target")
 	target.context_anchor = target
-	var before: Vector2 = bubble.position
+	var before: Vector2 = bubble.info_panel.position
+	var action_before: Vector2 = bubble.action_panel.position
 	target.position.x = 0.25
 	bubble.refresh_context()
-	expect(bubble.position != before, "Bubble follows the object projection")
+	expect(bubble.info_panel.position != before, "Bubble follows the object projection")
+	expect(bubble.action_panel.position == action_before, "Actions stay in reply area when object moves")
+	expect(is_equal_approx(bubble.action_panel.position.y + bubble.action_panel.size.y, root.get_visible_rect().size.y - 60), "Actions share dialogue bottom offset")
+	expect(bubble.choices.get_child(0).text.contains("[E / F]"), "Selected action displays actual activation keys")
+	expect(not bubble.text_label.text.contains("Включить"), "Actions are absent from object information")
 	target.context_feedback = "Открыто"
 	bubble.refresh_context()
 	expect(bubble.text_label.text.contains("Открыто"), "Action feedback stays by object")
@@ -72,7 +77,7 @@ func run() -> void:
 	controller.selected = target
 	target.context_passive = true
 	bubble.refresh_context()
-	expect(bubble.visible and bubble.actions.is_empty(), "Passive information needs no action")
+	expect(bubble.visible and bubble.actions.is_empty() and not bubble.action_panel.visible, "Passive information needs no action")
 	expect(not bubble.handle_input(key(KEY_1)) and target.calls == 4, "Passive read cannot change world")
 	bubble.enabled = false
 	expect(not bubble.handle_input(key(KEY_F)), "Disabled context cannot consume actions")

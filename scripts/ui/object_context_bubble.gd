@@ -1,4 +1,4 @@
-extends PanelContainer
+extends Control
 ## Сведения и действия существуют лишь пока прицел держится на предмете.
 var interaction: InteractionController
 var camera: Camera3D
@@ -7,12 +7,32 @@ var enabled: bool = true
 var selected: int = 0
 var actions: Array[Dictionary] = []
 var text_label: Label
+var info_panel: PanelContainer
+var action_panel: PanelContainer
+var choices: VBoxContainer
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 20
-	custom_minimum_size.x = 280
-	add_theme_stylebox_override("panel", preload("res://scenes/ui/context_bubble_style.tres"))
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	info_panel = PanelContainer.new()
+	info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_panel.custom_minimum_size.x = 280
+	info_panel.add_theme_stylebox_override("panel", preload("res://scenes/ui/context_bubble_style.tres"))
+	add_child(info_panel)
+	action_panel = PanelContainer.new()
+	action_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	action_panel.add_theme_stylebox_override("panel", preload("res://scenes/ui/context_actions_style.tres"))
+	add_child(action_panel)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	action_panel.add_child(scroll)
+	choices = VBoxContainer.new()
+	choices.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	choices.add_theme_constant_override("separation", 8)
+	scroll.add_child(choices)
 	text_label = Label.new()
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -22,7 +42,7 @@ func _ready() -> void:
 	font.font_names = PackedStringArray(["Arial", "Noto Sans", "DejaVu Sans"])
 	font.multichannel_signed_distance_field = true
 	text_label.add_theme_font_override("font", font)
-	add_child(text_label)
+	info_panel.add_child(text_label)
 	hide()
 
 func configure(controller: InteractionController, view: Camera3D) -> void:
@@ -54,9 +74,7 @@ func refresh_context() -> void:
 		lines.append(target.context_description)
 	if not target.context_feedback.is_empty():
 		lines.append(target.context_feedback)
-	for index in actions.size():
-		lines.append(("› " if index == selected else "   ") + "%d  %s" % [index + 1, actions[index].text])
-	if lines.is_empty():
+	if lines.is_empty() and actions.is_empty():
 		clear_context()
 		return
 	var world := target.context_anchor.global_position if is_instance_valid(target.context_anchor) else interaction.hit_position
@@ -66,9 +84,34 @@ func refresh_context() -> void:
 		clear_context()
 		return
 	text_label.text = "\n".join(lines)
-	size = Vector2(280, 0)
-	position = (point + Vector2(20, -size.y * 0.5)).clamp(Vector2(12, 12), (viewport_size - size - Vector2(12, 12)).max(Vector2(12, 12)))
+	info_panel.visible = not lines.is_empty()
+	info_panel.size = Vector2(280, 0)
+	info_panel.position = (point + Vector2(20, -info_panel.size.y * 0.5)).clamp(Vector2(12, 12), (viewport_size - info_panel.size - Vector2(12, 12)).max(Vector2(12, 12)))
+	_update_actions(viewport_size)
 	show()
+
+func _update_actions(area: Vector2) -> void:
+	while choices.get_child_count() > actions.size():
+		var last := choices.get_child(choices.get_child_count() - 1)
+		choices.remove_child(last)
+		last.queue_free()
+	while choices.get_child_count() < actions.size():
+		var row := Label.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_theme_font_size_override("font_size", 17)
+		choices.add_child(row)
+	for index in actions.size():
+		var row := choices.get_child(index) as Label
+		var binding := "[E / F]" if actions.size() == 1 else ("[%d]" % [index + 1] + ("  [E / F]" if index == selected else ""))
+		row.text = ("› " if index == selected else "  ") + binding + "  " + str(actions[index].text)
+		row.modulate = Color(0.88, 0.87, 0.79) if index == selected else Color(0.63, 0.66, 0.64)
+	action_panel.visible = not actions.is_empty()
+	var reply_width := minf(680, area.x - 48)
+	var reply_height := clampf(choices.get_combined_minimum_size().y + 44, 70, minf(220, area.y * 0.32))
+	action_panel.size = Vector2(reply_width, reply_height)
+	action_panel.position = Vector2((area.x - reply_width) * 0.5, area.y - 60 - reply_height)
+
 
 func clear_context() -> void:
 	if is_instance_valid(target):
@@ -90,8 +133,8 @@ func handle_input(event: InputEvent) -> bool:
 		return true
 	if event is InputEventKey and event.pressed:
 		var key: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
-		var index := selected if key == KEY_F else int(key - KEY_1)
-		if key != KEY_F and (key < KEY_1 or key > KEY_9):
+		var index := selected if key in [KEY_E, KEY_F] else int(key - KEY_1)
+		if key not in [KEY_E, KEY_F] and (key < KEY_1 or key > KEY_9):
 			return false
 		if index < 0 or index >= actions.size():
 			return false
