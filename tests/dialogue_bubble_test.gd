@@ -89,11 +89,39 @@ func _run() -> void:
 		rig.reset_look()
 	_expect("**" not in text.get_parsed_text() and "тестовый термин" in text.get_parsed_text(), "Important markup removed from visible text")
 	await _snap("01-typing")
+	if DisplayServer.get_name() != "headless":
+		var reveal_click := InputEventMouseButton.new()
+		reveal_click.button_index = MOUSE_BUTTON_LEFT
+		reveal_click.pressed = true
+		get_viewport().push_input(reveal_click)
+		await get_tree().process_frame
+		_expect(panel.is_line_complete() and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED, "Click reveals speech without releasing camera mouse")
+		var before_click_motion := rig.view.global_basis
+		var click_motion := InputEventMouseMotion.new()
+		click_motion.screen_relative = Vector2(5, 0)
+		get_viewport().push_input(click_motion)
+		await get_tree().process_frame
+		_expect(not rig.view.global_basis.is_equal_approx(before_click_motion), "Mouse still turns camera after speech click")
+		rig.reset_look()
+		# Восстановить набор для прежней проверки E; это та же реплика.
+		panel._typed = 0
+		panel._reply_pointer_dismissed = false
 	await _key(KEY_E)
 	_expect(session.runner.current_node_id == &"opening" and panel.is_line_complete() and panel.can_answer(), "First E reveals without choosing")
 	await _key(KEY_F)
 	_expect(session.runner.current_node_id == &"opening", "Old F binding no longer confirms replies")
 	_expect(panel.get_node("%VoiceChoices").get_child(0).text.contains("[E]"), "Selected dialogue reply shows E binding")
+	if DisplayServer.get_name() != "headless":
+		_expect(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "E keeps cursor available for hovering replies")
+		var background := InputEventMouseButton.new()
+		background.button_index = MOUSE_BUTTON_LEFT
+		background.pressed = true
+		background.position = Vector2(5, 5)
+		get_viewport().push_input(background, true)
+		await get_tree().process_frame
+		_expect(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and session.runner.current_node_id == &"opening", "Background click resumes camera without submitting reply")
+		await get_tree().process_frame
+		_expect(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED, "Replies do not recapture mouse on next frame")
 	await _snap("02-replies")
 	var position := rig.body.global_position
 	Input.action_press("move_forward")

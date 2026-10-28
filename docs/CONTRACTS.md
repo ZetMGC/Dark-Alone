@@ -341,3 +341,7 @@ Main добавляет независимую scenes/levels/back_counter.tscn �
 ServicePanel.preparation_stager: Callable(DrinkPreparation)->bool перехватывает завершение; успех вызывает DrinkWorkbench.mark_world_staged(), блокирует редактирование/повтор. Без callback прежний preparation_requested сохранён. world_output меняет подпись на «Завершить напиток».
 
 NarrativeSession.can_stage_preparation()->bool проверяет готовность сервиса/время/режим без подачи. DrinkCarry.configure(camera, session, root), stage(preparation)->bool, pick_up()->bool, place()->bool, consume()->void; changed обновляет навигацию. Одна незапечатанная порция принадлежит переносчику до serve_preparation. ServiceGuest.carry_mode/carry_delivery заменяют разговор подачей только при доступном сервисе. Потребители: Main, ServicePanel, DrinkWorkbench, ServiceGuest, DialogueBubblePanel; проверки drink_carry/release_integration/legacy workbench.
+
+## DA-082: мышь при ответах
+
+ЛКМ при захваченном обзоре вызывает confirm и сохраняет захват мыши до смены режима выбора. Клик по фону при открытых ответах возвращает камеру без подтверждения. Автоматический курсор подавлен до новой реплики или отведения взгляда; E и наведение/клик по строкам сохраняются. Потребители: DialogueBubblePanel, FreeRoamCamera; публичные API не менялись.

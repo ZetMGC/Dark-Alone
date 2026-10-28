@@ -29,6 +29,7 @@ var _page_index: int = 0
 var _edge_side: int = 0
 var _position_ready: bool = false
 var _position_target := Vector2.ZERO
+var _reply_pointer_dismissed: bool = false
 
 
 func _ready() -> void:
@@ -62,6 +63,7 @@ func render(runner: DialogueRunner, journal: Journal) -> void:
 	var node := runner.get_current_node()
 	var fresh := key != _line_key
 	if fresh:
+		_reply_pointer_dismissed = false
 		_line_key = key
 		%VoiceSpeaker.text = node.get("speaker", "")
 		_pages = SpeechPaginator.paginate(str(node.get("text", "")), %VoiceText.get_theme_font("normal_font"), %VoiceText.get_theme_font("bold_font"), %VoiceText.get_theme_font_size("normal_font_size"), Vector2(minf(460, screen.size.x - 32) - 36, 112))
@@ -294,7 +296,9 @@ func _update_layout() -> void:
 		%VoiceDirection.text = "Голос за преградой · посмотрите на говорящего"
 	%VoiceTail.visible = not edge_mode
 	%VoiceReplies.visible = can_answer() and not _terminal and not _choices_data.is_empty()
-	_set_reply_pointer(%VoiceReplies.visible)
+	if not looking_at_speaker:
+		_reply_pointer_dismissed = false
+	_set_reply_pointer(%VoiceReplies.visible and not _reply_pointer_dismissed)
 	var reply_rect := preload("res://scripts/ui/reply_panel_layout.gd").rect(%VoiceChoices, area)
 	%VoiceReplies.offset_left = -reply_rect.size.x * 0.5
 	%VoiceReplies.offset_right = reply_rect.size.x * 0.5
@@ -326,7 +330,16 @@ func _input(event: InputEvent) -> void:
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			if _world_action_precedes_speech():
 				return
+			# Клик продолжает речь/ответ, сохраняя управление камерой.
+			_reply_pointer_dismissed = true
 			confirm()
+			_reply_pointer_dismissed = true
+			_set_reply_pointer(false)
+			get_viewport().set_input_as_handled()
+		elif %VoiceReplies.visible and not %VoiceReplies.get_global_rect().has_point(event.position):
+			# Фон возвращает обзор, не отправляя выбранную реплику.
+			_reply_pointer_dismissed = true
+			_set_reply_pointer(false)
 			get_viewport().set_input_as_handled()
 		return
 	elif event is InputEventKey and event.pressed:
