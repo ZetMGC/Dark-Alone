@@ -156,7 +156,8 @@ func _drink(delta: float) -> void:
 	_drink_time += delta
 	var t := _drink_time
 	var rest := model.to_global(Vector3(0.18, -0.48, 0.31))
-	var mouth := model.to_global(Vector3(0.045, -0.27, 0.24))
+	# Центр кисти ниже губ на половину высоты стакана; локоть остаётся внизу.
+	var mouth := model.to_global(Vector3(0.14, -0.23, 0.22))
 	model.look_target = _glass.global_position
 	model.drink_weight = smoothstep(0, 0.6, t) * (1.0 - smoothstep(4.1, 4.7, t))
 	var lift := smoothstep(1.2, 2.0, t) * (1.0 - smoothstep(2.9, 3.8, t))

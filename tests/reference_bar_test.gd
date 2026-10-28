@@ -20,6 +20,16 @@ func run() -> void:
 	var level: Node3D = main.get_node("BarLevel")
 	expect(level is ReferenceBar, "Reference layout enabled in normal entry")
 	expect(main._narrative_ready, "Narrative and workbench configured")
+	var leaves: Array[String] = []
+	var unwanted_table := false
+	for part in level.get_node("Geometry").get_children():
+		if "OpenDoor" in str(part.name) or str(part.name) == "EntranceDoor":
+			leaves.append(str(part.name))
+		if str(part.name).begins_with("TableTop") and part.position.x > 0 and part.position.z < 1.9:
+			unwanted_table = true
+	leaves.sort()
+	expect(leaves == ["EntranceDoor", "KitchenFrontOpenDoor", "VestibuleFrontOpenDoor", "WCOneOpenDoor", "WCTwoOpenDoor"], "Only requested entrance, kitchen and toilet doors remain: " + str(leaves))
+	expect(not unwanted_table, "Table and seating removed from passage beside counter")
 	var rig: FreeRoamCamera = main.get_node("AnchorCamera")
 	rig.body.global_position = Vector3(-2.4, 0, 0.1)
 	Engine.time_scale = 5
@@ -33,7 +43,7 @@ func run() -> void:
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.24
 	shape.height = 1.8
-	for point in [Vector3(-0.6, 0.95, 2.8), Vector3(2.2, 0.95, -1), Vector3(1.5, 0.95, -2.5), Vector3(3, 0.95, -2.5), Vector3(3, 0.95, -0.25), Vector3(3, 0.95, 1.15), Vector3(2.25, 0.95, 1.9), Vector3(-0.3, 0.95, -2.8)]:
+	for point in [Vector3(-0.6, 0.95, 2.8), Vector3(2.2, 0.95, -1), Vector3(1.5, 0.95, -2.5), Vector3(3, 0.95, -2.5), Vector3(3, 0.95, -0.25), Vector3(3, 0.95, 1.15), Vector3(2.25, 0.95, 1.9), Vector3(-0.3, 0.95, -2.8), Vector3(1.4, 0.95, 0.8), Vector3(2.15, 0.95, 0.8)]:
 		var query := PhysicsShapeQueryParameters3D.new()
 		query.shape = shape
 		query.transform.origin = point
@@ -53,6 +63,8 @@ func run() -> void:
 		rig.leave_focus()
 	await capture(main, Vector3(-0.6, 1.7, 2.35), Vector3(-0.4, 1.3, -2), "entry")
 	await capture(main, Vector3(2.65, 1.7, 1.6), Vector3(-2.8, 1.1, -0.5), "hall")
+	await capture(main, Vector3(0.6, 1.6, 1.6), Vector3(2.1, 1.1, -1.4), "passage")
+	await capture(main, Vector3(-2.3, 1.35, 0.2), Vector3(-3.4, 0.65, -1.9), "seating")
 	level.get_node("Geometry/Ceiling").hide()
 	await capture(main, Vector3(0, 13, 0.01), Vector3.ZERO, "plan", true)
 	behavior.request_departure()

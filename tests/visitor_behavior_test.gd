@@ -69,6 +69,55 @@ func run() -> void:
 			var bend := elbow - shoulder - axis * (elbow - shoulder).dot(axis)
 			elbows_back = elbows_back and bend.z < -0.015
 	expect(elbows_back, "Both walking elbows bend backwards throughout the full stride")
+	# Даже едва заметный вес ходьбы/глотка не должен менять плоскость плеча скачком.
+	model.walk_speed = 0
+	model._walking = 0
+	model.support_weight = 1
+	model.talking = false
+	model._pose(0)
+	var arm := model.skeleton.find_bone("UpperArmR")
+	var dock_arm := model.skeleton.get_bone_pose_rotation(arm)
+	model.support_weight = 0.999
+	model._pose(0)
+	expect(dock_arm.angle_to(model.skeleton.get_bone_pose_rotation(arm)) < 0.01, "Tiny locomotion blend cannot flip shoulder")
+	model.support_weight = 1
+	model.drink_target = model.to_global(Vector3(0.14, -0.23, 0.22))
+	model.drink_weight = 0.002
+	model._pose(0)
+	expect(dock_arm.angle_to(model.skeleton.get_bone_pose_rotation(arm)) < 0.015, "Sip starts without elbow-plane jump")
+	model.drink_weight = 1
+	model._pose(0)
+	var sip_elbow := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("ForearmR")).origin
+	var sip_shoulder := model.skeleton.get_bone_global_pose(arm).origin
+	expect(sip_elbow.y < sip_shoulder.y - 0.10 and sip_elbow.x > sip_shoulder.x, "Drinking elbow stays below shoulder, outside chest: " + str(sip_elbow - sip_shoulder))
+	var sip_pose: Array[Quaternion] = []
+	for index in model.skeleton.get_bone_count():
+		sip_pose.append(model.skeleton.get_bone_pose_rotation(index))
+	model.talking = true
+	model.speaking = true
+	model._gesture = 1
+	model._motion = Vector3.ONE
+	model.react(&"interested")
+	model.reaction_time = 1
+	model._pose(0)
+	var no_overlay := true
+	for index in model.skeleton.get_bone_count():
+		no_overlay = no_overlay and sip_pose[index].angle_to(model.skeleton.get_bone_pose_rotation(index)) < 0.002
+	expect(no_overlay, "Speech, reaction and idle cannot override full drinking pose")
+	var smooth_arms := true
+	var previous_arm := model.skeleton.get_bone_pose_rotation(arm)
+	for frame in 121:
+		model.drink_weight = 1.0 - frame / 120.0
+		model._pose(1.0 / 60)
+		var current_arm := model.skeleton.get_bone_pose_rotation(arm)
+		smooth_arms = smooth_arms and previous_arm.angle_to(current_arm) < 0.09
+		previous_arm = current_arm
+	expect(smooth_arms, "Return from sip to speech has no arm snap")
+	model.talking = false
+	model.speaking = false
+	model._motion = Vector3.ZERO
+	model._gesture = 0
+	model.react(&"neutral")
 	guest.global_transform = dock_transform
 	model.walk_speed = 0
 	model._walking = 0
@@ -91,7 +140,7 @@ func run() -> void:
 	behavior.set_physics_process(true)
 	var glass: Node3D = guest.get_node("ServedGlass")
 	guest.show_served("[TEST] Напиток")
-	guest.show_prepared({"vessel": {"id": "test_glass", "capacity_ml": 240}, "layers": []}, glass.global_position + Vector3(0.04, -0.09, 0))
+	guest.show_prepared({"vessel": {"id": "test_glass", "capacity_ml": 240}, "layers": [{"volume_ml": 170, "color": [0.55, 0.25, 0.08]}]}, glass.global_position + Vector3(0.04, -0.09, 0))
 	var home := glass.global_transform
 	expect(behavior._glass_home.is_equal_approx(home), "Prepared serving position overrides initial served signal")
 	await get_tree().create_timer(2.4).timeout

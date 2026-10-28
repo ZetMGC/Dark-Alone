@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+BAR-PLAN-02 / CHAR-10: [ADR-0039](decisions/0039-reference-bar-layout.md) уточняет внутренние wall_x/wall_z(..., door: bool=false), chair(pos, yaw) у ReferenceBar; потребитель только его генератор. [ADR-0038](decisions/0038-visitor-behavior.md) задаёт приоритет анимаций без изменения публичного VisitorModel/VisitorBehavior API. Проверки: reference_bar_test, visitor_behavior_test, visitor_model_test.
+
 CHAR-08 уточняет VisitorBehavior: автоматический уход по session.shift.finished после закрытия Runner/возврата стакана; dialogue_finished отдельной ветки его не запускает. [ADR-0038](decisions/0038-visitor-behavior.md). Публичные сигнатуры прежние.
 
 BAR-PLAN-01: Main.reference_bar_enabled включает ReferenceBar, VisitorBehavior.entrance/waypoints задают маршрут новой локации. Путь/ID поверхностей и якорей сохранены; рабочая точка и подача перенесены. [Контракт](BAR_REFERENCE.md), [ADR-0039](decisions/0039-reference-bar-layout.md).

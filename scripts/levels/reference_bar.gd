@@ -31,23 +31,22 @@ func _ready() -> void:
 	wall_x("RearVestibuleLeft", 3.55, -5, -4)
 	wall_x("RearVestibuleRight", 4.65, -5, -4)
 	wall_z("RearVestibuleEnd", -5, 3.55, 4.65)
-	box("RearExternalDoor", Vector3(4.1, 1.05, -4.92), Vector3(0.85, 2.1, 0.08), wood, false)
 	wall_x("West", -5, -4, 4)
 	wall_x("East", 5, -4, 4)
 	wall_z("South", 4, -5, 5, -0.6, 0.95)
-	wall_z("KitchenFront", -1.0, 1.5, 3.0, 2.2, 0.9)
+	wall_z("KitchenFront", -1.0, 1.5, 3.0, 2.2, 0.9, true)
 	wall_x("BarKitchen", 1.5, -4, -1, -2.5, 0.9)
 	wall_x("StoreWall", 3, -4, -1, -2.5, 0.9)
 	wall_z("StoreFront", -1, 3, 5)
 	# Два независимых проёма из зала.
-	wall_x("WCOne", 3, -1, 0.45, -0.25, 0.85)
-	wall_x("WCTwo", 3, 0.45, 1.9, 1.15, 0.85)
+	wall_x("WCOne", 3, -1, 0.45, -0.25, 0.85, true)
+	wall_x("WCTwo", 3, 0.45, 1.9, 1.15, 0.85, true)
 	wall_z("WCDivider", 0.45, 3, 5)
 	wall_z("StaffFront", 1.9, 1.6, 5, 2.25, 0.9)
 	wall_x("StaffSide", 1.6, 1.9, 4)
 	wall_x("VestibuleLeft", -1.5, 2.8, 4)
 	wall_x("VestibuleRight", 0.35, 2.8, 4)
-	wall_z("VestibuleFront", 2.8, -1.5, 0.35, -0.6, 0.95)
+	wall_z("VestibuleFront", 2.8, -1.5, 0.35, -0.6, 0.95, true)
 	box("EntranceDoor", Vector3(-0.6, 1.05, 4), Vector3(0.95, 2.1, 0.08), wood)
 	room_floor(Vector3(2.25, 0.035, -2.5), Vector3(1.45, 0.03, 2.9))
 	room_floor(Vector3(4, 0.035, 0.45), Vector3(1.9, 0.03, 2.8))
@@ -74,10 +73,10 @@ func _ready() -> void:
 		table(Vector3(-3.45, 0, z), Vector2(1.0, 1.2))
 	table(Vector3(-3.45, 0, -0.5), Vector2(0.9, 0.9))
 	table(Vector3(-1.6, 0, 1.4), Vector2(0.85, 0.9))
-	table(Vector3(1.4, 0, 0.8), Vector2(0.9, 0.9))
 	table(Vector3(-2.8, 0, 3.25), Vector2(0.85, 0.7))
-	for pos in [Vector3(-3.45, 0, -1.85), Vector3(-3.45, 0, 2.4), Vector3(-2.65, 0, -0.5), Vector3(-1.6, 0, 2.1), Vector3(2.15, 0, 0.8), Vector3(-2.8, 0, 2.65)]:
-		chair(pos)
+	# Локальный −Z стула смотрит к своему столу; спинка остаётся снаружи.
+	for placement in [[Vector3(-3.45, 0, -1.78), 0.0], [Vector3(-3.45, 0, 2.47), 0.0], [Vector3(-2.65, 0, -0.5), PI / 2], [Vector3(-1.6, 0, 2.18), 0.0], [Vector3(-2.8, 0, 2.56), PI]]:
+		chair(placement[0], placement[1])
 	# Кухня, склад, санузлы и персонал.
 	box("KitchenBench", Vector3(2.25, 0.48, -3.62), Vector3(1.2, 0.96, 0.55), wood)
 	box("Sink", Vector3(2.0, 1, -3.6), Vector3(0.45, 0.07, 0.4), brass, false)
@@ -165,25 +164,30 @@ func box(label: String, pos: Vector3, size: Vector3, mat: Material, solid: bool 
 	return mesh
 
 
-func wall_z(label: String, z: float, a: float, b: float, doorway: float = 99, width: float = 0.9) -> void:
+func wall_z(label: String, z: float, a: float, b: float, doorway: float = 99, width: float = 0.9, door: bool = false) -> void:
 	if doorway == 99:
 		box(label, Vector3((a+b)/2, 1.4, z), Vector3(b-a, 2.8, 0.14), plaster)
 	else:
 		wall_z(label + "L", z, a, doorway-width/2)
 		wall_z(label + "R", z, doorway+width/2, b)
 		box(label + "Lintel", Vector3(doorway, 2.45, z), Vector3(width, 0.7, 0.14), wood)
-		var leaf := box(label + "OpenDoor", Vector3(doorway-width/2, 1.05, z+width/2), Vector3(0.05, 2.1, width), wood)
-		leaf.rotation.y = -0.12
+		if door:
+			# Полотно в открытом положении лежит вдоль стены, не торчит в зал.
+			var into_room := -1.0 if label == "KitchenFront" else 1.0
+			box(label + "OpenDoor", Vector3(doorway-width/2-0.04, 1.03, z+into_room*width/2), Vector3(0.045, 2.06, width), wood)
+			box(label + "Handle", Vector3(doorway-width/2-0.005, 1.0, z+into_room*(width-0.12)), Vector3(0.06, 0.025, 0.12), brass, false)
 
 
-func wall_x(label: String, x: float, a: float, b: float, doorway: float = 99, width: float = 0.9) -> void:
+func wall_x(label: String, x: float, a: float, b: float, doorway: float = 99, width: float = 0.9, door: bool = false) -> void:
 	if doorway == 99:
 		box(label, Vector3(x, 1.4, (a+b)/2), Vector3(0.14, 2.8, b-a), plaster)
 	else:
 		wall_x(label + "L", x, a, doorway-width/2)
 		wall_x(label + "R", x, doorway+width/2, b)
 		box(label + "Lintel", Vector3(x, 2.45, doorway), Vector3(0.14, 0.7, width), wood)
-		box(label + "OpenDoor", Vector3(x+width/2, 1.05, doorway-width/2), Vector3(width, 2.1, 0.05), wood)
+		if door:
+			box(label + "OpenDoor", Vector3(x+width/2, 1.03, doorway-width/2-0.04), Vector3(width, 2.06, 0.045), wood)
+			box(label + "Handle", Vector3(x+width-0.12, 1.0, doorway-width/2), Vector3(0.12, 0.025, 0.06), brass, false)
 
 
 func cylinder(label: String, pos: Vector3, radius: float, height: float, mat: Material) -> void:
@@ -201,16 +205,31 @@ func cylinder(label: String, pos: Vector3, radius: float, height: float, mat: Ma
 
 
 func stool(pos: Vector3) -> void:
-	cylinder("StoolSeat", pos + Vector3.UP * 0.76, 0.18, 0.09, leather)
-	box("StoolLegs", pos + Vector3.UP * 0.36, Vector3(0.25, 0.72, 0.25), wood)
+	cylinder("StoolRim", pos + Vector3.UP * 0.72, 0.22, 0.065, wood)
+	cylinder("StoolSeat", pos + Vector3.UP * 0.77, 0.205, 0.07, leather)
+	for x in [-0.145, 0.145]:
+		for z in [-0.145, 0.145]:
+			box("StoolLeg", pos + Vector3(x, 0.35, z), Vector3(0.055, 0.70, 0.055), wood)
+		box("StoolRung", pos + Vector3(x, 0.26, 0), Vector3(0.035, 0.035, 0.32), brass, false)
+		box("StoolRung", pos + Vector3(0, 0.26, x), Vector3(0.32, 0.035, 0.035), wood, false)
+	# Сиденье тоже твёрдое, открытый каркас не заменяется массивным кубом.
+	box("StoolSeatSupport", pos + Vector3.UP * 0.70, Vector3(0.33, 0.05, 0.33), wood)
 
 
-func chair(pos: Vector3) -> void:
-	box("ChairSeat", pos + Vector3.UP * 0.46, Vector3(0.45, 0.12, 0.43), wood)
-	box("ChairBack", pos + Vector3(0, 0.78, 0.19), Vector3(0.45, 0.55, 0.06), wood)
-	for x in [-0.16, 0.16]:
-		for z in [-0.16, 0.16]:
-			box("ChairLeg", pos+Vector3(x, 0.2, z), Vector3(0.05, 0.4, 0.05), wood, false)
+func chair(pos: Vector3, yaw: float) -> void:
+	var start := geometry.get_child_count()
+	box("ChairSeat", Vector3(0, 0.43, 0), Vector3(0.46, 0.065, 0.45), wood)
+	box("ChairCushion", Vector3(0, 0.48, -0.01), Vector3(0.41, 0.06, 0.39), leather, false)
+	for x in [-0.19, 0.19]:
+		box("ChairFrontLeg", Vector3(x, 0.21, -0.17), Vector3(0.055, 0.42, 0.055), wood)
+		box("ChairBackPost", Vector3(x, 0.49, 0.18), Vector3(0.055, 0.98, 0.055), wood)
+		box("ChairBrace", Vector3(x, 0.22, 0), Vector3(0.035, 0.04, 0.38), wood, false)
+	box("ChairBackRail", Vector3(0, 0.94, 0.18), Vector3(0.43, 0.09, 0.065), wood)
+	box("ChairBackCushion", Vector3(0, 0.77, 0.17), Vector3(0.33, 0.23, 0.065), leather, false)
+	for i in range(start, geometry.get_child_count()):
+		var part := geometry.get_child(i) as Node3D
+		part.position = pos + part.position.rotated(Vector3.UP, yaw)
+		part.rotation.y = yaw
 
 
 func sofa(pos: Vector3) -> void:
