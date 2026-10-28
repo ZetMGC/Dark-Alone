@@ -18,7 +18,7 @@ Godot 4.7.2, Windows, RTX 4060 Compatibility. Полный общий source che
 
 Графические профили: журнал 259/0 в 960×600, верстак 151/0 в 960×600, диалоги 130/0. World-target headless 28/0. Снимки меню, настроек и карточки до/после захвата просмотрены. Историческая проверка постоянного Prompt обновлена под новый интерфейс. Найденные при разработке ошибки сцены/переменной и утечка создававшегося заранее UI исправлены; финальный диалоговый профиль без предупреждений об утечке.
 
-Логи/снимки игнорируются Git: artifacts/da076-check.log, da076-ui.log, da076-ui-graphics.log, da076-journal.log, da076-workbench.log, da076-dialogue.log, da076-world.log и da076-ui/. Планируется отдельный локальный UI preview с отдельным ярлыком; опубликованный alpha.4 неизменяем.
+Логи/снимки игнорируются Git: artifacts/da076-check.log, da076-ui.log, da076-ui-graphics.log, da076-journal.log, da076-workbench.log, da076-dialogue.log, da076-world.log и da076-ui/. Отдельный локальный UI preview установлен из чистого source 7aebac8e1fe2acec2a67b622d5b9f84acb2ea1cd (windows-20261028-221048-d5eeffe0). Ярлык «Dark Alone — UI preview» создан на рабочем столе. Хеши всех установленных файлов и графический запуск EXE вне проекта PASS; лог artifacts/da076-installed.log. Опубликованный alpha.4 неизменяем.
 
 ## Решения и ограничения
 
@@ -26,4 +26,4 @@ ADR-0037, CONTRACTS и ARCHITECTURE обновлены. Ненавязчивос
 
 ## Продолжение
 
-Завершить финальную проверку/локальный preview, затем владельцу оценить темп кольца, подсказки и размеры меню. Основные файлы: navigation_hud.gd/.tscn, interaction_reticle.gd, notice_bubble.gd, home_exploration.gd/.tscn, journal_panel.gd, dialogue_bubble_panel.gd, preparation/drink_workbench.gd, tests/quiet_ui_test.gd, tests/world_target_test.gd, tools/check.ps1. Новые .uid сохранить в Git.
+DA-076 done, STATUS/BACKLOG/HANDOFF обновлены, частично выполненных критериев нет. Владельцу оценить темп кольца, подсказки и размеры меню. Основные файлы: navigation_hud.gd/.tscn, interaction_reticle.gd, notice_bubble.gd, home_exploration.gd/.tscn, journal_panel.gd, dialogue_bubble_panel.gd, preparation/drink_workbench.gd, tests/quiet_ui_test.gd, tests/world_target_test.gd, tools/check.ps1. Новые .uid сохранить в Git.
