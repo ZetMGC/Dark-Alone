@@ -57,6 +57,18 @@ func run() -> void:
 		var foot := model.to_global(model.skeleton.get_bone_global_pose(model.skeleton.find_bone("FootL")).origin)
 		foot_error = maxf(foot_error, foot.distance_to(model._foot_locks["L"]))
 	expect(foot_error < 0.015, "Planted foot remains at world contact point: " + str(foot_error))
+	var elbows_back := true
+	for frame in 90:
+		model.travel_distance = frame / 90.0 * 0.86
+		model._pose(0.01)
+		for suffix in ["L", "R"]:
+			var shoulder := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("UpperArm" + suffix)).origin
+			var elbow := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("Forearm" + suffix)).origin
+			var wrist := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("Hand" + suffix)).origin
+			var axis := (wrist - shoulder).normalized()
+			var bend := elbow - shoulder - axis * (elbow - shoulder).dot(axis)
+			elbows_back = elbows_back and bend.z < -0.015
+	expect(elbows_back, "Both walking elbows bend backwards throughout the full stride")
 	guest.global_transform = dock_transform
 	model.walk_speed = 0
 	model._walking = 0

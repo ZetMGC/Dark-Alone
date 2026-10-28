@@ -125,7 +125,8 @@ func _behavior_pose(delta: float) -> void:
 		var arm_target := skeleton.get_bone_global_pose(_bones[upper]).origin + Vector3(side * 0.035, -0.49, sin(phase + (PI if side > 0 else 0.0)) * 0.10)
 		var arm_blend := maxf(_walking, 1.0 - support_weight)
 		if arm_blend > 0.001:
-			_limb(upper, lower, hand, rest_hand.lerp(arm_target, arm_blend), Vector3(0, -0.1, 1))
+			# +Z — лицо: опущенный локоть направлен назад и немного наружу.
+			_limb(upper, lower, hand, rest_hand.lerp(arm_target, arm_blend), Vector3(side * 0.15, 0, -1))
 		var thigh: String = "Thigh" + suffix
 		var shin: String = "Shin" + suffix
 		var foot: String = "Foot" + suffix
