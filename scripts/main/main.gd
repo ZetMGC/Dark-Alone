@@ -210,6 +210,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_menu"):
+		if _session.mode == NarrativeSession.MENU and _hud.close_settings():
+			get_viewport().set_input_as_handled()
+			return
 		if free_roam_enabled and _narrative_ready and _session.mode in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] and (_rig as FreeRoamCamera).leave_focus():
 			get_viewport().set_input_as_handled()
 			return

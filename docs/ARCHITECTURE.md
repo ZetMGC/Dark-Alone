@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-072–074: положение речи анимирует DialogueBubblePanel без изменения Session/Runner. Крышка/колпачок шейкера — runtime поля DrinkWorkbench (не DrinkPreparation и не save-sealed флаг): gated gestures/stream и реальные расходы сохраняют прежний состав. NavigationHUD переключает pause/settings внутри прежней menu-сцены, контролы параметров сохраняют пути. reasoning_demo вновь сохраняет Preferences отдельно от отключённого checkpoint. [Контракты](CONTRACTS.md).
+
 DA-068: двухэтапный дневник (подъём закрытой книги → клик/раскрытие), вывод внутри группы и зависимые варианты/предпосылки. Публичные расширения Session/Panel/Reasoning, потребители и восстановление — [JOURNAL_REASONING](JOURNAL_REASONING.md), [ADR-0031](decisions/0031-closed-book-reasoning-chains.md). Новый TEST — отдельная наследованная сцена/пара каталогов, обычный Main и его hash не изменены.
 
 DA-067: круг/точка готовой группы и стрелки после выводов вычисляются автоматически, ручного жеста нет. Catalog/Reasoning принимают optional reasoning_links. Перелистывание рисуется из source/target одного JournalPanel; target готовится в SubViewport на Journal.make_visual_copy без изменения знаний. После commit изображение удерживается в фазе settle до раскладки живого UI. Открытие — подъём цельного разворота, без меняющейся ширины/прозрачности текста. [ADR-0030](decisions/0030-automatic-groups-stable-pages.md), JOURNAL_REASONING.

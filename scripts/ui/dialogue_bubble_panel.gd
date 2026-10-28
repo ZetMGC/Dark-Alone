@@ -21,6 +21,9 @@ var _terminal: bool = false
 var _window_focused: bool = true
 var _pages: Array[Dictionary] = []
 var _page_index: int = 0
+var _edge_side: int = 0
+var _position_ready: bool = false
+var _position_target := Vector2.ZERO
 
 
 func set_response_input_enabled(enabled: bool) -> void:
@@ -213,6 +216,8 @@ func _process(delta: float) -> void:
 		_typed = minf(_length, _typed + maxf(characters_per_second, 1.0) * delta)
 		%VoiceText.visible_characters = int(_typed)
 	_update_layout()
+	if _position_ready and _window_focused:
+		%VoiceBubble.position = %VoiceBubble.position.lerp(_position_target, 1.0 - exp(-minf(delta, 0.05) / 0.16))
 
 
 func _update_layout() -> void:
@@ -222,6 +227,8 @@ func _update_layout() -> void:
 		%VoiceBubble.hide()
 		%VoiceReplies.hide()
 		%VoiceHint.hide()
+		_position_ready = false
+		_edge_side = 0
 		return
 	if not is_instance_valid(_camera) or not is_instance_valid(_speaker):
 		looking_at_speaker = false
@@ -247,13 +254,21 @@ func _update_layout() -> void:
 	%VoiceBubble.size = Vector2(width, 0)
 	var height: float = %VoiceBubble.size.y
 	var target := point - Vector2(width * 0.5, height + 12)
+	if edge_mode:
+		# Небольшие повороты вокруг центра затылка не перебрасывают голос между краями.
+		var threshold := maxf(0.12, local.length() * 0.18)
+		if _edge_side == 0 or absf(local.x) > threshold:
+			_edge_side = -1 if local.x < 0 else 1
 	if _workbench_overlay:
 		target = Vector2(area.x - width - 16, 84)
 	elif edge_mode:
-		target = Vector2(16 if local.x < 0 else area.x - width - 16, 170)
-	%VoiceBubble.position = Vector2(clampf(target.x, 16, maxf(16, area.x - width - 16)), clampf(target.y, 16, maxf(16, area.y - height - 245)))
+		target = Vector2(16 if _edge_side < 0 else area.x - width - 16, 170)
+	_position_target = Vector2(clampf(target.x, 16, maxf(16, area.x - width - 16)), clampf(target.y, 16, maxf(16, area.y - height - 245)))
+	if not _position_ready:
+		%VoiceBubble.position = _position_target
+		_position_ready = true
 	%VoiceDirection.visible = edge_mode
-	%VoiceDirection.text = ("↙ Голос позади слева · обернитесь" if local.x < 0 else "Голос позади справа ↘ · обернитесь") if behind else ("← Говорят слева" if local.x < 0 else "Говорят справа →")
+	%VoiceDirection.text = ("↙ Голос позади слева · обернитесь" if _edge_side < 0 else "Голос позади справа ↘ · обернитесь") if behind else ("← Говорят слева" if _edge_side < 0 else "Говорят справа →")
 	if not clear and not behind:
 		%VoiceDirection.text = "Голос за преградой · посмотрите на говорящего"
 	%VoiceTail.visible = not edge_mode

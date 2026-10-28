@@ -1,5 +1,7 @@
 # Проверки
 
+DA-072–074: общий check PASS; bubble profile 128 headless/137 GPU на размер (анимация/задний сектор); check_workbench -Graphics 139/151/151 (реальный налив в шейкер/крышка/колпачок/расход в пролив/новые PNG); preference profile 37 headless/42 GPU (отдельная страница и actual default scene). Дополнительно default entry проверен в двух процессах через --default-entry --preference-probe=write/read и изолированный user://preference_tests/process_<id>, PASS 2/3. Команды/логи — [протокол](worklog/2026-10-28-09-speech-shaker-settings.md).
+
 DA-071: dialogue_bubble_test проверяет доступные номера после вывода, сохранение выбранного ID, реальные цифры 1/2, колесо/F, terminal/no-available/inactive Runner, повторное появление списка после открытия условий. Source headless 123 / GPU 132 на размер; bar_service_dialogue 52. Команды/фактические общие результаты — [протокол](worklog/2026-10-28-08-dialogue-replies.md).
 
 DA-068: `tools/check_journal_ink.ps1 -Godot <Godot> -Graphics` проверяет также закрытую обложку/реальный клик/full/reduced/off/паузу и четыре цепочки TEST-диалога. Исторические fixtures вызывают open_journal(true) для прямого чтения; default false проверяется отдельно. `tools/validate_content.gd` проверяет два независимых bundle. `tools/capture_reasoning_preview.gd` снимает raise/unfold/turn/section/close отдельной demo-сцены. Фактические source/Windows результаты — [протокол DA-068](worklog/2026-10-28-05-closed-book-reasoning-chains.md).

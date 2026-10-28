@@ -98,12 +98,25 @@ func _run() -> void:
 	Input.action_release("move_forward")
 	_expect(rig.body.global_position.distance_to(position) > 0.1 and not rig.focus_active and session.shift.remaining == 2, "Dialogue permits walking without spending time")
 	var facing := rig.view.global_basis
+	var bubble_before_turn: Vector2 = panel.get_node("%VoiceBubble").position
 	rig.apply_look_delta(Vector2(PI, 0))
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_expect(not rig.view.global_basis.is_equal_approx(facing), "Dialogue permits turning head")
 	_expect(panel.edge_mode and not panel.looking_at_speaker and panel.get_node("%VoiceDirection").visible, "Behind speaker moves bubble to corner with direction")
 	_expect(not panel.get_node("%VoiceReplies").visible, "Answers hidden when looking away")
+	var voice: Control = panel.get_node("%VoiceBubble")
+	var target: Vector2 = panel._position_target
+	_expect(voice.position.distance_to(target) > 5 and voice.position.distance_to(bubble_before_turn) < target.distance_to(bubble_before_turn), "Turning away begins smooth travel instead of teleporting to edge")
+	var direction: String = panel.get_node("%VoiceDirection").text
+	for yaw in [0.025, -0.05, 0.025]:
+		rig.apply_look_delta(Vector2(yaw, 0))
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_expect(panel.get_node("%VoiceDirection").text == direction, "Rear-centre jitter preserves chosen edge")
+	var distance := voice.position.distance_to(panel._position_target)
+	await get_tree().create_timer(0.18).timeout
+	_expect(voice.position.distance_to(panel._position_target) < distance, "Bubble eases towards edge while speech state remains intact")
 	await _key(KEY_2)
 	await _key(KEY_F)
 	_expect(session.runner.current_node_id == &"opening", "Away keys cannot answer")
