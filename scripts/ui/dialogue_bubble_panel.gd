@@ -249,6 +249,10 @@ func _update_layout() -> void:
 	%VoiceBubble.visible = _speech_alpha > 0
 	var head := _speaker.global_position + Vector3.UP * 0.36
 	var face := _speaker.global_position + Vector3.UP * 0.06
+	if _speaker.has_method("get_dialogue_head_position"):
+		head = _speaker.call("get_dialogue_head_position")
+	if _speaker.has_method("get_dialogue_face_position"):
+		face = _speaker.call("get_dialogue_face_position")
 	var area := screen.size
 	# На плоскости камеры перспектива не определена; голос сразу уходит к краю.
 	var head_local := _camera.to_local(head)
@@ -258,7 +262,7 @@ func _update_layout() -> void:
 	var visible_head := not behind and Rect2(Vector2.ZERO, area).has_point(point)
 	var query := PhysicsRayQueryParameters3D.create(_camera.global_position, face, 1)
 	var clear := _camera.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
-	looking_at_speaker = visible_head and clear and -_camera.global_basis.z.dot((_speaker.global_position - _camera.global_position).normalized()) >= cos(deg_to_rad(20))
+	looking_at_speaker = visible_head and clear and -_camera.global_basis.z.dot((face - _camera.global_position).normalized()) >= cos(deg_to_rad(20))
 	edge_mode = not visible_head or not clear
 	var width := minf(460, area.x - 32)
 	%VoiceText.custom_minimum_size.y = clampf(%VoiceText.get_content_height(), 24, 112)
