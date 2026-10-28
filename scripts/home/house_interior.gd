@@ -401,6 +401,8 @@ func tick(delta: float, active: bool, gain: float) -> void:
 		kettle_remaining = maxf(0, kettle_remaining - delta)
 		if kettle_remaining == 0:
 			tea_ready = true
+			if home.interaction.get_target() == actions.Kettle:
+				actions.Kettle.context_feedback = "Чай готов"
 			home.house_feedback("Чай готов. Подойдите к чайнику, чтобы выпить.")
 	_steam.visible = kettle_remaining > 0
 	if radio_on and active and gain > 0:
