@@ -1,5 +1,7 @@
 # Ресурсы и права
 
+CHAR-01: assets/characters/test_visitor/face.png — оригинальная текстура, полученная встроенным imagegen 2026-10-28; полный запрос/происхождение в assets/characters/test_visitor/PROMPT.md. Импорт максимум 256×256, nearest. Модели/текстуры Mouthwashing не включались. visitor_model.gd/.tscn — собственная геометрия, скелет и процедурная ткань Godot. Публичная лицензия проекта отдельно не выбрана.
+
 JOURNAL-02: assets/fonts/caveat/Caveat.ttf — Caveat (Copyright 2014 The Caveat Project Authors), рукописный шрифт с кириллицей, без изменения бинарного файла. Источник: [официальный Google Fonts](https://github.com/google/fonts/tree/main/ofl/caveat), файл Caveat[wght].ttf; SIL Open Font License 1.1 включена в assets/fonts/caveat/OFL.txt и docs/legal/CAVEAT-OFL.txt. Существующий build_windows.ps1 копирует docs/legal в дистрибутив. SHA256 шрифта: 0bdb6b660482d31531b3945849fba5916b3ef8695da7024a9e6b9ee3c4157988. Оформление ткани/бумаги/карандашного эскиза/пометок — собственный рисунок средствами Godot, не текстура сгенерированного разворота; сюжетного текста из изображения в контент не переносили.
 
 DA-049: scenes/home/home_exploration.tscn — собственная TEST-геометрия из block.tscn/примитивов Godot, плоские материалы, свет, книга/кровать/окно/дверь без сторонних моделей/текстур. Тексты осмотра/события технические, не канон. Внешних ассетов не добавляли; публичная лицензия проекта по-прежнему отдельно не выбрана.

@@ -38,6 +38,7 @@ Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--sc
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/book_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/display_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/faces_test.tscn')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/visitor_model_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/checkpoint_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/free_roam_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/dialogue_bubble_test.tscn')
