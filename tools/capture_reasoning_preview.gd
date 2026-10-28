@@ -37,7 +37,14 @@ func _run() -> void:
 	await _record("turn")
 	panel.select_section(&"notes")
 	await _record("section")
+	var paper: JournalPaperPages = panel.get_node("%PaperPages")
+	paper.open_conclusion(&"test_memories")
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png(output.path_join("popup-first.png"))
 	session.journal.choose_conclusion(&"test_memories", &"test_cinema")
+	paper.open_conclusion(&"test_arsenal")
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png(output.path_join("popup-second.png"))
 	session.journal.choose_conclusion(&"test_arsenal", &"test_props")
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(output.path_join("notes.png"))

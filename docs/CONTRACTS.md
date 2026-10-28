@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-070: варианты вывода выбираются мышью в пузырьке у точки группы; hit bounds get_option_rect соответствуют новым строкам, для неверного индекса пустой Rect2. Потребители/семантика отмены — [JOURNAL_REASONING](JOURNAL_REASONING.md), [ADR-0032](decisions/0032-conclusion-popup.md). Модель/сохранения прежние.
+
 DA-068: двухэтапный дневник (подъём закрытой книги → клик/раскрытие), вывод внутри группы и зависимые варианты/предпосылки. Публичные расширения Session/Panel/Reasoning, потребители и восстановление — [JOURNAL_REASONING](JOURNAL_REASONING.md), [ADR-0031](decisions/0031-closed-book-reasoning-chains.md). Новый TEST — отдельная наследованная сцена/пара каталогов, обычный Main и его hash не изменены.
 
 DA-067: [дополнение JOURNAL_REASONING](JOURNAL_REASONING.md)/ADR-0030 заменяет ручную обводку на open_conclusion(group_id) через точку. Новые get_conclusion_button_rect/get_visible_links/get_page_preview и Journal.make_visual_copy; Catalog.get_reasoning_links, Reasoning.configure(groups,links=[])/get_link_definitions/get_links(sheet). Связи валидируются, выводятся после обеих записей, новых save-полей нет. Panel.preview_mode — только изолированная отрисовка без opened; временный settle блокирует ввод при передаче кадра. Прежние публичные сигналы Session и определения conclusion/evidence сохранены.

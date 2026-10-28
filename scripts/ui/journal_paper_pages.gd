@@ -15,6 +15,7 @@ var editing_enabled: bool = false:
 		queue_redraw()
 var _font: Font = preload("res://assets/fonts/caveat/Caveat.ttf")
 var _ink := Color("353f42")
+var _hovered_option: int = -1
 var _pending_group: StringName = &""
 var _pending_evidence := PackedStringArray()
 var _recipe_pages: Array[Dictionary] = []
@@ -112,13 +113,79 @@ func get_word_rects(group: Dictionary) -> Array[Rect2]:
 	return result
 
 
+func _pending_options() -> Array:
+	if journal != null:
+		for group in journal.get_reasoning_groups(sheet):
+			if group.id == str(_pending_group):
+				return group.options
+	return []
+
+
+func _option_height(text: String, width: float) -> float:
+	var paragraph := TextParagraph.new()
+	paragraph.width = width
+	paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	paragraph.add_string(text, _font, 25)
+	return maxf(46, paragraph.get_size().y + 20)
+
+
 func _options_rect() -> Rect2:
-	return Rect2(size.x * 0.55, 65, size.x * 0.41, size.y - 115)
+	var width := minf(350, size.x * 0.37)
+	var height := 48.0
+	for option in _pending_options():
+		height += _option_height(option.text, width - 36)
+	var anchor := Vector2.ZERO
+	for group in journal.get_reasoning_groups(sheet):
+		if group.id == str(_pending_group):
+			anchor = get_conclusion_button_rect(group).get_center()
+	var origin := anchor + Vector2(18, 16)
+	if origin.x + width > size.x - 12:
+		origin.x = anchor.x - width - 18
+	if origin.y + height > size.y - 16:
+		origin.y = anchor.y - height - 16
+	origin = origin.clamp(Vector2(12, 12), (size - Vector2(width, height) - Vector2(12, 12)).max(Vector2(12, 12)))
+	return Rect2(origin, Vector2(width, height))
 
 
 func get_option_rect(index: int) -> Rect2:
+	var options := _pending_options()
+	if index < 0 or index >= options.size():
+		return Rect2()
 	var rect := _options_rect()
-	return Rect2(rect.position + Vector2(12, 76 + index * 78), Vector2(rect.size.x - 24, 72))
+	var y := rect.position.y + 40
+	for row in index:
+		y += _option_height(options[row].text, rect.size.x - 36)
+	return Rect2(Vector2(rect.position.x + 8, y), Vector2(rect.size.x - 16, _option_height(options[index].text, rect.size.x - 36)))
+
+
+func _draw_options() -> void:
+	var rect := _options_rect()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("e5d9bb")
+	style.border_color = Color("8c846c")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(12)
+	style.shadow_color = Color(0.08, 0.09, 0.07, 0.25)
+	style.shadow_size = 7
+	style.shadow_offset = Vector2(2, 4)
+	draw_style_box(style, rect)
+	for group in journal.get_reasoning_groups(sheet):
+		if group.id == str(_pending_group):
+			var point := get_conclusion_button_rect(group).get_center()
+			var edge := Vector2(clampf(point.x, rect.position.x + 16, rect.end.x - 16), rect.position.y if point.y < rect.position.y else rect.end.y)
+			draw_colored_polygon(PackedVector2Array([point, edge + Vector2(-7, 0), edge + Vector2(7, 0)]), style.bg_color)
+	_write("Я думаю, что…", Rect2(rect.position + Vector2(18, 8), Vector2(rect.size.x - 36, 32)), 25, Color(_ink, 0.7))
+	var options := _pending_options()
+	for index in options.size():
+		var row := get_option_rect(index)
+		if index == _hovered_option:
+			var hover := StyleBoxFlat.new()
+			hover.bg_color = Color(0.26, 0.3, 0.24, 0.12)
+			hover.set_corner_radius_all(7)
+			draw_style_box(hover, row)
+		_write(options[index].text, Rect2(row.position + Vector2(10, 8), row.size - Vector2(20, 14)), 25)
+		if index + 1 < options.size():
+			draw_line(Vector2(row.position.x + 10, row.end.y), Vector2(row.end.x - 10, row.end.y), Color(_ink, 0.12), 1)
 
 
 func get_pending_group() -> StringName:
@@ -153,8 +220,9 @@ func open_conclusion(group_id: StringName) -> bool:
 	for group in journal.get_reasoning_groups(sheet):
 		if group.id == str(group_id) and group.ready and group.conclusion.is_empty():
 			_pending_group = group_id
+			_hovered_option = -1
 			_pending_evidence = PackedStringArray(group.terms)
-			hint_changed.emit("Какой вывод следует из этих слов? Выберите вариант на бумаге.")
+			hint_changed.emit("Какой вывод следует из этих слов? Нажмите подходящий вариант в пузырьке.")
 			queue_redraw()
 			return true
 	return false
@@ -169,11 +237,16 @@ func _gui_input(event: InputEvent) -> void:
 			hint_changed.emit(default_hint())
 			queue_redraw()
 			accept_event()
-		elif _pending_group != &"" and event.keycode >= KEY_1 and event.keycode <= KEY_4:
-			choose_option(event.keycode - KEY_1)
-			accept_event()
 	if event is InputEventMouseMotion and section == &"notes":
 		mouse_default_cursor_shape = Control.CURSOR_ARROW
+		_hovered_option = -1
+		if _pending_group != &"":
+			for index in _pending_options().size():
+				if get_option_rect(index).has_point(event.position):
+					_hovered_option = index
+					mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			queue_redraw()
+			return
 		for group in journal.get_reasoning_groups(sheet):
 			if group.ready and group.conclusion.is_empty() and get_conclusion_button_rect(group).has_point(event.position):
 				mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -190,9 +263,17 @@ func _gui_input(event: InputEvent) -> void:
 				navigation_changed.emit()
 		return
 	if _pending_group != &"":
-		for index in 4:
+		for index in _pending_options().size():
 			if get_option_rect(index).has_point(event.position):
 				choose_option(index)
+				accept_event()
+				return
+		if not _options_rect().has_point(event.position):
+			_pending_group = &""
+			_pending_evidence.clear()
+			hint_changed.emit(default_hint())
+			queue_redraw()
+		accept_event()
 		return
 	for group in journal.get_reasoning_groups(sheet):
 		if get_conclusion_button_rect(group).has_point(event.position) and open_conclusion(StringName(group.id)):
@@ -258,13 +339,7 @@ func _draw() -> void:
 
 Связанные сведения — рядом.", Rect2(size.x * 0.08, size.y * 0.3, size.x * 0.34, 180), 29, Color(_ink, 0.5))
 	if _pending_group != &"":
-		var rect := _options_rect()
-		draw_rect(rect.grow(8), Color("ddcfac"))
-		_write("Я думаю, что…", Rect2(rect.position, Vector2(rect.size.x, 65)), 35)
-		for group in groups:
-			if group.id == str(_pending_group):
-				for index in group.options.size():
-					_write(str(index + 1) + ". " + group.options[index].text, get_option_rect(index), 27)
+		_draw_options()
 	_write(str(sheet * 2 + 1), Rect2(20, size.y - 32, 80, 30), 22)
 	_write(str(sheet * 2 + 2), Rect2(size.x - 50, size.y - 32, 50, 30), 22)
 

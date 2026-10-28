@@ -379,6 +379,17 @@ func _paper_ui() -> void:
 	_expect(paper.get_pending_group() == &"", "Dragging over words no longer draws or opens a conclusion")
 	await _click_group_point(paper, group)
 	_expect(paper.get_pending_group() == &"test_terms_connection", "Actual click on small point opens conclusion choices")
+	var option_bounds := Rect2(Vector2.ZERO, paper.size)
+	for index in group.options.size():
+		_expect(option_bounds.encloses(paper.get_option_rect(index)), "Popup choice fits paper at current window size")
+	_expect(paper.get_option_rect(-1).size == Vector2.ZERO and paper.get_option_rect(group.options.size()).size == Vector2.ZERO, "No phantom row outside actual choices")
+	await _key(KEY_1)
+	_expect(paper.get_pending_group() == &"test_terms_connection" and not session.journal.has_conclusion(&"test_same_subject"), "Number keys do not accidentally commit mouse-only popup")
+	var outside := paper.global_position + Vector2(12, paper.size.y - 55)
+	await _click(outside, true)
+	await _click(outside, false)
+	_expect(paper.get_pending_group() == &"" and session.mode == NarrativeSession.JOURNAL, "Outside click dismisses popup without closing book or choosing")
+	await _click_group_point(paper, group)
 	await _snap("05-conclusion-options")
 	session.open_menu()
 	_expect(not paper.choose_option(0), "Hidden journal rejects stale conclusion choice")
@@ -395,6 +406,9 @@ func _paper_ui() -> void:
 	_expect(paper.get_visible_links().is_empty(), "Arrow stays hidden while related target has no conclusion")
 	var related: Dictionary = session.journal.get_reasoning_groups(0)[1]
 	await _click_group_point(paper, related)
+	for index in related.options.size():
+		_expect(Rect2(Vector2.ZERO, paper.size).encloses(paper.get_option_rect(index)), "Right-side popup flips inside spread")
+	await _snap("05b-right-conclusion-options")
 	var related_choice := paper.global_position + paper.get_option_rect(0).get_center()
 	await _click(related_choice, true)
 	await _click(related_choice, false)
