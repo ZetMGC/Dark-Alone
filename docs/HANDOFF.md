@@ -1,6 +1,6 @@
 # Передача проекта
 
-CHAR-02: актуальный D в codex/test-visitor-model заменяет жёсткий макет CHAR-01. F5 → гость; Escape → TEST-вариант D/A/B/C. Полный check PASS, visitor 46 headless/48 GPU; экспортированный GLB сохраняет skin/15 костей. [Текущий контракт/источник/команды](CHARACTER_PROTOTYPE.md), [протокол](worklog/2026-10-28-02-visitor-refinement.md). Следующий шаг — человеческая оценка в баре adaptive/native и движении. Общие сцены не менялись, main/релиз не трогались; липсинка/IK/ходьбы нет.
+CHAR-02: актуальный D в codex/test-visitor-model заменяет жёсткий макет CHAR-01. F5 → гость; Escape → TEST-вариант D/A/B/C. Точный af48189 из чистого git archive: полный check PASS, visitor 48 headless/50 GPU; GLB сохраняет skin/15 костей. [Контракт/источник/команды](CHARACTER_PROTOTYPE.md), [протокол](worklog/2026-10-28-02-visitor-refinement.md). Следующий шаг — оценка в баре adaptive/native и движении. Общие сцены не менялись, main/релиз не трогались; липсинка/IK/ходьбы нет.
 
 CHAR-01, 2026-10-28: TEST-посетитель D в codex/test-visitor-model, база b64f51a. F5 → гость у стойки; Escape → «[TEST] Лицо гостя» для A/B/C/D. Полный исходниковый набор PASS, новый тест 77 headless/78 GPU, GLB round trip 47 мешей. Следующий шаг — оценить лицо/силуэт в баре, довести бок головы/ткань/мягкий скиннинг. [Контракт/команды](CHARACTER_PROTOTYPE.md), [протокол](worklog/2026-10-28-01-test-visitor.md). Финальная внешность, релиз и слияние не выполнялись.
 
