@@ -497,7 +497,7 @@ func advance_pour(delta: float) -> void:
 	if stream.is_empty():
 		_flush_pour()
 		return
-	var over_spoon: bool = stream.hit and _spoon_attached and stream.target == _spoon_container and absf(float(stream.end.x) - _spoon_position().x) <= 44
+	var over_spoon := _is_spoon_hit(stream)
 	# Ложка расширяет допуск. Тихий налив у стенки тоже может сохранить границу.
 	var along_wall := false
 	if stream.hit:
@@ -741,7 +741,7 @@ func _draw() -> void:
 		_draw_bottle(_dragging)
 	_draw_stream()
 	_local()
-	_text(Vector2(28, 662), _message)
+	_text(Vector2(28, 662), _pour_hint(stream_info()) if _angles.has(str(_dragging)) else _message)
 	var help := "ЛКМ — предметы · посуда — слева · готовый напиток — в выдачу справа"
 	if _dragging == &"cup":
 		help = "Зона выдачи справа → кнопка «Подать» · шейкер — перелить · слив — опустошить"
@@ -754,7 +754,7 @@ func _draw() -> void:
 	elif _dragging == &"ice":
 		help = "Положите лёд в смесительный стакан, шейкер или посуду для подачи"
 	elif _angles.has(str(_dragging)):
-		help = "Колесо — наклон · ПКМ — быстрый налив · отпустить ЛКМ — поставить"
+		help = "Колесо ↑ — сильнее наклон и поток · ↓ — слабее, до остановки · отпустить ЛКМ — поставить"
 	_text(Vector2(28, 695), help, Color(0.7, 0.69, 0.61), 16)
 
 
@@ -864,6 +864,29 @@ func _draw_ice_and_foam(state: Dictionary, rect: Rect2) -> void:
 		draw_line(Vector2(rect.position.x + 7, level), Vector2(rect.end.x - 7, level), Color(0.82, 0.82, 0.73, state.technique.aeration), 4)
 
 
+func _is_spoon_hit(stream: Dictionary) -> bool:
+	return not stream.is_empty() and stream.hit and _spoon_attached and stream.target == _spoon_container and absf(float(stream.end.x) - _spoon_position().x) <= 44
+
+
+func _pour_hint(stream: Dictionary) -> String:
+	if stream.is_empty():
+		return "Колесо вверх — наклонить и начать налив · вниз — выпрямить и остановить"
+	var intensity := "По каплям" if stream.rate <= 4 else ("Тонкая струя" if stream.rate <= 14 else "Сильная струя")
+	if not stream.hit:
+		return intensity + " · мимо посуды — переместите горлышко над краем"
+	if absf(_swing_velocity) >= 0.6:
+		return intensity + " · рука раскачивается — задержите бутылку для слоёв"
+	if _is_spoon_hit(stream):
+		if stream.rate > 14:
+			return intensity + " · по ложке, но слишком быстро для слоя — убавьте наклон"
+		if stream.height > 180:
+			return intensity + " · по ложке, но слишком высоко — опустите горлышко"
+		return intensity + " · по ложке — мягкий налив; лёгкое поверх плотного"
+	if _spoon_attached and stream.target == _spoon_container:
+		return intensity + " · струя проходит мимо ложки — подведите горлышко к ней"
+	return intensity + " · для слоёв направьте струю на ложку у края"
+
+
 func _draw_stream() -> void:
 	var stream := stream_info()
 	if stream.is_empty():
@@ -885,7 +908,29 @@ func _draw_stream() -> void:
 	elif _container(_dragging) != null:
 		var data: Array = _container(_dragging).get_view().overall.color
 		color = Color(data[0], data[1], data[2]).lightened(0.1)
-	draw_polyline(points, color, clampf(float(stream.rate) / 5.0, 2, 7), false)
+	# Один фактический расход определяет дозу, траекторию и вид струи.
+	var intensity := clampf(float(stream.rate) / 24.0, 0, 1)
+	var width := lerpf(0.8, 7.0, intensity)
+	var seconds := Time.get_ticks_msec() / 1000.0
+	if stream.rate <= 4:
+		# При малом наклоне видны отдельные движущиеся капли вместо толстой линии.
+		for index in 6:
+			var phase := fposmod(seconds * 1.8 + index / 6.0, 1.0)
+			var time: float = stream.time * phase
+			var drop: Vector2 = stream.start + stream.velocity * time + Vector2(0, 325 * time * time)
+			draw_circle(drop, width + 0.6, color)
+	else:
+		draw_polyline(points, color, width, false)
+		# Блики текут по той же дуге, не меняя реальный объём жидкости.
+		for index in 4:
+			var phase := fposmod(seconds * 2.5 + index / 4.0, 1.0)
+			var time: float = stream.time * phase
+			var highlight: Vector2 = stream.start + stream.velocity * time + Vector2(0, 325 * time * time)
+			draw_circle(highlight, width * 0.25, color.lightened(0.25))
 	var endpoint := points[points.size() - 1]
-	var wobble := sin(Time.get_ticks_msec() * 0.02) * 6
-	draw_line(endpoint + Vector2(-9 - wobble, -1), endpoint + Vector2(9 + wobble, -1), color, 2)
+	var splash := lerpf(2, 15, intensity) * (0.85 + sin(seconds * 20) * 0.15)
+	draw_line(endpoint + Vector2(-splash, -1), endpoint + Vector2(splash, -1), color, maxf(1, width * 0.4))
+	if intensity > 0.5:
+		for direction in [-1, 1]:
+			var phase := fposmod(seconds * 3 + (0.4 if direction < 0 else 0), 1)
+			draw_circle(endpoint + Vector2(direction * splash * phase, -sin(phase * PI) * splash * 0.6), width * 0.2, color)

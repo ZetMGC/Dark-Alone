@@ -94,6 +94,7 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"off"
 	_test_service_model()
 	_test_spills()
+	await _test_pour_control()
 	await _test_controls()
 	await _test_mixing_surface()
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
@@ -245,6 +246,49 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"full"
 	print("%s: drink workbench, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _test_pour_control() -> void:
+	var bench := DrinkWorkbench.new()
+	get_tree().root.add_child(bench)
+	bench.set_active(true)
+	bench.set_process(false)
+	await get_tree().process_frame
+	await _drag(bench, &"spoon", bench.get_item_position(&"cup") + Vector2(34, -10))
+	await _move(bench, bench.get_item_position(&"test_light"))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _move(bench, Vector2(785, 395))
+	for index in 5:
+		await _button(MOUSE_BUTTON_WHEEL_UP, true)
+	_expect(bench.stream_info().is_empty(), "Wheel before pour threshold keeps bottle closed")
+	await _button(MOUSE_BUTTON_WHEEL_UP, true)
+	var slow := bench.stream_info()
+	_expect(not slow.is_empty() and slow.rate <= 4 and slow.hit, "Small wheel tilt produces actual low flow into cup")
+	_expect(bench._pour_hint(slow).contains("По каплям") and bench._pour_hint(slow).contains("по ложке"), "Slow pour explains drop flow and actual spoon hit")
+	await _snap("08-drop-pour")
+	var before := bench.get_bottle_remaining(&"test_light")
+	for step in 10:
+		bench.advance_pour(0.05)
+	var slow_used := before - bench.get_bottle_remaining(&"test_light")
+	for index in 4:
+		await _button(MOUSE_BUTTON_WHEEL_UP, true)
+	var fast := bench.stream_info()
+	_expect(fast.rate > slow.rate * 3 and bench._pour_hint(fast).contains("Сильная струя"), "Larger wheel tilt increases real flow and visible intensity state")
+	await _snap("09-strong-pour")
+	before = bench.get_bottle_remaining(&"test_light")
+	for step in 10:
+		bench.advance_pour(0.05)
+	_expect(before - bench.get_bottle_remaining(&"test_light") > slow_used * 3, "Same pour duration consumes more actual stock at higher tilt")
+	for index in 5:
+		await _button(MOUSE_BUTTON_WHEEL_DOWN, true)
+	_expect(bench.stream_info().is_empty(), "Reverse wheel straightens held bottle and stops stream")
+	before = bench.get_bottle_remaining(&"test_light")
+	bench.advance_pour(0.05)
+	_expect(bench.get_bottle_remaining(&"test_light") == before, "Stopped tilt consumes no stock while bottle is still held")
+	await _button(MOUSE_BUTTON_LEFT, false)
+	bench.set_active(false)
+	bench.queue_free()
+	await get_tree().process_frame
 
 
 func _test_controls() -> void:
