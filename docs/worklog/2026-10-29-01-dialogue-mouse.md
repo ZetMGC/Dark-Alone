@@ -8,7 +8,7 @@ DialogueBubblePanel сохраняет захват после confirm клик�
 
 ## Проверки
 
-Godot 4.7.2 Windows: bubble 140/0 headless, 147/0 GPU; carry GPU 33/0. Windows export/установка будут дописаны после завершения.
+Godot 4.7.2 Windows: bubble 140/0 headless, 147/0 GPU; carry GPU 33/0. Windows Desktop export PASS, чистый source 21230473ea3918790c672f8cdcc33daf542cc0fe. Windows Validation GPU 147/0. После подтверждения владельцем закрытия игры прежняя установка обновлена; все SHA256 и графический startup exit 0 без ошибок PASS. Существующий ярлык сохранён.
 
 ## Решения и ограничения
 
@@ -16,4 +16,4 @@ Godot 4.7.2 Windows: bubble 140/0 headless, 147/0 GPU; carry GPU 33/0. Windows e
 
 ## Продолжение
 
-Собрать и обновить прежнюю установку после закрытия игры владельцем. STATUS/BACKLOG обновлены. Затем ручная проверка разговора владельцем.
+Готово в main, STATUS/BACKLOG done. Следующий шаг: ручная проверка разговора владельцем через прежний ярлык.
