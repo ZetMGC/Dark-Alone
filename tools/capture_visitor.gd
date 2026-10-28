@@ -37,8 +37,8 @@ func _run() -> void:
 	stage.add_child(floor)
 	var camera := Camera3D.new()
 	stage.add_child(camera)
-	camera.position = Vector3(0.7, -0.45, 2.8)
-	camera.look_at(Vector3(0, -0.65, 0))
+	camera.position = Vector3(0.75, -0.33, 3.0)
+	camera.look_at(Vector3(0, -0.6, 0))
 	camera.fov = 43
 	await process_frame
 	await process_frame
@@ -62,8 +62,15 @@ func _run() -> void:
 			root.get_texture().get_image().save_png("res://artifacts/visitor/clay_%d.png" % angle)
 		model.get_node("CharacterMesh").material_override = null
 		model.rotation.y = 0
-		camera.position = Vector3(0.14, 0.02, 0.83)
-		camera.look_at(Vector3(0, -0.02, 0))
+		var wrist: Vector3 = model.to_global(model.skeleton.get_bone_global_pose(model.skeleton.find_bone("HandL")).origin)
+		camera.position = wrist + Vector3(0.12, 0.13, 0.62)
+		camera.look_at(wrist + Vector3(0.035, 0, 0.04))
+		await process_frame
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("res://artifacts/visitor/hand.png")
+		var face: Vector3 = model.to_global(Vector3(0, -0.04, 0))
+		camera.position = face + Vector3(0.18, 0.04, 1.08)
+		camera.look_at(face)
 		await process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://artifacts/visitor/face.png")

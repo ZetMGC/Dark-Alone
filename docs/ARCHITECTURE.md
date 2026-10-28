@@ -1,5 +1,7 @@
 # Архитектура
 
+CHAR-04: VisitorModel привязан к полу и имеет масштаб 1.048 для роста игрока. Rest-базис ладоней строится по предплечьям; рукава используют ортогональные сечения, поза не компенсирует геометрию сильным поворотом. ServiceGuest владеет уникальными капсулами и делегирует мировые точки речи GuestArt; Bubble поддерживает их опционально. Main/Session/save-схема прежние. ADR-0029.
+
 CHAR-02 заменяет внутренние жёсткие детали VisitorModel одним CharacterMesh/ArrayMesh с реальным Skin и тремя поверхностями. Skeleton3D сохраняет 15 костей; Body API и игровые модели прежние. Head wrap/open/closed и clothing atlas импортируются 512px; blink — смена diffuse-текстуры. [Описание](CHARACTER_PROTOTYPE.md), ADR-0028. Нижняя запись CHAR-01 описывает предыдущий макет.
 
 CHAR-01: отдельная scenes/characters/visitor_model.tscn строит TEST-геометрию/15-костный Skeleton3D через visitor_model.gd. GuestArt переключает весь видимый Body между D и прежними A/B/C, подписывается на Session.mode_changed только для амплитуды жеста. Коллизии и игровые модели не принадлежат этому арту. [Описание и ограничения](CHARACTER_PROTOTYPE.md).

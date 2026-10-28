@@ -3,6 +3,10 @@ extends Node3D
 ## CHAR-03: силуэт и степень стилизации по CHARACTER_REFERENCE.
 ## +Z — лицо. Геометрия в rest-пространстве, единый skinned ArrayMesh.
 
+# Рост ~1.80 м, глаза ~1.65 м: соответствует капсуле/камере игрока.
+const MODEL_SCALE: float = 1.048
+const FLOOR_Y: float = -1.65
+
 var skeleton: Skeleton3D
 var talking: bool = false
 var _time: float = 0.0
@@ -15,9 +19,12 @@ var is_blinking: bool = false
 var _open_texture: Texture2D
 var _closed_texture: Texture2D
 var _gesture: float = 0.0
+var _hand_frames: Dictionary = {}
 
 
 func _ready() -> void:
+	scale = Vector3.ONE * MODEL_SCALE
+	position.y = FLOOR_Y * (1.0 - MODEL_SCALE)
 	skeleton = Skeleton3D.new()
 	skeleton.name = "Skeleton3D"
 	add_child(skeleton)
@@ -38,11 +45,16 @@ func _ready() -> void:
 		_bone("UpperArm" + suffix, "Chest", Vector3(side * 0.205, 0.16, -0.005))
 		_bone("Forearm" + suffix, "UpperArm" + suffix, Vector3(side * 0.035, -0.265, 0.065))
 		# Одна рука у живота, другая на стойке: разные жесты и контуры рук.
-		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(0.20, 0.035, 0.12) if side < 0 else Vector3(-0.045, 0.125, 0.235))
+		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(0.20, 0.035, 0.12) if side < 0 else Vector3(-0.045, 0.063, 0.235))
 		_bone("Thigh" + suffix, "Pelvis", Vector3(side * 0.095, 0, -0.005))
 		_bone("Shin" + suffix, "Thigh" + suffix, Vector3(side * 0.017, -0.34, 0.030 if side < 0 else 0.005))
 		_bone("Foot" + suffix, "Shin" + suffix, Vector3(side * 0.008, -0.32, -0.045 if side < 0 else -0.010))
 	skeleton.reset_bone_poses()
+	for suffix in ["L", "R"]:
+		var hand: String = "Hand" + suffix
+		var forward := (_origin(hand) - _origin("Forearm" + suffix)).normalized()
+		var right := Vector3(forward.z, 0, -forward.x).normalized()
+		_hand_frames[hand] = Basis(right, forward.cross(right).normalized(), forward)
 	_build_torso()
 	_build_head()
 	_build_hair()
@@ -104,6 +116,8 @@ func _surface(label: String, material: Material) -> SurfaceTool:
 
 
 func _vertex(tool: SurfaceTool, point: Vector3, uv: Vector2, bone: String, other: String = "", blend: float = 0.0) -> void:
+	if _hand_frames.has(bone):
+		point = _origin(bone) + _hand_frames[bone] * (point - _origin(bone))
 	if bone == "Head":
 		var local := point - _origin("Head")
 		point = _origin("Head") + Vector3(local.x * 1.10, local.y * 0.92 - 0.016, local.z * 1.06)
@@ -178,11 +192,13 @@ func _loft(label: String, material: Material, rings: Array, segments: int, regio
 				var ring: Dictionary = rings[row_index]
 				var center: Vector3 = ring.center
 				var forward := Vector3.BACK
+				var right := Vector3.RIGHT
 				if follow:
 					var tangent: Vector3 = rings[mini(row_index + 1, rings.size() - 1)].center - rings[maxi(row_index - 1, 0)].center
 					forward = tangent.cross(Vector3.RIGHT).normalized()
+					right = forward.cross(tangent.normalized()).normalized()
 				var angle: float = TAU * (column + corner.x) / float(segments)
-				var point := center + Vector3.RIGHT * sin(angle) * float(ring.width) + forward * cos(angle) * float(ring.depth)
+				var point := center + right * sin(angle) * float(ring.width) + forward * cos(angle) * float(ring.depth)
 				var uv := region.position + region.size * Vector2((column + corner.x) / float(segments), ring.v)
 				_vertex(tool, point, uv, ring.bone, ring.other, ring.blend)
 	if caps:
@@ -190,16 +206,18 @@ func _loft(label: String, material: Material, rings: Array, segments: int, regio
 			var ring: Dictionary = rings[row_index]
 			var center: Vector3 = ring.center
 			var forward := Vector3.BACK
+			var right := Vector3.RIGHT
 			if follow:
 				var tangent: Vector3 = rings[mini(row_index + 1, rings.size() - 1)].center - rings[maxi(row_index - 1, 0)].center
 				forward = tangent.cross(Vector3.RIGHT).normalized()
+				right = forward.cross(tangent.normalized()).normalized()
 			for column in segments:
 				var order := [-1, column, column + 1] if row_index == 0 else [-1, column + 1, column]
 				if follow:
 					order.reverse()
 				for index in order:
 					var angle: float = TAU * index / float(segments)
-					var point := center if index == -1 else center + Vector3.RIGHT * sin(angle) * float(ring.width) + forward * cos(angle) * float(ring.depth)
+					var point := center if index == -1 else center + right * sin(angle) * float(ring.width) + forward * cos(angle) * float(ring.depth)
 					_vertex(tool, point, region.get_center(), ring.bone, ring.other, ring.blend)
 
 
@@ -228,7 +246,8 @@ func _build_arm(side: int) -> void:
 		var x: float = (finger - 1.5) * 0.0175
 		var length: float = 0.052 - absf(finger - 1.4) * 0.008
 		var base := hand + Vector3(x, -0.012, 0.068)
-		var rings := [_ring(base, 0.010, 0.011, wrist, "", 0, 0), _ring(base + Vector3(0, -0.002, length * 0.45), 0.009, 0.010, wrist, "", 0, 0.4), _ring(base + Vector3(0, -0.015, length * 0.85), 0.008, 0.009, wrist, "", 0, 0.75), _ring(base + Vector3(0, -0.029, length * 0.82), 0.005, 0.006, wrist, "", 0, 1)]
+		var curl := 0.55 if side < 0 else 0.35
+		var rings := [_ring(base, 0.010, 0.011, wrist, "", 0, 0), _ring(base + Vector3(0, -0.002, length * 0.45), 0.009, 0.010, wrist, "", 0, 0.4), _ring(base + Vector3(0, -0.015 * curl, length * 0.85), 0.008, 0.009, wrist, "", 0, 0.75), _ring(base + Vector3(0, -0.029 * curl, length * 0.98), 0.005, 0.006, wrist, "", 0, 1)]
 		_loft("Skin", _skin_material, rings, 8, Rect2(0.40, 0.94, 0.20, 0.045), true, true)
 	var thumb := [_ring(hand + Vector3(side * 0.032, -0.007, 0.012), 0.014, 0.013, wrist, "", 0, 0), _ring(hand + Vector3(side * 0.050, -0.018, 0.042), 0.012, 0.011, wrist, "", 0, 0.5), _ring(hand + Vector3(side * 0.046, -0.028, 0.066), 0.007, 0.008, wrist, "", 0, 1)]
 	_loft("Skin", _skin_material, thumb, 8, Rect2(0.41, 0.94, 0.18, 0.045), true, true)
@@ -335,8 +354,9 @@ func _pose(delta: float) -> void:
 	skeleton.set_bone_pose_rotation(_bones.Head, Quaternion.from_euler(Vector3(-0.025 + sin(_time * 0.75) * 0.009, 0.025 + sin(_time * 0.38) * 0.035, -0.018)))
 	var beat := sin(_time * 1.55) * 0.5 + 0.5
 	skeleton.set_bone_pose_rotation(_bones.ForearmR, Quaternion.from_euler(Vector3(-0.015 - _gesture * beat * 0.10, _gesture * 0.035, 0.015)))
-	skeleton.set_bone_pose_rotation(_bones.HandR, Quaternion.from_euler(Vector3(-0.07 + _gesture * beat * 0.08, 0.08, -0.07)))
-	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(0.06, 0.95, 0.12)))
+	skeleton.set_bone_pose_rotation(_bones.HandR, Quaternion.from_euler(Vector3(-0.015 + _gesture * beat * 0.025, 0.015, -0.015)))
+	# Ладонь уже ориентирована по предплечью в rest-геометрии; большой поворот ломал запястье.
+	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(0.015, -0.025, 0.02)))
 	# Два совпадающих UV-кадра дают короткое закрытие глаз без накладок.
 	var phase := fmod(_time + 1.5, 4.8)
 	var blink_now := phase < 0.13

@@ -30,6 +30,13 @@ func _run() -> void:
 	var model: VisitorModel = art.get_node("VisitorModel")
 	_expect(art.get_test_appearance() == &"test_visitor" and model.visible, "New TEST model is default")
 	_expect(not art.get_node("TestFace").visible and not art.get_node("Torso").visible, "No overlapping legacy geometry")
+	_expect(model.scale.is_equal_approx(Vector3.ONE * 1.048), "Player height replaces temporary 1.3 scale")
+	_expect(absf(model.to_global(Vector3(0, -1.65, 0)).y) < 0.001, "Scale is anchored at original floor")
+	var walking: CollisionShape3D = guest.get_node("WalkObstacle/Shape")
+	_expect(absf(walking.shape.radius - 0.26 * 1.048) < 0.001 and absf(walking.shape.height - 1.65 * 1.048) < 0.001, "Walking volume follows current body size")
+	_expect(absf(walking.global_position.y - walking.shape.height / 2.0) < 0.001, "Walking collider remains grounded")
+	_expect(guest.get_dialogue_head_position().y > guest.get_dialogue_face_position().y and absf(guest.get_dialogue_face_position().y - 1.65) < 0.04, "Eyes and speech anchors match player height")
+	_expect(not guest.configure_body_scale(NAN) and not guest.configure_body_scale(-1.0), "Invalid body scale is rejected")
 	_expect(model.skeleton.get_bone_count() == 15, "Fifteen bones for body, head, arms and legs")
 	for index in model.skeleton.get_bone_count():
 		var origin := model.skeleton.get_bone_global_pose(index).origin
@@ -45,6 +52,8 @@ func _run() -> void:
 	var blended := 0
 	var vertex_count := 0
 	var clothing_arrays: Array = []
+	var palm_sum := Vector3.ZERO
+	var palm_count := 0
 	for surface in character.mesh.get_surface_count():
 		var arrays: Array = character.mesh.surface_get_arrays(surface)
 		var material: StandardMaterial3D = character.mesh.surface_get_material(surface)
@@ -59,6 +68,9 @@ func _run() -> void:
 		_expect(bones.size() == vertices.size() * 4 and weights.size() == vertices.size() * 4, "Every vertex is bound")
 		var valid := true
 		for vertex in vertices.size():
+			if bones[vertex * 4] == model.skeleton.find_bone("HandL") and weights[vertex * 4] > 0.99:
+				palm_sum += vertices[vertex]
+				palm_count += 1
 			var total: float = 0
 			for influence in 4:
 				var index := vertex * 4 + influence
@@ -71,6 +83,10 @@ func _run() -> void:
 				blended += 1
 		_expect(valid, "Finite skin vertices normals UV and normalized weights")
 	_expect(blended > 100, "Soft transitions across elbows knees and waist")
+	var wrist := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("HandL")).origin
+	var elbow := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("ForearmL")).origin
+	_expect(palm_count > 20 and (palm_sum / maxf(palm_count, 1) - wrist).normalized().dot((wrist - elbow).normalized()) > 0.90, "Palm geometry follows forearm instead of sideways wrist")
+	_expect(model.skeleton.get_bone_pose_rotation(model.skeleton.find_bone("HandL")).get_angle() < 0.2, "Resting wrist has no excessive pose twist")
 	_expect(vertex_count < 15000, "Prototype vertex budget remains bounded")
 	# Освещение должно видеть наружную сторону рукавов, а не внутреннюю изнанку.
 	for suffix in ["L", "R"]:
@@ -103,11 +119,18 @@ func _run() -> void:
 	var control: OptionButton = main.get_node("NavigationHUD/%TestFace")
 	control.item_selected.emit(0)
 	_expect(not model.visible and art.get_node("TestFace").visible, "Legacy comparison toggles whole body")
+	_expect(absf(walking.shape.radius - 0.26) < 0.001 and absf(walking.shape.height - 1.65) < 0.001, "Legacy variants restore original walking volume")
 	control.item_selected.emit(3)
 	_expect(model.visible and not art.get_node("TestFace").visible, "Menu restores model D")
 	_expect(not art.set_test_appearance(&"bad") and model.visible, "Unknown appearance preserves model")
 	rig.request_move(&"counter")
 	await rig.anchor_reached
+	await get_tree().physics_frame
+	var query := PhysicsRayQueryParameters3D.create(rig.view.global_position, guest.get_dialogue_face_position(), 2)
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+	var hit := get_viewport().world_3d.direct_space_state.intersect_ray(query)
+	_expect(hit.get("collider") == guest, "Ray to enlarged face reaches guest interaction volume")
 	main.start_test_dialogue()
 	_expect(session.mode == NarrativeSession.DIALOGUE and model.talking, "Conversation enables gesture")
 	var node_before := session.runner.current_node_id

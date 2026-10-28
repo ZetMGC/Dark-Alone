@@ -4,6 +4,46 @@ extends DialogueTrigger
 
 @export var guest_id: StringName = &"test_guest"
 
+var _target_shape: CapsuleShape3D
+var _walk_shape: CapsuleShape3D
+var _target_size: Vector2
+var _walk_size: Vector2
+var _target_origin: Vector3
+var _walk_origin: Vector3
+
+
+func configure_body_scale(multiplier: float) -> bool:
+	if not is_finite(multiplier) or multiplier <= 0:
+		return false
+	var target: CollisionShape3D = $Collision
+	var walking: CollisionShape3D = $WalkObstacle/Shape
+	if _target_shape == null:
+		_target_shape = target.shape.duplicate() as CapsuleShape3D
+		_walk_shape = walking.shape.duplicate() as CapsuleShape3D
+		_target_size = Vector2(_target_shape.radius, _target_shape.height)
+		_walk_size = Vector2(_walk_shape.radius, _walk_shape.height)
+		_target_origin = target.position
+		_walk_origin = walking.position
+		target.shape = _target_shape
+		walking.shape = _walk_shape
+	_target_shape.radius = _target_size.x * multiplier
+	_target_shape.height = _target_size.y * multiplier
+	_walk_shape.radius = _walk_size.x * multiplier
+	_walk_shape.height = _walk_size.y * multiplier
+	var floor := Vector3(0, VisitorModel.FLOOR_Y, 0)
+	target.position = floor + (_target_origin - floor) * multiplier
+	walking.position = floor + (_walk_origin - floor) * multiplier
+	$Marker.position.y = VisitorModel.FLOOR_Y * (1.0 - multiplier)
+	return true
+
+
+func get_dialogue_head_position() -> Vector3:
+	return $Body.get_dialogue_head_position()
+
+
+func get_dialogue_face_position() -> Vector3:
+	return $Body.get_dialogue_face_position()
+
 
 func show_served(drink_title: String) -> void:
 	$ServedGlass.visible = true

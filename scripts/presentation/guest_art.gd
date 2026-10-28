@@ -69,3 +69,15 @@ func _update_visibility() -> void:
 	for child in get_children():
 		if child is Node3D:
 			child.visible = _prototype_enabled if child == _prototype else not _prototype_enabled
+	get_parent().configure_body_scale(VisitorModel.MODEL_SCALE if _prototype_enabled else 1.0)
+
+
+func get_dialogue_head_position() -> Vector3:
+	return _prototype.to_global(Vector3(0, 0.22, 0)) if _prototype_enabled else global_position + Vector3.UP * 0.36
+
+
+func get_dialogue_face_position() -> Vector3:
+	if _prototype_enabled:
+		var head := _prototype.skeleton.get_bone_global_pose(_prototype.skeleton.find_bone("Head")).origin
+		return _prototype.to_global(head + Vector3(0, 0.0, 0.08))
+	return global_position + Vector3.UP * 0.06

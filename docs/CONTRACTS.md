@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+CHAR-04/ADR-0029: ServiceGuest.configure_body_scale(float)->bool обновляет уникальные капсулы/позиции от пола без накопления, отклоняет неконечные/неположительные значения. Вызывает GuestArt при смене D/A/B/C. ServiceGuest/GuestArt.get_dialogue_head_position()/get_dialogue_face_position()->Vector3 возвращают мировые точки. Bubble опционально вызывает их, для обычного Node3D использует прежние +0.36/+0.06; взгляд считается к face. Потребители/проверки: GuestArt, ServiceGuest, DialogueBubblePanel, visitor_model_test/capture_visitor и прежние bubble/world/faces/free_roam. [Описание](CHARACTER_PROTOTYPE.md).
+
 CHAR-02: внешний GuestArt API/ID test_visitor остаётся прежним. VisitorModel теперь содержит CharacterMesh со Skin; внутренние BoneAttachment3D-детали удалены. is_blinking читают тест/съёмка, talking управляется Session. Обновлены visitor_model_test/capture_visitor; Main/ServiceGuest не зависят от внутреннего дерева. [Актуальный контракт](CHARACTER_PROTOTYPE.md).
 
 CHAR-01: GuestArt принимает новый ID test_visitor через прежний set_test_appearance; меню получает вариант D. TestFace.get_appearance_ids сохраняет только A/B/C. Смена внешности не меняет ServiceGuest/коллизии/Session. Полный контракт/потребители — [CHARACTER_PROTOTYPE](CHARACTER_PROTOTYPE.md).
