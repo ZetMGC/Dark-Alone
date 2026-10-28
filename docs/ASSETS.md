@@ -1,5 +1,7 @@
 # Ресурсы и права
 
+CHAR-03: assets/characters/test_visitor/{head_wrap_v3,head_blink_v3,clothing_atlas_v3}.png — встроенный imagegen, редактирование собственных V2 в согласованный рисованный стиль по CHARACTER_REFERENCE. Полные prompts в PROMPT_V3.md, импорт 512px/mipmaps/nearest. Новая геометрия прядей собственная, внешние скриншоты в runtime не включались. V2 сохранены.
+
 docs/sources/mouthwashing-character-reference.png — скриншот Mouthwashing из вложения пользователя, 2026-10-28; сохранён без изменений по прямому запросу как референс моделей. Только документация, в runtime/игровые материалы не включён. Разбор/границы использования — CHARACTER_REFERENCE.md; права на исходную игру принадлежат её правообладателям.
 
 CHAR-02: head_wrap_v2.png, head_blink_v2.png и clothing_atlas_v2.png в assets/characters/test_visitor — встроенный imagegen, 2026-10-28. Первый — новая UV по прежнему лицу как референсу идентичности; второй — редактирование только глаз; третий — новая генерация. Полные запросы/происхождение в PROMPT_V2.md. PNG не редактировались вне генератора, импорт 512px/mipmaps/nearest. Обувь — собственная UV-фактура кодом Godot. Чужие ресурсы Mouthwashing не включены; лицензия проекта не менялась. Прежний face.png остаётся историческим референсом, новая модель его не загружает.

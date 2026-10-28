@@ -50,6 +50,18 @@ func _run() -> void:
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("res://artifacts/visitor/studio_%d.png" % angle)
 		model.rotation.y = 0
+		# Силуэт и анатомия проверяются отдельно от текстур.
+		var clay := StandardMaterial3D.new()
+		clay.albedo_color = Color(0.36, 0.37, 0.39)
+		clay.roughness = 1
+		model.get_node("CharacterMesh").material_override = clay
+		for angle in [0, 65]:
+			model.rotation.y = deg_to_rad(angle)
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://artifacts/visitor/clay_%d.png" % angle)
+		model.get_node("CharacterMesh").material_override = null
+		model.rotation.y = 0
 		camera.position = Vector3(0.14, 0.02, 0.83)
 		camera.look_at(Vector3(0, -0.02, 0))
 		await process_frame

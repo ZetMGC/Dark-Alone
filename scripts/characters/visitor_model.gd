@@ -1,6 +1,6 @@
 class_name VisitorModel
 extends Node3D
-## CHAR-02: цельная UV, мягкие локти/колени, поза посетителя у стойки.
+## CHAR-03: силуэт и степень стилизации по CHARACTER_REFERENCE.
 ## +Z — лицо. Геометрия в rest-пространстве, единый skinned ArrayMesh.
 
 var skeleton: Skeleton3D
@@ -21,10 +21,10 @@ func _ready() -> void:
 	skeleton = Skeleton3D.new()
 	skeleton.name = "Skeleton3D"
 	add_child(skeleton)
-	_skin_material = _textured("res://assets/characters/test_visitor/head_wrap_v2.png")
+	_skin_material = _textured("res://assets/characters/test_visitor/head_wrap_v3.png")
 	_open_texture = _skin_material.albedo_texture
-	_closed_texture = load("res://assets/characters/test_visitor/head_blink_v2.png")
-	_cloth_material = _textured("res://assets/characters/test_visitor/clothing_atlas_v2.png")
+	_closed_texture = load("res://assets/characters/test_visitor/head_blink_v3.png")
+	_cloth_material = _textured("res://assets/characters/test_visitor/clothing_atlas_v3.png")
 	_leather = StandardMaterial3D.new()
 	_leather.albedo_color = Color(0.065, 0.053, 0.043)
 	_leather.roughness = 0.88
@@ -37,14 +37,15 @@ func _ready() -> void:
 		var suffix := "L" if side < 0 else "R"
 		_bone("UpperArm" + suffix, "Chest", Vector3(side * 0.205, 0.16, -0.005))
 		_bone("Forearm" + suffix, "UpperArm" + suffix, Vector3(side * 0.035, -0.265, 0.065))
-		# Разная высота рук: обе направлены к стойке, без симметричной T-позы.
-		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(-side * 0.045, 0.135 if side < 0 else 0.125, 0.235))
+		# Одна рука у живота, другая на стойке: разные жесты и контуры рук.
+		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(0.20, 0.035, 0.12) if side < 0 else Vector3(-0.045, 0.125, 0.235))
 		_bone("Thigh" + suffix, "Pelvis", Vector3(side * 0.095, 0, -0.005))
 		_bone("Shin" + suffix, "Thigh" + suffix, Vector3(side * 0.017, -0.34, 0.030 if side < 0 else 0.005))
-		_bone("Foot" + suffix, "Shin" + suffix, Vector3(side * 0.008, -0.32, -0.010))
+		_bone("Foot" + suffix, "Shin" + suffix, Vector3(side * 0.008, -0.32, -0.045 if side < 0 else -0.010))
 	skeleton.reset_bone_poses()
 	_build_torso()
 	_build_head()
+	_build_hair()
 	for side in [-1, 1]:
 		_build_arm(side)
 		_build_leg(side)
@@ -103,6 +104,9 @@ func _surface(label: String, material: Material) -> SurfaceTool:
 
 
 func _vertex(tool: SurfaceTool, point: Vector3, uv: Vector2, bone: String, other: String = "", blend: float = 0.0) -> void:
+	if bone == "Head":
+		var local := point - _origin("Head")
+		point = _origin("Head") + Vector3(local.x * 1.10, local.y * 0.92 - 0.016, local.z * 1.06)
 	tool.set_uv(uv)
 	tool.set_bones(PackedInt32Array([_bones[bone], _bones[other] if not other.is_empty() else _bones[bone], 0, 0]))
 	tool.set_weights(PackedFloat32Array([1.0 - blend, blend, 0.0, 0.0]))
@@ -135,7 +139,7 @@ func _body_uv(angle: float, vertical: float, front: bool) -> Vector2:
 func _build_torso() -> void:
 	var tool := _surface("Clothing", _cloth_material)
 	# y, ширина, глубина: талия, грудь, покатые плечи, вырез воротника.
-	var rings := [Vector3(-0.40, 0.174, 0.105), Vector3(-0.32, 0.182, 0.115), Vector3(-0.20, 0.176, 0.112), Vector3(-0.08, 0.185, 0.123), Vector3(0.045, 0.212, 0.130), Vector3(0.13, 0.224, 0.115), Vector3(0.17, 0.210, 0.102), Vector3(0.205, 0.140, 0.078), Vector3(0.225, 0.061, 0.062)]
+	var rings := [Vector3(-0.40, 0.183, 0.105), Vector3(-0.32, 0.181, 0.115), Vector3(-0.20, 0.163, 0.108), Vector3(-0.08, 0.187, 0.123), Vector3(0.045, 0.222, 0.133), Vector3(0.13, 0.236, 0.119), Vector3(0.17, 0.218, 0.108), Vector3(0.205, 0.143, 0.081), Vector3(0.225, 0.064, 0.065)]
 	for row in rings.size() - 1:
 		for column in 24:
 			var front := cos(-PI + TAU * (column + 0.5) / 24.0) > 0
@@ -154,7 +158,7 @@ func _build_torso() -> void:
 			var p: Vector3 = points[index]
 			_vertex(tool, _origin("Chest") + p, Vector2(0.25 + p.x * 1.04, (0.225 - p.y) / 0.625 * 0.484 + 0.008), "Chest")
 	# Шея продолжает текстуру кожи, а не однотонный цилиндр другого цвета.
-	var neck := [_ring(_origin("Head") + Vector3(0, -0.205, -0.015), 0.053, 0.051, "Chest", "Head", 0.2, 0.0), _ring(_origin("Head") + Vector3(0, -0.155, -0.008), 0.049, 0.046, "Chest", "Head", 0.65, 0.5), _ring(_origin("Head") + Vector3(0, -0.105, 0), 0.047, 0.042, "Head", "", 0.0, 1.0)]
+	var neck := [_ring(_origin("Head") + Vector3(0, -0.205, -0.015), 0.057, 0.054, "Chest", "Head", 0.2, 0.0), _ring(_origin("Head") + Vector3(0, -0.155, -0.008), 0.052, 0.048, "Chest", "Head", 0.65, 0.5), _ring(_origin("Head") + Vector3(0, -0.105, 0), 0.048, 0.043, "Head", "", 0.0, 1.0)]
 	_loft("Skin", _skin_material, neck, 16, Rect2(0.39, 0.94, 0.22, 0.045), false)
 
 
@@ -292,6 +296,38 @@ func _build_head() -> void:
 					_vertex(tool, center + p, uv, "Head")
 
 
+func _build_hair() -> void:
+	# Замкнутые низкополигональные пряди меняют силуэт и ловят свет.
+	var tool := _surface("Skin", _skin_material)
+	tool.set_smooth_group(-1)
+	for index in 5:
+		var x := -0.064 + index * 0.030
+		var root := Vector3(x, 0.125 + sin(index * 0.95) * 0.014, 0.055)
+		var tip := Vector3(x - (0.018 if index < 3 else -0.006), 0.052 + (index % 3) * 0.013, 0.088 + sin(index) * 0.006)
+		_hair_lock(tool, root, tip, 0.025 if index < 4 else 0.021, Vector3.BACK)
+	for side in [-1, 1]:
+		_hair_lock(tool, Vector3(side * 0.080, 0.112, 0.012), Vector3(side * 0.101, 0.015, 0.034), 0.019, Vector3(side, 0, 0.4).normalized())
+		_hair_lock(tool, Vector3(side * 0.050, 0.145, -0.022), Vector3(side * 0.085, 0.105, -0.069), 0.025, Vector3(side * 0.5, 0.5, -0.7).normalized())
+	tool.set_smooth_group(0)
+
+
+func _hair_lock(tool: SurfaceTool, root: Vector3, tip: Vector3, width: float, outward: Vector3) -> void:
+	var sideways := (tip - root).cross(outward).normalized() * width
+	var points := [root - sideways, root + sideways, root - sideways - outward * 0.012, root + sideways - outward * 0.012, tip, root.lerp(tip, 0.48) + outward * 0.014]
+	var center := Vector3.ZERO
+	for point: Vector3 in points:
+		center += point / float(points.size())
+	for face: Vector3i in [Vector3i(0, 1, 5), Vector3i(1, 4, 5), Vector3i(4, 0, 5), Vector3i(0, 4, 2), Vector3i(1, 3, 4), Vector3i(2, 4, 3), Vector3i(2, 3, 1), Vector3i(2, 1, 0)]:
+		var order := [face.x, face.y, face.z]
+		var normal: Vector3 = (points[face.y] - points[face.x]).cross(points[face.z] - points[face.x])
+		var radial: Vector3 = (points[face.x] + points[face.y] + points[face.z]) / 3.0 - center
+		if normal.dot(radial) > 0:
+			order.reverse()
+		for index in order:
+			var uv := Vector2(0.035 + (index % 2) * 0.10, 0.075 + (0.20 if index == 4 else 0.08 if index == 5 else 0.0))
+			_vertex(tool, _origin("Head") + points[index], uv, "Head")
+
+
 func _pose(delta: float) -> void:
 	_gesture = move_toward(_gesture, 1.0 if talking else 0.0, delta * 2.5)
 	skeleton.set_bone_pose_rotation(_bones.Pelvis, Quaternion.from_euler(Vector3(0, 0.018, -0.025)))
@@ -300,7 +336,7 @@ func _pose(delta: float) -> void:
 	var beat := sin(_time * 1.55) * 0.5 + 0.5
 	skeleton.set_bone_pose_rotation(_bones.ForearmR, Quaternion.from_euler(Vector3(-0.015 - _gesture * beat * 0.10, _gesture * 0.035, 0.015)))
 	skeleton.set_bone_pose_rotation(_bones.HandR, Quaternion.from_euler(Vector3(-0.07 + _gesture * beat * 0.08, 0.08, -0.07)))
-	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(-0.04, -0.12, 0.08)))
+	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(0.06, 0.95, 0.12)))
 	# Два совпадающих UV-кадра дают короткое закрытие глаз без накладок.
 	var phase := fmod(_time + 1.5, 4.8)
 	var blink_now := phase < 0.13

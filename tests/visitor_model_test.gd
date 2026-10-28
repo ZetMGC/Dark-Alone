@@ -48,7 +48,7 @@ func _run() -> void:
 	for surface in character.mesh.get_surface_count():
 		var arrays: Array = character.mesh.surface_get_arrays(surface)
 		var material: StandardMaterial3D = character.mesh.surface_get_material(surface)
-		if material.albedo_texture and material.albedo_texture.resource_path.ends_with("clothing_atlas_v2.png"):
+		if material.albedo_texture and material.albedo_texture.resource_path.ends_with("clothing_atlas_v3.png"):
 			clothing_arrays = arrays
 		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 		vertex_count += vertices.size()
@@ -139,7 +139,7 @@ func _run() -> void:
 	var blink_texture_found := false
 	for surface in character.mesh.get_surface_count():
 		var material: StandardMaterial3D = character.mesh.surface_get_material(surface)
-		if material.albedo_texture and material.albedo_texture.resource_path.ends_with("head_blink_v2.png"):
+		if material.albedo_texture and material.albedo_texture.resource_path.ends_with("head_blink_v3.png"):
 			blink_texture_found = true
 			_expect(material.albedo_texture.get_size() == Vector2(512, 512), "Blink atlas matches open atlas size")
 	_expect(blink_texture_found, "Blink changes actual diffuse texture, no overlay")

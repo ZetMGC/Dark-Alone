@@ -1,5 +1,7 @@
 # Проверки
 
+CHAR-03: visitor_model_test использует пути V3, прежние проверки Skin/UV/нормалей/весов/паузы/blink и игровых контрактов сохранены. capture_visitor дополнительно снимает clay_0/clay_65 с нейтральным override и восстанавливает его до GLB. Для визуального запуска без доступного аудиоустройства допустим --audio-driver Dummy (это не проверка звука).
+
 CHAR-02 обновляет visitor_model_test: headless 48/GPU 50, нормали/UV/веса и Skin.binds, мягкие переходы/лимит вершин, заморозка при паузе/скрытии, фактическая blink-текстура и открытие глаз; прежний разговор/подача/коллизии/переключение. capture_visitor проверяет GLB round trip: 1 меш, 3 поверхности, один скелет/15 костей и снимает blink. bar_close.png — проверочный zoom FOV35 из прежнего физического ракурса, не настройка игры. Числа ниже CHAR-01 исторические.
 
 CHAR-01: `godot --headless --path . res://tests/visitor_model_test.tscn` — 77 проверок; без --headless — GPU 78 и artifacts/visitor/bar.png. Проверяет новый TEST D, кости/непустую геометрию/движение, A/B/C/D и неизвестный ID, неизменность разговора/коллизий/подачи/выбора при замене сцены. Добавлен в check.ps1. Студийные ракурсы/GLB: `godot --path . --script res://tools/capture_visitor.gd`; обратная загрузка GLB проверяет наличие 47 мешей. Визуальная оценка — [CHARACTER_PROTOTYPE](CHARACTER_PROTOTYPE.md).
