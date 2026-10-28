@@ -1,6 +1,6 @@
 class_name VisitorModel
 extends Node3D
-## CHAR-05: согласованный профиль лица/единое ухо, силуэт по CHARACTER_REFERENCE.
+## CHAR-06: контакт опорной кисти и жесты на время набора реплики.
 ## +Z — лицо. Геометрия в rest-пространстве, единый skinned ArrayMesh.
 
 # На 5% больше CHAR-04: ~1.89 м; масштаб по-прежнему считается от пола.
@@ -9,6 +9,11 @@ const FLOOR_Y: float = -1.65
 
 var skeleton: Skeleton3D
 var talking: bool = false
+var speaking: bool = false
+var _speech_time: float = 0.0
+var _line_variant: int = 0
+var _support_points: PackedVector3Array = []
+var _motion: Vector3 = Vector3.ZERO
 var _time: float = 0.0
 var _bones: Dictionary = {}
 var _surfaces: Dictionary = {}
@@ -62,7 +67,45 @@ func _ready() -> void:
 		_build_arm(side)
 		_build_leg(side)
 	_commit_mesh()
+	_cache_support_points()
 	_pose(0.0)
+
+
+func begin_line(key: String) -> void:
+	# Вариант повторяемый: загрузка той же реплики не меняет её характер.
+	_line_variant = posmod(key.hash(), 3)
+	_speech_time = 0.0
+
+
+func _cache_support_points() -> void:
+	var hand: int = _bones.HandR
+	var inverse := skeleton.get_bone_global_rest(hand).affine_inverse()
+	var mesh: Mesh = $CharacterMesh.mesh
+	for surface in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(surface)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+		var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+		for index in vertices.size():
+			if bones[index * 4] == hand and weights[index * 4] > 0.99:
+				_support_points.append(inverse * vertices[index])
+
+
+func _place_support_hand() -> void:
+	# Контакт для TEST-позы у стойки высотой 1.16 м от пола гостя.
+	# Поднимается предплечье целиком: кисть не отрывается от манжеты.
+	var forearm: int = _bones.ForearmR
+	skeleton.set_bone_pose_position(forearm, skeleton.get_bone_rest(forearm).origin)
+	skeleton.force_update_all_bone_transforms()
+	var hand_world := skeleton.global_transform * skeleton.get_bone_global_pose(_bones.HandR)
+	var bottom := INF
+	for point in _support_points:
+		bottom = minf(bottom, (hand_world * point).y)
+	var surface_y: float = get_parent().to_global(Vector3(0, FLOOR_Y + 1.16, 0)).y + 0.003
+	var parent_world := skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.get_bone_parent(forearm))
+	var correction := parent_world.basis.inverse() * Vector3(0, clampf(surface_y - bottom, -0.08, 0.08), 0)
+	skeleton.set_bone_pose_position(forearm, skeleton.get_bone_rest(forearm).origin + correction)
+	skeleton.force_update_all_bone_transforms()
 
 
 func _textured(path: String) -> StandardMaterial3D:
@@ -240,7 +283,8 @@ func _build_arm(side: int) -> void:
 		_ring(elbow.lerp(hand, 0.91), 0.050, 0.047, forearm, wrist, 0.05, 0.94),
 		_ring(hand, 0.051, 0.045, forearm, wrist, 0.15, 1.0)]
 	_loft("Clothing", _cloth_material, sleeve, 12, Rect2(0.008, 0.508, 0.484, 0.484))
-	var palm := [_ring(hand, 0.033, 0.017, wrist, "", 0, 0), _ring(hand + Vector3(0, -0.009, 0.039), 0.038, 0.018, wrist, "", 0, 0.4), _ring(hand + Vector3(0, -0.015, 0.076), 0.034, 0.014, wrist, "", 0, 1)]
+	# Запястье заходит внутрь манжеты, чтобы при жесте не открывалась щель.
+	var palm := [_ring(hand + Vector3(0, 0, -0.035), 0.031, 0.017, wrist, "", 0, 0), _ring(hand, 0.033, 0.017, wrist, "", 0, 0.15), _ring(hand + Vector3(0, -0.009, 0.039), 0.038, 0.018, wrist, "", 0, 0.4), _ring(hand + Vector3(0, -0.015, 0.076), 0.034, 0.014, wrist, "", 0, 1)]
 	_loft("Skin", _skin_material, palm, 10, Rect2(0.38, 0.94, 0.24, 0.045), true, true)
 	for finger in 4:
 		var x: float = (finger - 1.5) * 0.0175
@@ -346,15 +390,27 @@ func _hair_lock(tool: SurfaceTool, root: Vector3, tip: Vector3, width: float, ou
 
 
 func _pose(delta: float) -> void:
-	_gesture = move_toward(_gesture, 1.0 if talking else 0.0, delta * 2.5)
+	_gesture = move_toward(_gesture, 1.0 if talking and speaking else 0.0, delta * 2.5)
+	if talking and speaking:
+		_speech_time += delta
+	var cycle := _speech_time / 2.2
+	var variant := (int(cycle) + _line_variant) % 3
+	var envelope := pow(sin(fmod(cycle, 1.0) * PI), 2) * _gesture
+	var target := Vector3(envelope if variant == 0 else 0.0, envelope if variant == 1 else 0.0, envelope if variant == 2 else 0.0)
+	_motion = _motion.lerp(target, 1.0 - exp(-delta * 10.0))
+	var explain := _motion.x
+	var emphasize := _motion.y
+	var consider := _motion.z
 	skeleton.set_bone_pose_rotation(_bones.Pelvis, Quaternion.from_euler(Vector3(0, 0.018, -0.025)))
-	skeleton.set_bone_pose_rotation(_bones.Chest, Quaternion.from_euler(Vector3(0.035 + sin(_time * 1.25) * 0.006, -0.025, 0.014)))
-	skeleton.set_bone_pose_rotation(_bones.Head, Quaternion.from_euler(Vector3(-0.025 + sin(_time * 0.75) * 0.009, 0.025 + sin(_time * 0.38) * 0.035, -0.018)))
-	var beat := sin(_time * 1.55) * 0.5 + 0.5
-	skeleton.set_bone_pose_rotation(_bones.ForearmR, Quaternion.from_euler(Vector3(-0.015 - _gesture * beat * 0.10, _gesture * 0.035, 0.015)))
-	skeleton.set_bone_pose_rotation(_bones.HandR, Quaternion.from_euler(Vector3(-0.015 + _gesture * beat * 0.025, 0.015, -0.015)))
+	skeleton.set_bone_pose_rotation(_bones.Chest, Quaternion.from_euler(Vector3(0.035 + sin(_time * 1.25) * 0.006, -0.025 + explain * 0.025, 0.014)))
+	skeleton.set_bone_pose_rotation(_bones.Head, Quaternion.from_euler(Vector3(-0.025 + sin(_time * 0.75) * 0.009 + emphasize * 0.075, 0.025 + sin(_time * 0.38) * 0.035 - explain * 0.06, -0.018 + consider * 0.07)))
+	skeleton.set_bone_pose_rotation(_bones.ForearmR, Quaternion.from_euler(Vector3(-0.015, 0.015, 0.015)))
+	skeleton.set_bone_pose_rotation(_bones.HandR, Quaternion.from_euler(Vector3(-0.015, 0.015, -0.015)))
+	skeleton.set_bone_pose_rotation(_bones.UpperArmL, Quaternion.from_euler(Vector3(-explain * 0.08, 0, emphasize * 0.025)))
+	skeleton.set_bone_pose_rotation(_bones.ForearmL, Quaternion.from_euler(Vector3(-emphasize * 0.10, explain * 0.10, explain * 0.24 + emphasize * 0.12)))
 	# Ладонь уже ориентирована по предплечью в rest-геометрии; большой поворот ломал запястье.
-	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(0.015, -0.025, 0.02)))
+	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(0.015 + emphasize * 0.045, -0.025 - explain * 0.10, 0.02 - explain * 0.08)))
+	_place_support_hand()
 	# Два совпадающих UV-кадра дают короткое закрытие глаз без накладок.
 	var phase := fmod(_time + 1.5, 4.8)
 	var blink_now := phase < 0.13

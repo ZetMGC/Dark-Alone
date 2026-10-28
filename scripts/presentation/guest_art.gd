@@ -6,6 +6,7 @@ static var _prototype_enabled: bool = true
 var _face: TestFace
 var _control: OptionButton
 var _prototype: VisitorModel
+var _dialogue_panel: DialogueBubblePanel
 
 
 func _ready() -> void:
@@ -39,9 +40,20 @@ func configure_controls(hud: NavigationHUD) -> void:
 		set_test_appearance(&"test_visitor" if index == 3 else TestFace.get_appearance_ids()[index])
 	)
 	var session := hud.get_parent().get_node("NarrativeSession") as NarrativeSession
-	session.mode_changed.connect(func(mode: StringName) -> void:
-		_prototype.talking = mode == NarrativeSession.DIALOGUE
+	_dialogue_panel = hud.get_parent().get_node("DialoguePanel") as DialogueBubblePanel
+	session.runner.node_changed.connect(func(dialogue_id: StringName, node_id: StringName) -> void:
+		_prototype.begin_line(str(dialogue_id) + ":" + str(node_id))
 	)
+	session.mode_changed.connect(func(mode: StringName) -> void:
+		_prototype.talking = session.runner.active and mode in [NarrativeSession.DIALOGUE, NarrativeSession.SERVICE]
+		if not _prototype.talking:
+			_prototype.speaking = false
+	)
+
+
+func _process(_delta: float) -> void:
+	if is_instance_valid(_prototype) and is_instance_valid(_dialogue_panel):
+		_prototype.speaking = _prototype.talking and (not _dialogue_panel.bubble_enabled or not _dialogue_panel.is_line_complete())
 
 
 func set_test_appearance(id: StringName) -> bool:

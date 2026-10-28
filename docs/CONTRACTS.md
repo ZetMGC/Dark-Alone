@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+CHAR-06: VisitorModel `talking`, новый `speaking: bool`, `begin_line(key: String)->void`; потребитель GuestArt связывает состояния с активным Runner/печатанием DialogueBubblePanel. Опорная кисть ограничена высотой TEST-стойки 1.16 м. [ADR-0030](decisions/0030-conversation-gestures.md) описывает паузы, SERVICE и ограничения переноса. Runner/сохранения прежние.
+
 CHAR-04/ADR-0029: ServiceGuest.configure_body_scale(float)->bool обновляет уникальные капсулы/позиции от пола без накопления, отклоняет неконечные/неположительные значения. Вызывает GuestArt при смене D/A/B/C. ServiceGuest/GuestArt.get_dialogue_head_position()/get_dialogue_face_position()->Vector3 возвращают мировые точки. Bubble опционально вызывает их, для обычного Node3D использует прежние +0.36/+0.06; взгляд считается к face. Потребители/проверки: GuestArt, ServiceGuest, DialogueBubblePanel, visitor_model_test/capture_visitor и прежние bubble/world/faces/free_roam. [Описание](CHARACTER_PROTOTYPE.md).
 
 CHAR-02: внешний GuestArt API/ID test_visitor остаётся прежним. VisitorModel теперь содержит CharacterMesh со Skin; внутренние BoneAttachment3D-детали удалены. is_blinking читают тест/съёмка, talking управляется Session. Обновлены visitor_model_test/capture_visitor; Main/ServiceGuest не зависят от внутреннего дерева. [Актуальный контракт](CHARACTER_PROTOTYPE.md).

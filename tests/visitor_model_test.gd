@@ -153,6 +153,51 @@ func _run() -> void:
 	_expect(hit.get("collider") == guest, "Ray to enlarged face reaches guest interaction volume")
 	main.start_test_dialogue()
 	_expect(session.mode == NarrativeSession.DIALOGUE and model.talking, "Conversation enables gesture")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_expect(model.speaking, "Legacy dialogue drives speech animation")
+	model.set_process(false)
+	var forearm_left := model.skeleton.find_bone("ForearmL")
+	var resting_arm := model.skeleton.get_bone_pose_rotation(forearm_left)
+	var contact_valid := true
+	var arm_range := 0.0
+	var head_range := 0.0
+	var resting_head := model.skeleton.get_bone_pose_rotation(2)
+	for frame in 420:
+		model._pose(1.0 / 60.0)
+		contact_valid = contact_valid and absf(_support_bottom(model) - 1.163) < 0.001
+		arm_range = maxf(arm_range, resting_arm.angle_to(model.skeleton.get_bone_pose_rotation(forearm_left)))
+		head_range = maxf(head_range, resting_head.angle_to(model.skeleton.get_bone_pose_rotation(2)))
+	_expect(contact_valid, "Entire support hand stays above tabletop across all three gestures")
+	_expect(arm_range > 0.20 and head_range > 0.05, "Conversation moves free arm and head through distinct poses")
+	var panel: DialogueBubblePanel = main.get_node("DialoguePanel")
+	panel.bubble_enabled = true
+	panel.render(session.runner, session.journal)
+	await get_tree().process_frame
+	_expect(model.speaking, "Typewriter drives speaking state")
+	panel._typed = panel._length
+	await get_tree().process_frame
+	_expect(not model.speaking and model.talking, "Waiting for player stops speech while conversation remains active")
+	for frame in 60:
+		model._pose(1.0 / 60.0)
+	_expect(model.skeleton.get_bone_pose_rotation(forearm_left).angle_to(Quaternion.IDENTITY) < 0.001, "Gesture returns smoothly to resting arm while awaiting answer")
+	panel._typed = 0.0
+	await get_tree().process_frame
+	_expect(model.speaking, "Next page resumes speech motion")
+	panel.bubble_enabled = false
+	model.set_process(true)
+	model.begin_line("capture:explain")
+	model._line_variant = 0
+	await get_tree().create_timer(1.1).timeout
+	if DisplayServer.get_name() != "headless":
+		main.get_node("NavigationHUD/Screen").hide()
+		guest.get_node("Marker").hide()
+		panel.set_open(false)
+		rig.view.fov = 35
+		DirAccess.make_dir_recursive_absolute("res://artifacts/visitor")
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		_expect(get_viewport().get_texture().get_image().save_png("res://artifacts/visitor/conversation.png") == OK, "Capture actual dialogue gesture")
 	var node_before := session.runner.current_node_id
 	art.set_test_appearance(&"test_face_b")
 	art.set_test_appearance(&"test_visitor")
@@ -200,3 +245,19 @@ func _run() -> void:
 	_expect(main.get_node("DialogueTrigger/Body").get_test_appearance() == &"test_visitor", "Model survives scene replacement")
 	print("%s: visitor model, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _support_bottom(model: VisitorModel) -> float:
+	var mesh: Mesh = model.get_node("CharacterMesh").mesh
+	var hand := model.skeleton.find_bone("HandR")
+	var transform := model.skeleton.global_transform * model.skeleton.get_bone_global_pose(hand) * model.skeleton.get_bone_global_rest(hand).affine_inverse()
+	var bottom := INF
+	for surface in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(surface)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+		var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+		for index in vertices.size():
+			if bones[index * 4] == hand and weights[index * 4] > 0.99:
+				bottom = minf(bottom, (transform * vertices[index]).y)
+	return bottom
