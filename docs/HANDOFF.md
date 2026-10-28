@@ -1,5 +1,7 @@
 # Передача проекта
 
+CHAR-08: NPC больше не уходит по dialogue_finished. Условие — shift.finished, нет активного разговора, стакан возвращён. F5 → разговор → завершить ветку: NPC остаётся; после обслуживания/конца смены уходит. Переход ходьбы/кисть/возврат стакана сглажены. [Проверки](worklog/2026-10-28-14-npc-animation-polish.md). Ветка codex/reference-bar, без публикации.
+
 BAR-PLAN-01: продолжать в codex/reference-bar. F5 открывает адаптацию плана бара, за рабочую стойку пройти через кухню справа. NPC идёт из тамбура к стойке. [Снимки/контракты/ограничения](BAR_REFERENCE.md), [проверки](worklog/2026-10-28-13-reference-bar.md). Общий check PASS, GPU нового бара 15/0; reference_bar_enabled в reasoning_demo, старый Main сохраняет graybox. Сцена освобождена; main/релиз не обновлялись.
 
 CHAR-07 — новая локальная codex/visitor-behavior от 22fb61c. F5 → освободить путь от двери и дождаться прихода → E → разговор/подача → завершение и уход. Базовый Main сохраняет неподвижный режим; reasoning_demo включает visitor_behavior_enabled. [Поведение/API/ограничения](VISITOR_BEHAVIOR.md), [протокол](worklog/2026-10-28-12-visitor-behavior.md). Общий check PASS; поведение 18/0, подача при разговоре 52/0. Локальные project.godot/test_materials.json не включать. Сцена reasoning_demo освобождена; публикация не выполнялась.

@@ -1,5 +1,7 @@
 # Проверки
 
+CHAR-08: visitor_behavior_test расширен до 24 проверок: реальное завершение ветки, повторный разговор/отмена, удержание NPC до конца смены и окончания глотка. GPU и headless PASS; [протокол](worklog/2026-10-28-14-npc-animation-polish.md).
+
 BAR-PLAN-01: reference_bar_test.tscn в check.ps1; включает 8 проёмов/рабочую зону, прибытие/уход NPC, unit scale якоря, доступ и открытие приготовления. GPU снимает entry/hall/plan в artifacts/reference_bar. [Протокол](worklog/2026-10-28-13-reference-bar.md).
 
 CHAR-07: tests/visitor_behavior_test.tscn добавлен в check.ps1. Приход/повороты/остановка, опора стопы в мировых координатах (1.5 см), взгляд/реакции/стакан/pause/уход; GPU снимает behavior_walking/sip.png. [Протокол](worklog/2026-10-28-12-visitor-behavior.md).

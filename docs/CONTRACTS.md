@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+CHAR-08 уточняет VisitorBehavior: автоматический уход по session.shift.finished после закрытия Runner/возврата стакана; dialogue_finished отдельной ветки его не запускает. [ADR-0038](decisions/0038-visitor-behavior.md). Публичные сигнатуры прежние.
+
 BAR-PLAN-01: Main.reference_bar_enabled включает ReferenceBar, VisitorBehavior.entrance/waypoints задают маршрут новой локации. Путь/ID поверхностей и якорей сохранены; рабочая точка и подача перенесены. [Контракт](BAR_REFERENCE.md), [ADR-0039](decisions/0039-reference-bar-layout.md).
 
 CHAR-07: опциональный Main.visitor_behavior_enabled, VisitorBehavior и ServiceGuest.drink_presented/motion_available, цели процедурных цепочек VisitorModel. [Полный контракт/потребители](decisions/0038-visitor-behavior.md), [инструкция](VISITOR_BEHAVIOR.md). Включено в reasoning_demo; данные диалога/дневника/заказа не меняются.

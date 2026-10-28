@@ -77,7 +77,9 @@ func _limb(upper: String, lower: String, end: String, target: Vector3, pole: Vec
 
 
 func _behavior_pose(delta: float) -> void:
-	_walking = move_toward(_walking, clampf(walk_speed / 0.65, 0, 1), delta * 4)
+	_walking = lerpf(_walking, clampf(walk_speed / 0.65, 0, 1), 1.0 - exp(-delta * 7.0))
+	if walk_speed < 0.001 and _walking < 0.001:
+		_walking = 0
 	var gait := travel_distance / 0.86 * TAU
 	skeleton.set_bone_pose_position(_bones.Pelvis, skeleton.get_bone_rest(_bones.Pelvis).origin - Vector3.UP * (0.075 + cos(gait * 2) * 0.004) * _walking)
 	skeleton.force_update_all_bone_transforms()
@@ -148,7 +150,11 @@ func _behavior_pose(delta: float) -> void:
 				skeleton.set_bone_pose_rotation(_bones[bone], Quaternion.IDENTITY)
 	if drink_weight > 0:
 		var current := skeleton.get_bone_global_pose(_bones.HandR).origin
+		var palm_basis := skeleton.get_bone_global_pose(_bones.HandR).basis
 		_limb("UpperArmR", "ForearmR", "HandR", current.lerp(to_local(drink_target), drink_weight), Vector3(0.6, -0.4, 0.2))
+		# Предплечье сгибается к стакану, кисть сохраняет ориентацию ладони.
+		var parent_basis := skeleton.get_bone_global_pose(_bones.ForearmR).basis
+		skeleton.set_bone_pose_rotation(_bones.HandR, (parent_basis.inverse() * palm_basis).get_rotation_quaternion())
 
 
 func _ready() -> void:

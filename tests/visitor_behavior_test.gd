@@ -92,7 +92,21 @@ func run() -> void:
 	await get_tree().create_timer(0.15, true).timeout
 	expect(guest.global_position == previous, "Pause freezes visitor")
 	get_tree().paused = false
-	behavior.request_departure()
+	var session: NarrativeSession = main.get_node("NarrativeSession")
+	expect(session.start_dialogue(&"test_war_cinema_guest"), "Start full conversation")
+	session.runner.choose(&"more")
+	session.runner.choose(&"leave")
+	expect(session.finish_for_node(session.runner.current_dialogue_id, session.runner.current_node_id), "Finish individual dialogue branch")
+	await get_tree().create_timer(0.35).timeout
+	expect(behavior.state == &"docked" and not behavior._leaving, "NPC stays after individual conversation while shift has remaining events")
+	expect(session.start_dialogue(&"test_war_cinema_guest"), "NPC remains available for another conversation")
+	session.cancel_dialogue()
+	await get_tree().physics_frame
+	expect(behavior.state == &"docked", "Cancellation does not send NPC away")
+	session.open_service()
+	session.serve_drink(&"test_water")
+	await get_tree().create_timer(5.0).timeout
+	expect(session.shift.finished, "Departure is gated by completed shift")
 	expect(behavior.state == &"releasing", "Departure releases support before walking")
 	Engine.time_scale = 5
 	deadline = Time.get_ticks_msec() + 12000

@@ -18,6 +18,8 @@ var _drink_time: float = -1.0
 var _glass_home: Transform3D
 var _glass: Node3D
 var _grasp := Transform3D.IDENTITY
+var _return_start := Transform3D.IDENTITY
+var _returning: bool = false
 
 
 func configure(actor: ServiceGuest, view: Camera3D, narrative: NarrativeSession) -> void:
@@ -37,9 +39,10 @@ func configure(actor: ServiceGuest, view: Camera3D, narrative: NarrativeSession)
 		_glass = guest.get_node("ServedGlass")
 		_glass_home = _glass.global_transform
 		model.drink_weight = 0
+		_returning = false
 	)
 	session.runner.node_changed.connect(_on_line)
-	session.runner.dialogue_finished.connect(func(_id: StringName) -> void: _leaving = true)
+	# Конец одной ветки не означает конец всей смены/общения.
 	start_visit()
 
 
@@ -99,6 +102,8 @@ func _physics_process(delta: float) -> void:
 			_route.reverse()
 			_route.append(entrance)
 	elif state == &"docked":
+		if session.shift.finished:
+			_leaving = true
 		if _drink_time >= 0:
 			_drink(delta)
 		elif _leaving and not session.runner.active:
@@ -163,7 +168,10 @@ func _drink(delta: float) -> void:
 		_glass.global_transform = model.hand_transform() * _grasp
 		_glass.rotate_object_local(Vector3.RIGHT, -0.3 * lift)
 	else:
-		_glass.global_transform = _glass.global_transform.interpolate_with(_glass_home, smoothstep(3.8, 4.6, t))
+		if not _returning:
+			_return_start = _glass.global_transform
+			_returning = true
+		_glass.global_transform = _return_start.interpolate_with(_glass_home, smoothstep(3.8, 4.6, t))
 	if t >= 4.8:
 		_glass.global_transform = _glass_home
 		model.drink_weight = 0
