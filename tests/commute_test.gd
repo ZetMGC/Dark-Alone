@@ -95,7 +95,7 @@ func _test_main() -> void:
 	_expect(session.shift.remaining == 0 and session.journal.get_entries().size() == 1, "Home retains completed shift and journal")
 	_expect(not session.finish_commute(home_id) and not session.go_home(), "Home rejects repeated departure/completion")
 	home.get_node("%Journal").pressed.emit()
-	_expect(session.mode == NarrativeSession.JOURNAL and main.get_node("JournalPanel/%Close").text == "Вернуться домой" and not panel.get_node("Screen").visible and home.visible, "Home diary returns to real room without old backdrop")
+	_expect(session.mode == NarrativeSession.JOURNAL and main.get_node("JournalPanel/%Close").tooltip_text == "Вернуться домой" and not panel.get_node("Screen").visible and home.visible, "Home diary returns to real room without old backdrop")
 	session.open_menu()
 	session.resume_menu()
 	session.close_journal()

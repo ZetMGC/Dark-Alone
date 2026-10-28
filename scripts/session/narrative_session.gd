@@ -212,7 +212,7 @@ func open_journal() -> bool:
 
 
 func _on_journal_opened() -> void:
-	if _mode == JOURNAL and journal.selected_term_id != &"":
+	if _mode == JOURNAL and _journal_panel.current_section == &"words" and journal.selected_term_id != &"":
 		journal.select_entry(journal.selected_term_id)
 		_render_journal()
 

@@ -82,8 +82,7 @@ func _draw() -> void:
 	# Лента у корешка и подогнутый нижний угол; табы остаются вне области текста.
 	draw_colored_polygon(PackedVector2Array([Vector2(center + 8, h - 110), Vector2(center + 18, h - 110), Vector2(center + 23, h + 4), Vector2(center + 16, h - 2), Vector2(center + 11, h + 8)]), Color("713e37"))
 	draw_colored_polygon(PackedVector2Array([Vector2(w - 44, h - 26), Vector2(w - 18, h - 52), Vector2(w - 18, h - 26)]), Color("b9aa87"))
-	for tab in 3:
-		_rect(Rect2(w - 17, h * (0.28 + tab * 0.15), 14, 33), Color("6b7562") if tab == 1 else Color("9a8666"), 2)
+	draw_colored_polygon(PackedVector2Array([Vector2(18, h - 52), Vector2(44, h - 26), Vector2(18, h - 26)]), Color("b9aa87"))
 	if show_sketch and open_amount > 0.8:
 		_draw_sketch(Rect2(w * 0.105, h * 0.53, w * 0.22, h * 0.25))
 	if bookmarked:

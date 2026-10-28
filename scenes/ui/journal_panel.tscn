@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/journal_panel.gd" id="1"]
 [ext_resource type="Theme" path="res://scenes/ui/book_theme.tres" id="2"]
@@ -6,6 +6,9 @@
 [ext_resource type="Theme" path="res://scenes/ui/prototype_theme.tres" id="4"]
 [ext_resource type="Script" path="res://scripts/journal/journal_ink_text.gd" id="5"]
 [ext_resource type="FontFile" path="res://assets/fonts/caveat/Caveat.ttf" id="6"]
+
+[ext_resource type="Script" path="res://scripts/ui/journal_paper_pages.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/ui/journal_writing_tools.gd" id="8"]
 
 [node name="JournalPanel" type="CanvasLayer"]
 layer = 13
@@ -61,46 +64,9 @@ theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="Screen/Card/Spread/LeftPage"]
 layout_mode = 2
-text = "Слова и наблюдения"
+text = "Слова на память"
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 38
-
-[node name="Count" type="Label" parent="Screen/Card/Spread/LeftPage"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-
-[node name="Filters" type="HBoxContainer" parent="Screen/Card/Spread/LeftPage"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Search" type="LineEdit" parent="Screen/Card/Spread/LeftPage/Filters"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 34)
-placeholder_text = "Найти запись"
-clear_button_enabled = true
-theme_override_font_sizes/font_size = 17
-
-[node name="Section" type="OptionButton" parent="Screen/Card/Spread/LeftPage/Filters"]
-unique_name_in_owner = true
-layout_mode = 2
-item_count = 3
-selected = 0
-popup/item_0/text = "Все"
-popup/item_0/id = 0
-popup/item_1/text = "Новые"
-popup/item_1/id = 1
-popup/item_2/text = "Закладки"
-popup/item_2/id = 2
-theme_override_font_sizes/font_size = 17
-
-[node name="Matches" type="Label" parent="Screen/Card/Spread/LeftPage"]
-unique_name_in_owner = true
-layout_mode = 2
-autowrap_mode = 3
-theme_override_font_sizes/font_size = 14
 
 [node name="Index" type="ItemList" parent="Screen/Card/Spread/LeftPage"]
 unique_name_in_owner = true
@@ -109,19 +75,13 @@ size_flags_vertical = 3
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 27
 
-[node name="Position" type="Label" parent="Screen/Card/Spread/LeftPage"]
-unique_name_in_owner = true
-layout_mode = 2
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 15
-
 [node name="WordNote" type="Label" parent="Screen/Card/Spread/LeftPage"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 max_lines_visible = 4
 theme_override_font_sizes/font_size = 15
-text = "Выберите слово или фразу на правой странице."
+text = ""
 
 [node name="Detail" type="VBoxContainer" parent="Screen/Card/Spread"]
 unique_name_in_owner = true
@@ -154,72 +114,22 @@ script = ExtResource("5")
 theme_override_fonts/normal_font = ExtResource("6")
 theme_override_font_sizes/normal_font_size = 27
 
-[node name="InkTools" type="HBoxContainer" parent="Screen/Card/Spread/Detail"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 40)
-theme_override_constants/separation = 6
-
-[node name="InkTool" type="OptionButton" parent="Screen/Card/Spread/Detail/InkTools"]
+[node name="PagePosition" type="Label" parent="Screen/Card/Spread/Detail"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 40)
-size_flags_horizontal = 3
-item_count = 4
-selected = 0
-popup/item_0/text = "Выделить"
-popup/item_0/id = 0
-popup/item_1/text = "Подчеркнуть"
-popup/item_1/id = 1
-popup/item_2/text = "Обвести"
-popup/item_2/id = 2
-popup/item_3/text = "Ластик"
-popup/item_3/id = 3
-theme_override_font_sizes/font_size = 16
+horizontal_alignment = 2
+theme_override_fonts/font = ExtResource("6")
+theme_override_font_sizes/font_size = 22
 
-[node name="InkUndo" type="Button" parent="Screen/Card/Spread/Detail/InkTools"]
+[node name="PaperPages" type="Control" parent="Screen"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "↶"
-tooltip_text = "Отменить пометку · Ctrl+Z"
-custom_minimum_size = Vector2(34, 40)
-
-[node name="InkRedo" type="Button" parent="Screen/Card/Spread/Detail/InkTools"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "↷"
-tooltip_text = "Повторить пометку · Ctrl+Y"
-custom_minimum_size = Vector2(34, 40)
-
-[node name="Navigation" type="HBoxContainer" parent="Screen/Card/Spread/Detail"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Previous" type="Button" parent="Screen/Card/Spread/Detail/Navigation"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(42, 38)
-layout_mode = 2
-text = "←"
-tooltip_text = "Предыдущая страница или запись"
-
-[node name="PagePosition" type="Label" parent="Screen/Card/Spread/Detail/Navigation"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 15
-
-[node name="Next" type="Button" parent="Screen/Card/Spread/Detail/Navigation"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(42, 38)
-layout_mode = 2
-text = "→"
-tooltip_text = "Следующая страница или запись"
-
-[node name="Bookmark" type="CheckButton" parent="Screen/Card/Spread/Detail/Navigation"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Закладка"
-theme_override_font_sizes/font_size = 16
+anchor_left = 0.08
+anchor_top = 0.11
+anchor_right = 0.92
+anchor_bottom = 0.81
+script = ExtResource("7")
+visible = false
 
 [node name="Leaf" type="Control" parent="Screen"]
 unique_name_in_owner = true
@@ -233,20 +143,90 @@ leaf_only = true
 
 [node name="Close" type="Button" parent="Screen"]
 unique_name_in_owner = true
-anchor_left = 0.25
-anchor_top = 0.91
-anchor_right = 0.75
-anchor_bottom = 0.975
-text = "Вернуться в бар"
-theme = ExtResource("4")
+anchor_left = 0.46
+anchor_top = 0.81
+anchor_right = 0.54
+anchor_bottom = 0.88
+flat = true
+text = ""
+tooltip_text = "Закрыть дневник · J / Esc"
+
+[node name="Previous" type="Button" parent="Screen"]
+unique_name_in_owner = true
+anchor_left = 0.055
+anchor_top = 0.78
+anchor_right = 0.115
+anchor_bottom = 0.86
+flat = true
+text = ""
+tooltip_text = "Перелистнуть назад · PgUp"
+
+[node name="Next" type="Button" parent="Screen"]
+unique_name_in_owner = true
+anchor_left = 0.885
+anchor_top = 0.78
+anchor_right = 0.945
+anchor_bottom = 0.86
+flat = true
+text = ""
+tooltip_text = "Перелистнуть вперёд · PgDn"
+
+[node name="Bookmark" type="Button" parent="Screen"]
+unique_name_in_owner = true
+anchor_left = 0.838
+anchor_top = 0.055
+anchor_right = 0.865
+anchor_bottom = 0.15
+flat = true
+toggle_mode = true
+text = ""
+tooltip_text = "Заложить лентой эту запись"
+
+[node name="WritingTools" type="Control" parent="Screen"]
+unique_name_in_owner = true
+anchor_left = 0.09
+anchor_top = 0.88
+anchor_right = 0.53
+anchor_bottom = 0.97
+script = ExtResource("8")
+
+[node name="Tabs" type="VBoxContainer" parent="Screen"]
+anchor_left = 0.923
+anchor_top = 0.24
+anchor_right = 0.99
+anchor_bottom = 0.67
+theme_override_constants/separation = 18
+
+[node name="NotesTab" type="Button" parent="Screen/Tabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 45)
+text = "Заметки"
+theme_override_fonts/font = ExtResource("6")
+theme_override_font_sizes/font_size = 22
+
+[node name="RecipesTab" type="Button" parent="Screen/Tabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 45)
+text = "Рецепты"
+theme_override_fonts/font = ExtResource("6")
+theme_override_font_sizes/font_size = 22
+
+[node name="WordsTab" type="Button" parent="Screen/Tabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 45)
+text = "Словарь"
+theme_override_fonts/font = ExtResource("6")
+theme_override_font_sizes/font_size = 22
 
 [node name="PageSound" type="AudioStreamPlayer" parent="."]
 
 [node name="Hint" type="Label" parent="Screen"]
-anchor_left = 0.045
-anchor_top = 0.925
-anchor_right = 0.24
-anchor_bottom = 0.97
-text = "PgUp / PgDn — листать"
+anchor_left = 0.55
+anchor_top = 0.90
+anchor_right = 0.94
+anchor_bottom = 0.99
+unique_name_in_owner = true
+text = "Угол страницы — листать · J / Esc — закрыть"
+autowrap_mode = 3
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.78, 0.74, 0.65, 1)

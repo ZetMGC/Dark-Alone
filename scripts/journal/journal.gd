@@ -20,6 +20,7 @@ var _mutating: bool = false
 var _annotations: Dictionary = {}
 var _ink_undo: Dictionary = {}
 var _ink_redo: Dictionary = {}
+var notebook := JournalNotebook.new()
 const MAX_ANNOTATIONS := 64
 const MAX_INK_HISTORY := 32
 
@@ -261,11 +262,19 @@ func export_progress() -> Dictionary:
 			marks[id] = _annotations[id].duplicate(true)
 	if not marks.is_empty():
 		progress["annotations"] = marks
+	if not notebook.is_empty():
+		progress["notebook"] = notebook.export_data()
 	return progress
 
 
 func restore_progress(data: Dictionary) -> bool:
-	if not _configured or _mutating or not _known.is_empty() or data.size() not in [2, 3] or (data.size() == 3 and not data.has("annotations")) or not data.get("entries") is Array or not data.get("selected") is String:
+	if not _configured or _mutating or not _known.is_empty() or not notebook.is_empty() or not data.get("entries") is Array or not data.get("selected") is String:
+		return false
+	for key in data:
+		if key not in ["entries", "selected", "annotations", "notebook"]:
+			return false
+	var personal := JournalNotebook.new()
+	if data.has("notebook") and (not data.notebook is Dictionary or not personal.restore_data(data.notebook)):
 		return false
 	var known: Dictionary = {}
 	var order := PackedStringArray()
@@ -294,6 +303,7 @@ func restore_progress(data: Dictionary) -> bool:
 	_order = order
 	_selected = StringName(data.selected)
 	_annotations = ink.marks
+	notebook = personal
 	return true
 
 

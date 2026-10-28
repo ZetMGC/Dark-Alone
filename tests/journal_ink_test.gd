@@ -57,8 +57,7 @@ func _word_point(start: int, end: int) -> Vector2:
 
 
 func _tool(index: int) -> void:
-	panel.get_node("%InkTool").select(index)
-	panel.get_node("%InkTool").item_selected.emit(index)
+	panel.set_ink_tool(index)
 
 
 func _snap(name: String) -> void:
@@ -137,6 +136,7 @@ func _run() -> void:
 	var dialogue: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://content/dialogues/test_guest.json"))
 	_expect(catalog.load_data(glossary, [dialogue]), "TEST catalog configured without changing authored content")
 	_model()
+	_paper_model()
 	session = NarrativeSession.new()
 	panel = (load("res://scenes/ui/journal_panel.tscn") as PackedScene).instantiate()
 	var speech := (load("res://scenes/ui/dialogue_panel.tscn") as PackedScene).instantiate()
@@ -224,6 +224,7 @@ func _run() -> void:
 	session.open_journal()
 	await _settle()
 	_expect(text.marks == saved and session.shift.remaining == 2, "Reopen retains marks and spends no shift time")
+	await _paper_ui()
 	for child in get_children():
 		child.queue_free()
 	await get_tree().process_frame
@@ -231,3 +232,145 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"full"
 	print("%s: journal ink, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _paper_model() -> void:
+	var book := JournalNotebook.new()
+	var a := book.add_note("[TEST] Вопрос", Vector2(0.2, 0.3))
+	var b := book.add_note("[TEST] Наблюдение", Vector2(0.7, 0.5))
+	_expect(a > 0 and b > a and book.link_notes(a, b), "Personal notes and directed link accepted")
+	_expect(not book.link_notes(a, a) and not book.link_notes(a, b) and not book.link_notes(a, 99), "Self, duplicate and dangling links rejected")
+	var other := book.add_note("Другая страница", Vector2(0.2, 0.3), 1)
+	_expect(not book.link_notes(a, other), "Links cannot silently point into another spread")
+	_expect(not book.move_note(a, Vector2(NAN, 0)) and not book.move_note(a, Vector2(-0.1, 0)), "Invalid coordinates rejected")
+	_expect(not book.update_note(a, " ") and not book.update_note(a, "a".repeat(321)), "Empty and oversized notes rejected")
+	var recipe := book.add_recipe("[TEST] Проба\n20 + 20\nРазмешать")
+	_expect(recipe > other and book.update_recipe(recipe, "[TEST] Своя пропорция\n20 + 10"), "Recipe is editable personal text with independent ID")
+	var snapshot := book.export_data()
+	var clone := JournalNotebook.new()
+	_expect(clone.restore_data(JSON.parse_string(JSON.stringify(snapshot))) and clone.export_data() == snapshot, "Notebook JSON roundtrip keeps coordinates, recipe and link")
+	var invalid := snapshot.duplicate(true)
+	invalid.links[0].to = 999
+	_expect(not clone.restore_data(invalid) and clone.export_data() == snapshot, "Broken link rejects notebook atomically")
+	invalid = snapshot.duplicate(true)
+	invalid.notes[0].x = "0.2"
+	_expect(not clone.restore_data(invalid) and clone.export_data() == snapshot, "String coordinate rejects atomically")
+	invalid = snapshot.duplicate(true)
+	invalid.recipes[0].id = a
+	_expect(not clone.restore_data(invalid), "IDs cannot collide between notes and recipes")
+	var copy := clone.get_notes(0)
+	copy[0].text = "External mutation"
+	_expect(clone.export_data() == snapshot, "Notebook getters return deep copies")
+	_expect(clone.remove_note(a) and clone.get_links().is_empty(), "Deleting note removes its incident links")
+	var journal := Journal.new()
+	journal.configure(catalog)
+	journal.notebook = book
+	var restored := Journal.new()
+	restored.configure(catalog)
+	_expect(restored.restore_progress(JSON.parse_string(JSON.stringify(journal.export_progress()))), "Personal notebook restores even before any learned words")
+	_expect(restored.notebook.export_data() == snapshot, "Journal progress includes exact notebook")
+	var legacy := Journal.new()
+	legacy.configure(catalog)
+	_expect(legacy.restore_progress({"entries": [], "selected": ""}) and legacy.notebook.is_empty(), "Old checkpoint without notebook still reads")
+	var store := CheckpointStore.new("user://checkpoint_tests/paper_" + str(Time.get_ticks_usec()))
+	_expect(store.save_checkpoint(2, journal, HomeState.new(), catalog), "Personal notebook saved through real checkpoint Store")
+	var loaded := store.load_checkpoint(catalog)
+	_expect(not loaded.is_empty() and loaded.journal.notebook.export_data() == snapshot, "Disk checkpoint restores personal notes, recipes and arrows")
+	_expect(store.clear_checkpoint(), "Personal checkpoint fixture cleaned")
+	var cap := JournalNotebook.new()
+	for index in 8:
+		_expect(cap.add_note(str(index), Vector2(0.2, 0.3)) > 0, "Notes within spread capacity accepted")
+	_expect(cap.add_note("overflow", Vector2(0.2, 0.3)) < 0, "Spread capacity bounded")
+
+
+func _double_click(point: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.position = point
+	event.global_position = point
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	event.double_click = true
+	get_viewport().push_input(event, true)
+	await _click(point, false)
+
+
+func _paper_ui() -> void:
+	JournalPanel.motion_mode = &"off"
+	_expect(not panel.has_node("%Search") and not panel.has_node("%Section") and not panel.has_node("%InkTool"), "Application filters and dropdown toolbar removed from scene")
+	var tab: Button = panel.get_node("%NotesTab")
+	await _click(tab.get_global_rect().get_center(), true)
+	await _click(tab.get_global_rect().get_center(), false)
+	await _settle()
+	var paper := panel.get_node("%PaperPages") as JournalPaperPages
+	_expect(panel.current_section == &"notes" and paper.editing_enabled and not panel.get_node("%Card").visible, "Actual paper tab opens editable note spread")
+	var position := Vector2(paper.size.x * 0.22, paper.size.y * 0.35)
+	await _double_click(paper.global_position + position)
+	var writer := paper.get_node("Writer") as TextEdit
+	_expect(writer.visible and writer.has_focus(), "Double click on paper opens writing at selected position")
+	writer.text = "[TEST] Что я заметил?\nПроверить после смены."
+	await _key(KEY_ENTER, true)
+	_expect(not writer.visible and session.journal.notebook.get_notes(0).size() == 1, "Ctrl+Enter leaves handwritten note in model")
+	var second := Vector2(paper.size.x * 0.75, paper.size.y * 0.6)
+	await _double_click(paper.global_position + second)
+	writer.text = "[TEST] Другой вопрос\nМожет быть связано?"
+	await _key(KEY_ENTER, true)
+	var notes := session.journal.notebook.get_notes(0)
+	var a := paper.global_position + paper.note_rect(notes[0]).get_center()
+	var b := paper.global_position + paper.note_rect(notes[1]).get_center()
+	var press := InputEventMouseButton.new()
+	press.position = a
+	press.global_position = a
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.shift_pressed = true
+	get_viewport().push_input(press, true)
+	var motion := InputEventMouseMotion.new()
+	motion.position = b
+	motion.global_position = b
+	get_viewport().push_input(motion, true)
+	await _click(b, false)
+	_expect(session.journal.notebook.get_links().size() == 1, "Real Shift drag connects notes with arrow")
+	await _click(a, true)
+	motion = InputEventMouseMotion.new()
+	motion.position = a + Vector2(0, 30)
+	motion.global_position = motion.position
+	get_viewport().push_input(motion, true)
+	await _click(motion.position, false)
+	_expect(session.journal.notebook.get_notes(0)[0].y > notes[0].y, "Real drag moves note without losing its text or links")
+	a = paper.global_position + paper.note_rect(session.journal.notebook.get_notes(0)[0]).get_center()
+	await _snap("05-personal-notes")
+	await _double_click(a)
+	writer.text = "Отменённая правка"
+	await _key(KEY_ESCAPE)
+	_expect(session.mode == NarrativeSession.JOURNAL and session.journal.notebook.get_notes(0)[0].text == notes[0].text, "Escape cancels edit without closing journal or changing note")
+	_expect(panel.request_page(1) and paper.sheet == 1 and session.journal.notebook.get_notes(0).size() == 2, "Page corner turns to independent empty spread")
+	_expect(not panel.get_node("%Previous").disabled, "Previous page corner updates after committing note spread turn")
+	panel.request_page(-1)
+	tab = panel.get_node("%RecipesTab")
+	await _click(tab.get_global_rect().get_center(), true)
+	await _click(tab.get_global_rect().get_center(), false)
+	await _settle()
+	_expect(panel.current_section == &"recipes" and paper.section == &"recipes", "Recipe tab opens personal recipe pages")
+	await _double_click(paper.global_position + Vector2(paper.size.x * 0.75, 140))
+	writer.text = "[TEST] Первая проба\n\nСостав\n20 мл плотного компонента\n20 мл лёгкого компонента\n\nКак готовил\nМягко налить второй по ложке.\n\nВ следующий раз\nСравнить с перемешанным вариантом."
+	await _key(KEY_ENTER, true)
+	_expect(session.journal.notebook.get_recipes().size() == 1, "Recipe page stores player's own proportions and method")
+	await _snap("06-personal-recipe")
+	_expect(not panel.get_node("%Next").disabled, "Long recipe exposes next page corner without a scrollbar")
+	_expect(panel.request_page(1) and paper.recipe_page == 1, "Long recipe continues on next paper page")
+	panel.request_page(-1)
+	await _double_click(paper.global_position + Vector2(paper.size.x * 0.75, 140))
+	writer.text = "x".repeat(4001)
+	_expect(not paper.finish_edit() and writer.visible and not panel.select_section(&"notes") and not panel.begin_close(), "Oversized draft stays editable and blocks navigation/close rather than losing text")
+	paper.finish_edit(true)
+	var snapshot := session.journal.notebook.export_data()
+	session.open_menu()
+	_expect(not paper.editing_enabled, "Hidden journal cannot edit personal pages")
+	session.resume_menu()
+	await _settle()
+	session.close_journal()
+	session.open_journal()
+	await _settle()
+	_expect(session.journal.notebook.export_data() == snapshot and session.shift.remaining == 2, "Reopen keeps personal pages without time cost")
+	panel.select_section(&"words")
+	await _settle()

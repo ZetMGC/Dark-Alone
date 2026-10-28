@@ -204,7 +204,7 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	# Поиск дневника получает буквы J/T/B, не игровые горячие клавиши.
-	if get_viewport().gui_get_focus_owner() is LineEdit and not event.is_action_pressed("toggle_menu"):
+	if (get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit) and not event.is_action_pressed("toggle_menu"):
 		return
 	if is_instance_valid(_home) and _home.handle_input(event):
 		get_viewport().set_input_as_handled()

@@ -127,7 +127,7 @@ func _test_scene(service_first: bool) -> void:
 	_expect(guest.get_node("ServedGlass").visible and session.service.served, "Last service still has visible result")
 	_expect(main.get_node("NavigationHUD/%ShiftTime").text.contains("0 / 2"), "HUD agrees with model")
 	session.open_journal()
-	_expect(session.mode == NarrativeSession.JOURNAL and main.get_node("JournalPanel/%Close").text == "К итогам смены", "Summary journal has correct return")
+	_expect(session.mode == NarrativeSession.JOURNAL and main.get_node("JournalPanel/%Close").tooltip_text == "К итогам смены", "Summary journal has correct return")
 	session.close_journal()
 	session.open_menu()
 	session.resume_menu()

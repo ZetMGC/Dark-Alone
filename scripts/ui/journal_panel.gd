@@ -17,6 +17,7 @@ static var _rustle: AudioStreamWAV
 @onready var screen: Control = $Screen
 var _journal: Journal
 var _ids: Array[StringName] = []
+var _index_start: int = 0
 var _rendering: bool = false
 var _pages: Array[Dictionary] = []
 var _page: int = 0
@@ -31,13 +32,22 @@ var _open_start: float = 0.0
 var _motion_control: OptionButton
 var _sound_control: HSlider
 var _sound_label: Label
+var current_section: StringName = &"words"
 const INK_TOOLS: Array[StringName] = [&"select", &"underline", &"circle", &"erase"]
 
 
 func _ready() -> void:
+	for tab in [%NotesTab, %RecipesTab, %WordsTab]:
+		var paper := StyleBoxFlat.new()
+		paper.bg_color = Color("b8ab86") if tab == %NotesTab else (Color("a5ad92") if tab == %RecipesTab else Color("c4b499"))
+		paper.set_content_margin_all(4)
+		paper.set_corner_radius_all(2)
+		tab.add_theme_stylebox_override("normal", paper)
+		tab.add_theme_stylebox_override("hover", paper)
+		tab.add_theme_stylebox_override("pressed", paper)
+	for style in ["selected", "selected_focus", "focus"]:
+		%Index.add_theme_stylebox_override(style, StyleBoxEmpty.new())
 	%Close.pressed.connect(func() -> void: close_requested.emit())
-	%Search.text_changed.connect(func(_text: String) -> void: _refresh())
-	%Section.item_selected.connect(func(_index: int) -> void: _refresh())
 	%Index.item_selected.connect(_select_index)
 	%Previous.pressed.connect(func() -> void: request_page(-1))
 	%Next.pressed.connect(func() -> void: request_page(1))
@@ -45,12 +55,42 @@ func _ready() -> void:
 	%Description.annotation_requested.connect(_add_ink)
 	%Description.erase_requested.connect(_erase_ink)
 	%Description.selection_changed.connect(_word_selected)
-	%InkTool.item_selected.connect(func(index: int) -> void: %Description.set_tool(INK_TOOLS[index]))
-	%InkUndo.pressed.connect(func() -> void: _undo_ink())
-	%InkRedo.pressed.connect(func() -> void: _undo_ink(true))
+	%WritingTools.tool_requested.connect(set_ink_tool)
+	%NotesTab.pressed.connect(func() -> void: select_section(&"notes"))
+	%RecipesTab.pressed.connect(func() -> void: select_section(&"recipes"))
+	%WordsTab.pressed.connect(func() -> void: select_section(&"words"))
+	%PaperPages.hint_changed.connect(func(text: String) -> void:
+		%Hint.text = text
+		_update_controls()
+	)
+	%PaperPages.navigation_changed.connect(_update_controls)
 	if _rustle == null:
 		_rustle = _make_rustle()
 	$PageSound.stream = _rustle
+
+
+func set_ink_tool(index: int) -> void:
+	if index < 0 or index >= INK_TOOLS.size() or not _can_edit_ink():
+		return
+	%Description.set_tool(INK_TOOLS[index])
+	%WritingTools.selected = index
+	%WritingTools.queue_redraw()
+
+
+func select_section(value: StringName) -> bool:
+	if value not in [&"words", &"notes", &"recipes"] or is_transitioning() or not screen.visible:
+		return false
+	if not %PaperPages.finish_edit():
+		return false
+	_play_motion(&"turn", func() -> void:
+		current_section = value
+		%PaperPages.set_section(value)
+		%Hint.text = "Выделить слово · карандаш — пометки · Ctrl+Z / Ctrl+Y — отмена" if value == &"words" else %PaperPages.default_hint()
+		_update_controls()
+		if value == &"words" and _journal != null and _journal.selected_term_id != &"":
+			entry_requested.emit(_journal.selected_term_id)
+	)
+	return true
 
 
 func configure_controls(hud: NavigationHUD) -> void:
@@ -104,11 +144,12 @@ func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool 
 			_journal.annotations_changed.disconnect(_ink_changed)
 		journal.annotations_changed.connect(_ink_changed)
 	_journal = journal
-	%Close.text = "Вернуться к разговору" if return_to_dialogue else "Вернуться в бар"
+	%Close.tooltip_text = "Вернуться к разговору" if return_to_dialogue else "Вернуться в бар"
 	if return_to_summary:
-		%Close.text = "К итогам смены"
+		%Close.tooltip_text = "К итогам смены"
 	if return_to_home:
-		%Close.text = "Вернуться домой"
+		%Close.tooltip_text = "Вернуться домой"
+	%PaperPages.bind(journal.notebook)
 	_refresh()
 
 
@@ -116,42 +157,30 @@ func _refresh() -> void:
 	if _journal == null or _rendering:
 		return
 	_rendering = true
-	%Count.text = "Записей: %d · Новых: %d" % [_journal.get_entries().size(), _journal.get_unread_count()]
-	var sections: Array[StringName] = [&"all", &"new", &"bookmarks"]
-	var entries := _journal.get_filtered_entries(%Search.text, sections[%Section.selected])
+	var entries := _journal.get_entries()
 	_ids.clear()
 	%Index.clear()
-	var selected_index: int = -1
 	for entry in entries:
-		var id := StringName(entry.id)
-		_ids.append(id)
-		var prefix := "★ " if entry.bookmarked else ""
-		if not entry.read:
-			prefix += "• "
-		%Index.add_item(prefix + str(entry.title))
-		%Index.set_item_tooltip(_ids.size() - 1, str(entry.title))
-		if id == _journal.selected_term_id:
-			selected_index = _ids.size() - 1
+		_ids.append(StringName(entry.id))
+	_index_start = floori(float(maxi(0, _ids.find(_journal.selected_term_id))) / 8) * 8
+	for index in range(_index_start, mini(entries.size(), _index_start + 8)):
+		%Index.add_item(str(entries[index].title))
+	var selected_index := _ids.find(_journal.selected_term_id) - _index_start
 	if selected_index >= 0:
 		%Index.select(selected_index)
-	%Matches.text = "Найдено: %d" % entries.size()
 	for connection in %Bookmark.toggled.get_connections():
 		%Bookmark.toggled.disconnect(connection.callable)
 	var selected := _journal.get_entry(_journal.selected_term_id)
-	if selected_index < 0 and not selected.is_empty():
-		%Matches.text += " · Открытая запись вне фильтра"
 	%Bookmark.set_pressed_no_signal(not selected.is_empty() and selected.bookmarked)
 	%BookArt.bookmarked = not selected.is_empty() and selected.bookmarked
 	if selected.is_empty():
 		%EntryTitle.text = "Пока нет записей"
 		%Source.text = ""
-		%Position.text = "Оглавление"
 	else:
 		%EntryTitle.text = selected.title
 		%EntryTitle.tooltip_text = selected.title
 		var source: Dictionary = selected.source
-		%Source.text = "Источник не указан" if source.is_empty() else "Узнано в смену %d · %s" % [source.shift, source.speaker]
-		%Position.text = "Запись %d / %d" % [selected.learned_order, _journal.get_entries().size()]
+		%Source.text = "" if source.is_empty() else "Смена %d. Услышал от %s." % [source.shift, source.speaker]
 		var id := StringName(selected.id)
 		%Bookmark.toggled.connect(func(value: bool) -> void:
 			if not is_transitioning():
@@ -185,7 +214,7 @@ func _paginate() -> void:
 	_page = BookPaginator.page_for_offset(_pages, 0 if entry.is_empty() else int(entry.reading_offset))
 	%Description.set_content(_pages[_page].text, int(_pages[_page].start), _journal.selected_term_id)
 	%Description.set_marks(_journal.get_annotations(_journal.selected_term_id))
-	%PagePosition.text = "Стр. %d / %d" % [_page + 1, _pages.size()]
+	%PagePosition.text = str(_page + 1)
 	_update_controls()
 
 
@@ -194,9 +223,9 @@ func get_page_count() -> int:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if not screen.visible or get_viewport().gui_get_focus_owner() is LineEdit or not event is InputEventKey or not event.pressed or event.echo:
+	if not screen.visible or (get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit) or not event is InputEventKey or not event.pressed or event.echo:
 		return
-	if event.ctrl_pressed and event.keycode in [KEY_Z, KEY_Y] and not is_transitioning():
+	if current_section == &"words" and event.ctrl_pressed and event.keycode in [KEY_Z, KEY_Y] and not is_transitioning():
 		_undo_ink(event.keycode == KEY_Y or event.shift_pressed)
 		get_viewport().set_input_as_handled()
 		return
@@ -218,6 +247,10 @@ func is_closing() -> bool:
 
 
 func _select_index(index: int) -> void:
+	_select_entry_at(index + _index_start)
+
+
+func _select_entry_at(index: int) -> void:
 	if _rendering or is_transitioning() or index < 0 or index >= _ids.size() or not screen.visible:
 		return
 	var id := _ids[index]
@@ -230,6 +263,17 @@ func _select_index(index: int) -> void:
 func request_page(direction: int) -> bool:
 	if _journal == null or is_transitioning() or not screen.visible or direction not in [-1, 1]:
 		return false
+	if current_section != &"words":
+		if not %PaperPages.finish_edit():
+			return false
+		if not %PaperPages.can_request_page(direction):
+			return false
+		%Leaf.turn_direction = float(direction)
+		_play_motion(&"turn", func() -> void:
+			%PaperPages.request_page(direction)
+			_update_controls()
+		)
+		return true
 	if _layout_pending:
 		_paginate()
 	var target := _page + direction
@@ -242,15 +286,13 @@ func request_page(direction: int) -> bool:
 	var index := _ids.find(_journal.selected_term_id)
 	var next_index := index + direction if index >= 0 else 0
 	if next_index >= 0 and next_index < _ids.size():
-		_select_index(next_index)
+		_select_entry_at(next_index)
 		return true
 	return false
 
 
 func _update_controls() -> void:
 	var blocked := is_transitioning()
-	%Search.editable = not blocked
-	%Section.disabled = blocked
 	%Index.mouse_filter = Control.MOUSE_FILTER_IGNORE if blocked else Control.MOUSE_FILTER_STOP
 	%Index.focus_mode = Control.FOCUS_NONE if blocked else Control.FOCUS_ALL
 	var selected := -1 if _journal == null else _ids.find(_journal.selected_term_id)
@@ -259,14 +301,22 @@ func _update_controls() -> void:
 	%Bookmark.disabled = blocked or _journal == null or _journal.selected_term_id == &""
 	var ink_enabled := _can_edit_ink()
 	%Description.editing_enabled = ink_enabled
-	%InkTool.disabled = not ink_enabled
-	%InkUndo.disabled = not ink_enabled or not _journal.can_undo_annotations(_journal.selected_term_id)
-	%InkRedo.disabled = not ink_enabled or not _journal.can_redo_annotations(_journal.selected_term_id)
-	%BookArt.show_sketch = _journal != null and _journal.get_entries().size() <= 4
+	%WritingTools.enabled = ink_enabled
+	%WritingTools.visible = current_section == &"words"
+	%Card.visible = current_section == &"words"
+	%Bookmark.visible = current_section == &"words"
+	%PaperPages.visible = current_section != &"words"
+	%PaperPages.editing_enabled = not blocked and screen.visible and current_section != &"words"
+	for tab in [%NotesTab, %RecipesTab, %WordsTab]:
+		tab.disabled = blocked
+	if current_section != &"words":
+		%Previous.disabled = blocked or not %PaperPages.can_request_page(-1)
+		%Next.disabled = blocked or not %PaperPages.can_request_page(1)
+	%BookArt.show_sketch = false
 
 
 func _can_edit_ink() -> bool:
-	return not is_transitioning() and not _layout_pending and screen.visible and _journal != null and _journal.selected_term_id != &"" and %Description.entry_id == _journal.selected_term_id
+	return current_section == &"words" and not is_transitioning() and not _layout_pending and screen.visible and _journal != null and _journal.selected_term_id != &"" and %Description.entry_id == _journal.selected_term_id
 
 
 func _add_ink(kind: StringName, start: int, end: int) -> void:
@@ -293,10 +343,10 @@ func _ink_changed(id: StringName) -> void:
 
 
 func _word_selected(word: String) -> void:
-	%WordNote.text = "Выберите слово или протяните мышью по фразе."
+	%WordNote.text = ""
 	if word.is_empty() or _journal == null:
 		return
-	%WordNote.text = "«%s» · выберите инструмент пометки" % word
+	%WordNote.text = "«%s»" % word
 	for entry in _journal.get_entries():
 		if str(entry.title).trim_prefix("[TEST] ").to_lower() == word.to_lower():
 			%WordNote.text = "«%s»\n%s" % [word, str(entry.description)]
@@ -307,6 +357,7 @@ func set_open(value: bool) -> void:
 	screen.visible = value
 	if not value:
 		%Description.editing_enabled = false
+		%PaperPages.editing_enabled = false
 		if _tween != null and _tween.is_valid():
 			_tween.pause()
 		$PageSound.stop()
@@ -319,11 +370,14 @@ func set_open(value: bool) -> void:
 		_opened = true
 		%BookArt.open_amount = 0.0
 		_play_motion(&"open", Callable())
+	_update_controls()
 	_focus_close.call_deferred()
 
 
 func begin_close() -> bool:
 	if is_closing():
+		return false
+	if not %PaperPages.finish_edit():
 		return false
 	_play_motion(&"close", func() -> void: close_completed.emit())
 	return true
@@ -332,6 +386,7 @@ func begin_close() -> bool:
 func force_closed() -> void:
 	_cancel_motion()
 	%Description.editing_enabled = false
+	%PaperPages.editing_enabled = false
 	_opened = false
 	%BookArt.open_amount = 0.0
 	screen.visible = false
@@ -374,6 +429,7 @@ func _motion_frame(value: float) -> void:
 	else:
 		%Leaf.turn_amount = value if motion_mode == &"full" else 0.0
 		%Detail.modulate.a = absf(value * 2.0 - 1.0)
+		%PaperPages.modulate.a = %Detail.modulate.a
 
 
 func _complete_motion(serial: int = -1) -> void:
@@ -385,6 +441,7 @@ func _complete_motion(serial: int = -1) -> void:
 	_completion = Callable()
 	_finish_on_resume = false
 	%Leaf.turn_amount = 0.0
+	%PaperPages.modulate.a = 1.0
 	%Card.modulate.a = 1.0
 	%Detail.modulate.a = 1.0
 	%BookArt.open_amount = 0.0 if kind == &"close" else 1.0
@@ -405,12 +462,13 @@ func _cancel_motion() -> void:
 	_completion = Callable()
 	_finish_on_resume = false
 	%Leaf.turn_amount = 0.0
+	%PaperPages.modulate.a = 1.0
 	%Card.modulate.a = 1.0
 	%Detail.modulate.a = 1.0
 
 
 func _focus_close() -> void:
-	if is_inside_tree() and screen.is_visible_in_tree():
+	if is_inside_tree() and screen.is_visible_in_tree() and not get_viewport().gui_get_focus_owner() is TextEdit:
 		%Close.grab_focus()
 
 
