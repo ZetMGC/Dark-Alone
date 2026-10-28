@@ -80,6 +80,8 @@ func _rebuild_choices(journal: Journal) -> void:
 			var titles := PackedStringArray()
 			for id in choice.missing_terms:
 				titles.append(str(journal.get_definition(StringName(id)).get("title", id)))
+			if not choice.get("missing_conclusions", []).is_empty():
+				titles.append("вывод в дневнике")
 			label.text += " · Нужны записи: " + ", ".join(titles)
 		%VoiceChoices.add_child(label)
 	_refresh_selection()

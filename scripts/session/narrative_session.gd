@@ -85,6 +85,10 @@ func configure(catalog: DialogueCatalog, dialogue_panel: DialoguePanel, journal_
 	runner.dialogue_cancelled.connect(_on_dialogue_closed)
 	journal.term_added.connect(_on_term_added)
 	journal.entry_changed.connect(func(_id: StringName) -> void: journal_changed.emit(journal.get_known_term_ids().size()))
+	journal.reasoning.changed.connect(func() -> void:
+		_dialogue_panel.render(runner, journal)
+		journal_changed.emit(journal.get_known_term_ids().size())
+	)
 	_configured = true
 	_sync_panels()
 	return true

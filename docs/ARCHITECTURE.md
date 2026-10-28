@@ -1,5 +1,7 @@
 # Архитектура
 
+DA-066: JournalReasoning хранит авторские группы и отдельно выбранные интерпретации/evidence. Catalogue валидирует optional reasoning_groups/journal_recipes; Runner проверяет required_conclusions. PaperPages теперь без TextEdit/перемещаемых блоков: замкнутая обводка слов → выбор. Notebook DA-065 только legacy-архив. BookRoot/BookArt дают раскрытие/изгиб 32 полос/снимок текста и preview без раннего commit. [Контракт](JOURNAL_REASONING.md), ADR-0029; этот вариант заменяет свободное письмо DA-065.
+
 DA-065: Journal владеет JournalNotebook (личный текст/позиции/стрелки/рецепты); JournalPanel переключает словарь и отдельный JournalPaperPages, WritingTools рисует предметы письма. Search/Section/служебная панель удалены из journal_panel.tscn. Сохранение добавляет опциональный notebook в прежний progress. Main блокирует игровые клавиши при TextEdit, Session не читает скрытый словарь. [Контракт](PERSONAL_JOURNAL.md), ADR-0028.
 
 DA-063: текущий бар использует ServicePanel/DrinkWorkbench с тремя DrinkPreparation (подача, смесительный стакан, шейкер), DrinkBottleStock и DrinkSpillSurface; NarrativeSession сохраняет речь в SERVICE. GuestService запечатывает фактический состав и испускает прежнее одноразовое событие смены. Подробные API/потребители — [контракт бара](parallel/bar/CONTRACTS.md), решения/исследование — parallel/bar. Новый дом и Journal annotations коллеги сохранены; общий default-цикл проверяет release_integration_test. [ADR-0026](decisions/0026-bar-home-journal-integration.md).

@@ -45,6 +45,7 @@ func _ready() -> void:
 		tab.add_theme_stylebox_override("normal", paper)
 		tab.add_theme_stylebox_override("hover", paper)
 		tab.add_theme_stylebox_override("pressed", paper)
+		tab.add_theme_stylebox_override("disabled", paper)
 	for style in ["selected", "selected_focus", "focus"]:
 		%Index.add_theme_stylebox_override(style, StyleBoxEmpty.new())
 	%Close.pressed.connect(func() -> void: close_requested.emit())
@@ -82,6 +83,7 @@ func select_section(value: StringName) -> bool:
 		return false
 	if not %PaperPages.finish_edit():
 		return false
+	%Leaf.under_rects.clear()
 	_play_motion(&"turn", func() -> void:
 		current_section = value
 		%PaperPages.set_section(value)
@@ -149,7 +151,7 @@ func render(journal: Journal, return_to_dialogue: bool, return_to_summary: bool 
 		%Close.tooltip_text = "К итогам смены"
 	if return_to_home:
 		%Close.tooltip_text = "Вернуться домой"
-	%PaperPages.bind(journal.notebook)
+	%PaperPages.bind(journal)
 	_refresh()
 
 
@@ -256,6 +258,9 @@ func _select_entry_at(index: int) -> void:
 	var id := _ids[index]
 	if id == _journal.selected_term_id:
 		return
+	var entry := _journal.get_entry(id)
+	var preview := BookPaginator.paginate(entry.description, %Description.get_theme_font("normal_font"), %Description.get_theme_font_size("normal_font_size"), %Description.size - Vector2(12, 10))
+	_prepare_turn_preview(entry, preview[BookPaginator.page_for_offset(preview, entry.reading_offset)].text)
 	%Leaf.turn_direction = 1.0 if index > _ids.find(_journal.selected_term_id) else -1.0
 	_play_motion(&"turn", func() -> void: entry_requested.emit(id))
 
@@ -280,6 +285,7 @@ func request_page(direction: int) -> bool:
 	if target >= 0 and target < _pages.size():
 		var id := _journal.selected_term_id
 		var offset := int(_pages[target].start)
+		_prepare_turn_preview(_journal.get_entry(id), _pages[target].text)
 		%Leaf.turn_direction = float(direction)
 		_play_motion(&"turn", func() -> void: reading_position_requested.emit(id, offset))
 		return true
@@ -401,6 +407,12 @@ func reset_scroll() -> void:
 func _play_motion(kind: StringName, completion: Callable) -> void:
 	_cancel_motion()
 	_motion = kind
+	%Leaf.under_enabled = kind == &"turn" and current_section == &"words"
+	if kind == &"turn" and motion_mode == &"full" and DisplayServer.get_name() != "headless":
+		var snapshot := get_viewport().get_texture().get_image()
+		if not snapshot.is_empty():
+			%Leaf.turn_texture = ImageTexture.create_from_image(snapshot)
+			%Leaf.texture_region = Rect2(%Leaf.get_global_rect().position / screen.size, %Leaf.size / screen.size)
 	_completion = completion
 	_open_start = %BookArt.open_amount
 	_update_controls()
@@ -410,7 +422,7 @@ func _play_motion(kind: StringName, completion: Callable) -> void:
 	if motion_mode == &"off":
 		_complete_motion()
 		return
-	var duration := 0.34 if kind == &"turn" else 0.42 if kind == &"open" else 0.28
+	var duration := 0.58 if kind == &"turn" else 0.62 if kind == &"open" else 0.48
 	if motion_mode == &"reduced":
 		duration = 0.06
 	_motion_frame(0.0)
@@ -425,11 +437,20 @@ func _motion_frame(value: float) -> void:
 		%BookArt.open_amount = lerpf(_open_start, 1.0, value) if _motion == &"open" else _open_start * (1.0 - value)
 		if motion_mode == &"reduced":
 			%BookArt.open_amount = 1.0
-		%Card.modulate.a = clampf((amount - 0.55) / 0.45, 0.0, 1.0) if motion_mode == &"full" else amount
+		var reveal := clampf((%BookArt.open_amount - 0.64) / 0.36, 0.0, 1.0) if motion_mode == &"full" else amount
+		%Card.modulate.a = reveal
+		%PaperPages.modulate.a = reveal
+		for control in [%NotesTab.get_parent(), %WritingTools, %Previous, %Next, %Bookmark, %Close, %Hint]:
+			control.modulate.a = reveal
+		%BookRoot.pivot_offset = screen.size * 0.5
+		var lift: float = 1.0 - %BookArt.open_amount if motion_mode == &"full" else 0.0
+		%BookRoot.position = Vector2(0, 75 * lift)
+		%BookRoot.scale = Vector2.ONE * (1.0 - 0.06 * lift)
+		%BookRoot.rotation = -0.035 * lift
 	else:
 		%Leaf.turn_amount = value if motion_mode == &"full" else 0.0
-		%Detail.modulate.a = absf(value * 2.0 - 1.0)
-		%PaperPages.modulate.a = %Detail.modulate.a
+		%Detail.modulate.a = 1.0
+		%PaperPages.modulate.a = 1.0
 
 
 func _complete_motion(serial: int = -1) -> void:
@@ -441,9 +462,15 @@ func _complete_motion(serial: int = -1) -> void:
 	_completion = Callable()
 	_finish_on_resume = false
 	%Leaf.turn_amount = 0.0
+	%Leaf.turn_texture = null
+	%BookRoot.position = Vector2.ZERO
+	%BookRoot.scale = Vector2.ONE
+	%BookRoot.rotation = 0.0
 	%PaperPages.modulate.a = 1.0
 	%Card.modulate.a = 1.0
 	%Detail.modulate.a = 1.0
+	for control in [%NotesTab.get_parent(), %WritingTools, %Previous, %Next, %Bookmark, %Close, %Hint]:
+		control.modulate.a = 1.0
 	%BookArt.open_amount = 0.0 if kind == &"close" else 1.0
 	if kind == &"close":
 		_opened = false
@@ -462,14 +489,35 @@ func _cancel_motion() -> void:
 	_completion = Callable()
 	_finish_on_resume = false
 	%Leaf.turn_amount = 0.0
+	%Leaf.turn_texture = null
+	%BookRoot.position = Vector2.ZERO
+	%BookRoot.scale = Vector2.ONE
+	%BookRoot.rotation = 0.0
 	%PaperPages.modulate.a = 1.0
 	%Card.modulate.a = 1.0
 	%Detail.modulate.a = 1.0
+	for control in [%NotesTab.get_parent(), %WritingTools, %Previous, %Next, %Bookmark, %Close, %Hint]:
+		control.modulate.a = 1.0
+
+
+func _prepare_turn_preview(entry: Dictionary, text: String) -> void:
+	%Leaf.under_title = str(entry.get("title", ""))
+	var source: Dictionary = entry.get("source", {})
+	%Leaf.under_source = "" if source.is_empty() else "Смена %d. Услышал от %s." % [source.shift, source.speaker]
+	%Leaf.under_text = text
+	var areas: Array[Rect2] = []
+	for control in [%EntryTitle, %Source, %Description]:
+		var inset := Vector2(6, 5) if control == %Description else Vector2.ZERO
+		areas.append(Rect2(control.global_position - %Leaf.global_position + inset, control.size - inset * 2))
+	%Leaf.under_rects = areas
 
 
 func _focus_close() -> void:
 	if is_inside_tree() and screen.is_visible_in_tree() and not get_viewport().gui_get_focus_owner() is TextEdit:
-		%Close.grab_focus()
+		if current_section == &"words":
+			%Close.grab_focus()
+		else:
+			%PaperPages.grab_focus()
 
 
 func _make_rustle() -> AudioStreamWAV:

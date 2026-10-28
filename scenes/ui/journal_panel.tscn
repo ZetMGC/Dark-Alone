@@ -33,7 +33,14 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.01, 0.015, 0.02, 0.84)
 
-[node name="BookArt" type="Control" parent="Screen"]
+[node name="BookRoot" type="Control" parent="Screen"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="BookArt" type="Control" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.04
 anchor_top = 0.05
@@ -42,7 +49,7 @@ anchor_bottom = 0.88
 mouse_filter = 2
 script = ExtResource("3")
 
-[node name="Card" type="MarginContainer" parent="Screen"]
+[node name="Card" type="MarginContainer" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.04
 anchor_top = 0.05
@@ -53,29 +60,29 @@ theme_override_constants/margin_top = 42
 theme_override_constants/margin_right = 46
 theme_override_constants/margin_bottom = 48
 
-[node name="Spread" type="HBoxContainer" parent="Screen/Card"]
+[node name="Spread" type="HBoxContainer" parent="Screen/BookRoot/Card"]
 layout_mode = 2
 theme_override_constants/separation = 64
 
-[node name="LeftPage" type="VBoxContainer" parent="Screen/Card/Spread"]
+[node name="LeftPage" type="VBoxContainer" parent="Screen/BookRoot/Card/Spread"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="Screen/Card/Spread/LeftPage"]
+[node name="Title" type="Label" parent="Screen/BookRoot/Card/Spread/LeftPage"]
 layout_mode = 2
 text = "Слова на память"
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 38
 
-[node name="Index" type="ItemList" parent="Screen/Card/Spread/LeftPage"]
+[node name="Index" type="ItemList" parent="Screen/BookRoot/Card/Spread/LeftPage"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 27
 
-[node name="WordNote" type="Label" parent="Screen/Card/Spread/LeftPage"]
+[node name="WordNote" type="Label" parent="Screen/BookRoot/Card/Spread/LeftPage"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
@@ -83,13 +90,13 @@ max_lines_visible = 4
 theme_override_font_sizes/font_size = 15
 text = ""
 
-[node name="Detail" type="VBoxContainer" parent="Screen/Card/Spread"]
+[node name="Detail" type="VBoxContainer" parent="Screen/BookRoot/Card/Spread"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
-[node name="EntryTitle" type="Label" parent="Screen/Card/Spread/Detail"]
+[node name="EntryTitle" type="Label" parent="Screen/BookRoot/Card/Spread/Detail"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
@@ -98,13 +105,13 @@ text_overrun_behavior = 3
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 38
 
-[node name="Source" type="Label" parent="Screen/Card/Spread/Detail"]
+[node name="Source" type="Label" parent="Screen/BookRoot/Card/Spread/Detail"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 14
 
-[node name="Description" type="Control" parent="Screen/Card/Spread/Detail"]
+[node name="Description" type="Control" parent="Screen/BookRoot/Card/Spread/Detail"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
@@ -114,14 +121,14 @@ script = ExtResource("5")
 theme_override_fonts/normal_font = ExtResource("6")
 theme_override_font_sizes/normal_font_size = 27
 
-[node name="PagePosition" type="Label" parent="Screen/Card/Spread/Detail"]
+[node name="PagePosition" type="Label" parent="Screen/BookRoot/Card/Spread/Detail"]
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 22
 
-[node name="PaperPages" type="Control" parent="Screen"]
+[node name="PaperPages" type="Control" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 layout_mode = 2
 anchor_left = 0.08
@@ -131,7 +138,7 @@ anchor_bottom = 0.81
 script = ExtResource("7")
 visible = false
 
-[node name="Leaf" type="Control" parent="Screen"]
+[node name="Leaf" type="Control" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.04
 anchor_top = 0.05
@@ -141,7 +148,7 @@ mouse_filter = 2
 script = ExtResource("3")
 leaf_only = true
 
-[node name="Close" type="Button" parent="Screen"]
+[node name="Close" type="Button" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.46
 anchor_top = 0.81
@@ -151,7 +158,7 @@ flat = true
 text = ""
 tooltip_text = "Закрыть дневник · J / Esc"
 
-[node name="Previous" type="Button" parent="Screen"]
+[node name="Previous" type="Button" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.055
 anchor_top = 0.78
@@ -161,7 +168,7 @@ flat = true
 text = ""
 tooltip_text = "Перелистнуть назад · PgUp"
 
-[node name="Next" type="Button" parent="Screen"]
+[node name="Next" type="Button" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.885
 anchor_top = 0.78
@@ -171,7 +178,7 @@ flat = true
 text = ""
 tooltip_text = "Перелистнуть вперёд · PgDn"
 
-[node name="Bookmark" type="Button" parent="Screen"]
+[node name="Bookmark" type="Button" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.838
 anchor_top = 0.055
@@ -182,7 +189,7 @@ toggle_mode = true
 text = ""
 tooltip_text = "Заложить лентой эту запись"
 
-[node name="WritingTools" type="Control" parent="Screen"]
+[node name="WritingTools" type="Control" parent="Screen/BookRoot"]
 unique_name_in_owner = true
 anchor_left = 0.09
 anchor_top = 0.88
@@ -190,28 +197,28 @@ anchor_right = 0.53
 anchor_bottom = 0.97
 script = ExtResource("8")
 
-[node name="Tabs" type="VBoxContainer" parent="Screen"]
+[node name="Tabs" type="VBoxContainer" parent="Screen/BookRoot"]
 anchor_left = 0.923
 anchor_top = 0.24
 anchor_right = 0.99
 anchor_bottom = 0.67
 theme_override_constants/separation = 18
 
-[node name="NotesTab" type="Button" parent="Screen/Tabs"]
+[node name="NotesTab" type="Button" parent="Screen/BookRoot/Tabs"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 45)
 text = "Заметки"
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 22
 
-[node name="RecipesTab" type="Button" parent="Screen/Tabs"]
+[node name="RecipesTab" type="Button" parent="Screen/BookRoot/Tabs"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 45)
 text = "Рецепты"
 theme_override_fonts/font = ExtResource("6")
 theme_override_font_sizes/font_size = 22
 
-[node name="WordsTab" type="Button" parent="Screen/Tabs"]
+[node name="WordsTab" type="Button" parent="Screen/BookRoot/Tabs"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 45)
 text = "Словарь"
@@ -220,7 +227,7 @@ theme_override_font_sizes/font_size = 22
 
 [node name="PageSound" type="AudioStreamPlayer" parent="."]
 
-[node name="Hint" type="Label" parent="Screen"]
+[node name="Hint" type="Label" parent="Screen/BookRoot"]
 anchor_left = 0.55
 anchor_top = 0.90
 anchor_right = 0.94

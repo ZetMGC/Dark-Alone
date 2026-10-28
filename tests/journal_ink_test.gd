@@ -133,6 +133,11 @@ func _run() -> void:
 	glossary.terms[0].title = "[TEST] Сигнал"
 	glossary.terms[1].title = "[TEST] Метка"
 	glossary.terms[0].description = "Сигнал за окном повторился. В дневнике осталось важное наблюдение: свет в комнате не менялся.\n\n".repeat(8)
+	# Несколько разнесённых групп существуют только в этой TEST-fixture, не в каноне.
+	for index in 4:
+		glossary.terms.append({"id": "test_cluster_%d" % index, "title": "[TEST] " + ["Свет", "Шум", "Ритм", "Пауза"][index], "description": "Техническое слово для проверки размещения групп."})
+	for index in 2:
+		glossary.reasoning_groups.append({"id": "test_cluster_group_%d" % index, "title": "[TEST] Наблюдения %d" % (index + 1), "terms": ["test_cluster_%d" % (index * 2), "test_cluster_%d" % (index * 2 + 1)], "minimum_terms": 2, "sheet": 0, "position": [0.74, 0.26 + index * 0.44], "options": [{"id": "test_cluster_linked_%d" % index, "text": "[TEST] Сведения связаны."}, {"id": "test_cluster_separate_%d" % index, "text": "[TEST] Сведения не связаны."}]})
 	var dialogue: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://content/dialogues/test_guest.json"))
 	_expect(catalog.load_data(glossary, [dialogue]), "TEST catalog configured without changing authored content")
 	_model()
@@ -235,142 +240,158 @@ func _run() -> void:
 
 
 func _paper_model() -> void:
-	var book := JournalNotebook.new()
-	var a := book.add_note("[TEST] Вопрос", Vector2(0.2, 0.3))
-	var b := book.add_note("[TEST] Наблюдение", Vector2(0.7, 0.5))
-	_expect(a > 0 and b > a and book.link_notes(a, b), "Personal notes and directed link accepted")
-	_expect(not book.link_notes(a, a) and not book.link_notes(a, b) and not book.link_notes(a, 99), "Self, duplicate and dangling links rejected")
-	var other := book.add_note("Другая страница", Vector2(0.2, 0.3), 1)
-	_expect(not book.link_notes(a, other), "Links cannot silently point into another spread")
-	_expect(not book.move_note(a, Vector2(NAN, 0)) and not book.move_note(a, Vector2(-0.1, 0)), "Invalid coordinates rejected")
-	_expect(not book.update_note(a, " ") and not book.update_note(a, "a".repeat(321)), "Empty and oversized notes rejected")
-	var recipe := book.add_recipe("[TEST] Проба\n20 + 20\nРазмешать")
-	_expect(recipe > other and book.update_recipe(recipe, "[TEST] Своя пропорция\n20 + 10"), "Recipe is editable personal text with independent ID")
-	var snapshot := book.export_data()
-	var clone := JournalNotebook.new()
-	_expect(clone.restore_data(JSON.parse_string(JSON.stringify(snapshot))) and clone.export_data() == snapshot, "Notebook JSON roundtrip keeps coordinates, recipe and link")
-	var invalid := snapshot.duplicate(true)
-	invalid.links[0].to = 999
-	_expect(not clone.restore_data(invalid) and clone.export_data() == snapshot, "Broken link rejects notebook atomically")
-	invalid = snapshot.duplicate(true)
-	invalid.notes[0].x = "0.2"
-	_expect(not clone.restore_data(invalid) and clone.export_data() == snapshot, "String coordinate rejects atomically")
-	invalid = snapshot.duplicate(true)
-	invalid.recipes[0].id = a
-	_expect(not clone.restore_data(invalid), "IDs cannot collide between notes and recipes")
-	var copy := clone.get_notes(0)
-	copy[0].text = "External mutation"
-	_expect(clone.export_data() == snapshot, "Notebook getters return deep copies")
-	_expect(clone.remove_note(a) and clone.get_links().is_empty(), "Deleting note removes its incident links")
 	var journal := Journal.new()
 	journal.configure(catalog)
-	journal.notebook = book
-	var restored := Journal.new()
-	restored.configure(catalog)
-	_expect(restored.restore_progress(JSON.parse_string(JSON.stringify(journal.export_progress()))), "Personal notebook restores even before any learned words")
-	_expect(restored.notebook.export_data() == snapshot, "Journal progress includes exact notebook")
+	journal.add_term(&"test_signal")
+	_expect(not journal.choose_conclusion(&"test_terms_connection", &"test_same_subject"), "Insufficient known words cannot yield a conclusion")
+	var partial := journal.get_reasoning_groups(0)
+	_expect(partial.size() == 1 and partial[0].terms == ["test_signal"] and partial[0].options.is_empty(), "Unknown words and premature options are not exposed")
+	journal.add_term(&"test_marker")
+	_expect(journal.get_reasoning_groups(0)[0].ready and journal.get_reasoning_groups(0)[0].options.size() == 3, "Enough words enable several authored conclusions")
+	_expect(not journal.choose_conclusion(&"test_terms_connection", &"invented"), "Free-form conclusion ID rejected")
+	_expect(journal.choose_conclusion(&"test_terms_connection", &"test_different_subjects"), "Alternative interpretation is a valid player conclusion")
+	_expect(journal.has_conclusion(&"test_different_subjects") and not journal.has_conclusion(&"test_same_subject"), "Conclusion stores chosen interpretation, without declaring truth")
+	_expect(journal.get_entries().size() == 2 and not journal.has_term(&"test_different_subjects"), "A conclusion does not become a discovered fact")
+	_expect(not journal.choose_conclusion(&"test_terms_connection", &"test_same_subject"), "Committed conclusion cannot be silently rewritten")
+	var snapshot := journal.export_progress()
+	var clone := Journal.new()
+	clone.configure(catalog)
+	_expect(clone.restore_progress(JSON.parse_string(JSON.stringify(snapshot))) and clone.has_conclusion(&"test_different_subjects"), "Conclusions and evidence JSON roundtrip")
+	var copy := clone.reasoning.export_data()
+	copy[0].option_id = "changed"
+	_expect(clone.has_conclusion(&"test_different_subjects"), "Conclusion getters are deep copies")
+	for mutation in ["unknown_option", "unknown_evidence", "duplicate_evidence", "duplicate_group", "missing_evidence"]:
+		var bad := snapshot.duplicate(true)
+		match mutation:
+			"unknown_option": bad.conclusions[0].option_id = "invented"
+			"unknown_evidence": bad.conclusions[0].evidence[0] = "invented"
+			"duplicate_evidence": bad.conclusions[0].evidence.append("test_signal")
+			"duplicate_group": bad.conclusions.append(bad.conclusions[0].duplicate(true))
+			"missing_evidence": bad.conclusions[0].evidence = ["test_signal"]
+		var fresh := Journal.new()
+		fresh.configure(catalog)
+		_expect(not fresh.restore_progress(bad) and fresh.get_entries().is_empty() and fresh.reasoning.export_data().is_empty(), "Forged conclusions reject entire progress atomically: " + mutation)
+	var store := CheckpointStore.new("user://checkpoint_tests/reasoning_" + str(Time.get_ticks_usec()))
+	_expect(store.save_checkpoint(2, journal, HomeState.new(), catalog), "Real Store saves conclusions")
+	var loaded := store.load_checkpoint(catalog)
+	_expect(not loaded.is_empty() and loaded.journal.reasoning.export_data() == journal.reasoning.export_data(), "Disk checkpoint preserves interpretation and evidence")
+	_expect(store.clear_checkpoint(), "Reasoning test store cleaned")
 	var legacy := Journal.new()
 	legacy.configure(catalog)
-	_expect(legacy.restore_progress({"entries": [], "selected": ""}) and legacy.notebook.is_empty(), "Old checkpoint without notebook still reads")
-	var store := CheckpointStore.new("user://checkpoint_tests/paper_" + str(Time.get_ticks_usec()))
-	_expect(store.save_checkpoint(2, journal, HomeState.new(), catalog), "Personal notebook saved through real checkpoint Store")
-	var loaded := store.load_checkpoint(catalog)
-	_expect(not loaded.is_empty() and loaded.journal.notebook.export_data() == snapshot, "Disk checkpoint restores personal notes, recipes and arrows")
-	_expect(store.clear_checkpoint(), "Personal checkpoint fixture cleaned")
-	var cap := JournalNotebook.new()
-	for index in 8:
-		_expect(cap.add_note(str(index), Vector2(0.2, 0.3)) > 0, "Notes within spread capacity accepted")
-	_expect(cap.add_note("overflow", Vector2(0.2, 0.3)) < 0, "Spread capacity bounded")
+	_expect(legacy.restore_progress({"entries": [], "selected": ""}), "Old progress without conclusions still reads")
+	var archive := Journal.new()
+	archive.configure(catalog)
+	var old_notebook := {"notes": [{"id": 1, "text": "[TEST] Старый личный текст", "x": 0.2, "y": 0.4, "sheet": 0, "circled": true}], "recipes": [], "links": []}
+	var legacy_loaded := archive.restore_progress({"entries": [], "selected": "", "notebook": old_notebook})
+	var archived_notes := archive.notebook.get_notes(0)
+	_expect(legacy_loaded and archived_notes.size() == 1 and archived_notes[0].text == old_notebook.notes[0].text and is_equal_approx(archived_notes[0].x, 0.2), "DA-065 personal data retained as legacy archive without reintroducing typing UI")
+	var modern := DialogueCatalog.new()
+	modern.load_files("res://content/glossary/test_terms.json", ["res://content/dialogues/test_guest.json"])
+	var old_glossary: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://content/glossary/test_terms.json"))
+	old_glossary.erase("reasoning_groups")
+	old_glossary.erase("journal_recipes")
+	var before := DialogueCatalog.new()
+	before.load_data(old_glossary, [JSON.parse_string(FileAccess.get_file_as_string("res://content/dialogues/test_guest.json"))])
+	_expect(CheckpointCodec.new().content_hash(modern) == CheckpointCodec.new().content_hash(before), "Adding optional reasoning groups preserves previous content hash and old save compatibility")
+	var demo := DialogueCatalog.new()
+	_expect(demo.load_files("res://content/glossary/test_terms.json", ["res://content/dialogues/test_reasoning_guest.json"]), "Authored TEST conclusion dialogue is validated")
+	for option in [&"test_same_subject", &"test_different_subjects"]:
+		var knowledge := Journal.new()
+		knowledge.configure(demo)
+		var runner := DialogueRunner.new()
+		runner.configure(demo, knowledge)
+		runner.start(&"test_reasoning_guest_intro")
+		runner.choose(&"ask_more")
+		_expect(not runner.choose(&"use_same_conclusion") and not runner.choose(&"use_different_conclusion"), "Words alone do not unlock conclusion answers")
+		knowledge.choose_conclusion(&"test_terms_connection", option)
+		var choice := &"use_same_conclusion" if option == &"test_same_subject" else &"use_different_conclusion"
+		var other := &"use_different_conclusion" if option == &"test_same_subject" else &"use_same_conclusion"
+		_expect(not runner.choose(other) and runner.choose(choice), "Only selected conclusion unlocks its NPC answer")
+		_expect(runner.current_node_id == (&"test_same_response" if option == &"test_same_subject" else &"test_different_response"), "Interpretations lead to different actual dialogue branches")
+	var invalid: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://content/glossary/test_terms.json"))
+	invalid.reasoning_groups[0].terms.append("invented")
+	_expect(not DialogueCatalog.new().load_data(invalid, [JSON.parse_string(FileAccess.get_file_as_string("res://content/dialogues/test_guest.json"))]), "Invalid authored evidence reference rejected before catalog changes")
 
 
-func _double_click(point: Vector2) -> void:
-	var event := InputEventMouseButton.new()
-	event.position = point
-	event.global_position = point
-	event.button_index = MOUSE_BUTTON_LEFT
-	event.pressed = true
-	event.double_click = true
-	get_viewport().push_input(event, true)
-	await _click(point, false)
+func _circle_group(paper: JournalPaperPages, group: Dictionary, closed: bool = true) -> void:
+	var words := paper.get_word_rects(group)
+	var rect := words[0]
+	for word_rect in words:
+		rect = rect.merge(word_rect)
+	rect = rect.grow(10)
+	var origin := paper.global_position
+	var start := rect.get_center() + Vector2(rect.size.x * 0.5, 0)
+	await _click(origin + start, true)
+	for index in 41:
+		var angle := TAU * index / 40.0 * (1.0 if closed else 0.7)
+		var point := rect.get_center() + Vector2(cos(angle) * rect.size.x * 0.5, sin(angle) * rect.size.y * 0.5)
+		var event := InputEventMouseMotion.new()
+		event.position = origin + point
+		event.global_position = event.position
+		get_viewport().push_input(event, true)
+		await get_tree().process_frame
+	var last := rect.get_center() + Vector2(cos(TAU * (1.0 if closed else 0.7)) * rect.size.x * 0.5, sin(TAU * (1.0 if closed else 0.7)) * rect.size.y * 0.5)
+	await _click(origin + last, false)
 
 
 func _paper_ui() -> void:
 	JournalPanel.motion_mode = &"off"
-	_expect(not panel.has_node("%Search") and not panel.has_node("%Section") and not panel.has_node("%InkTool"), "Application filters and dropdown toolbar removed from scene")
+	for index in 4:
+		session.journal.add_term(StringName("test_cluster_%d" % index))
+	_expect(not panel.has_node("%Search") and not panel.has_node("%Section"), "Application filters stay removed")
 	var tab: Button = panel.get_node("%NotesTab")
 	await _click(tab.get_global_rect().get_center(), true)
 	await _click(tab.get_global_rect().get_center(), false)
 	await _settle()
 	var paper := panel.get_node("%PaperPages") as JournalPaperPages
-	_expect(panel.current_section == &"notes" and paper.editing_enabled and not panel.get_node("%Card").visible, "Actual paper tab opens editable note spread")
-	var position := Vector2(paper.size.x * 0.22, paper.size.y * 0.35)
-	await _double_click(paper.global_position + position)
-	var writer := paper.get_node("Writer") as TextEdit
-	_expect(writer.visible and writer.has_focus(), "Double click on paper opens writing at selected position")
-	writer.text = "[TEST] Что я заметил?\nПроверить после смены."
-	await _key(KEY_ENTER, true)
-	_expect(not writer.visible and session.journal.notebook.get_notes(0).size() == 1, "Ctrl+Enter leaves handwritten note in model")
-	var second := Vector2(paper.size.x * 0.75, paper.size.y * 0.6)
-	await _double_click(paper.global_position + second)
-	writer.text = "[TEST] Другой вопрос\nМожет быть связано?"
-	await _key(KEY_ENTER, true)
-	var notes := session.journal.notebook.get_notes(0)
-	var a := paper.global_position + paper.note_rect(notes[0]).get_center()
-	var b := paper.global_position + paper.note_rect(notes[1]).get_center()
-	var press := InputEventMouseButton.new()
-	press.position = a
-	press.global_position = a
-	press.button_index = MOUSE_BUTTON_LEFT
-	press.pressed = true
-	press.shift_pressed = true
-	get_viewport().push_input(press, true)
-	var motion := InputEventMouseMotion.new()
-	motion.position = b
-	motion.global_position = b
-	get_viewport().push_input(motion, true)
-	await _click(b, false)
-	_expect(session.journal.notebook.get_links().size() == 1, "Real Shift drag connects notes with arrow")
-	await _click(a, true)
-	motion = InputEventMouseMotion.new()
-	motion.position = a + Vector2(0, 30)
-	motion.global_position = motion.position
-	get_viewport().push_input(motion, true)
-	await _click(motion.position, false)
-	_expect(session.journal.notebook.get_notes(0)[0].y > notes[0].y, "Real drag moves note without losing its text or links")
-	a = paper.global_position + paper.note_rect(session.journal.notebook.get_notes(0)[0]).get_center()
-	await _snap("05-personal-notes")
-	await _double_click(a)
-	writer.text = "Отменённая правка"
+	_expect(panel.current_section == &"notes" and paper.editing_enabled and not paper.has_node("Writer"), "Real tab opens discovered words without any text editor")
+	var group: Dictionary = session.journal.get_reasoning_groups(0)[0]
+	_expect(session.journal.get_reasoning_groups(0).size() == 3, "Several authored word groups occupy separate areas of the spread")
+	await _circle_group(paper, group, false)
+	_expect(paper.get_pending_group() == &"", "Open curve cannot silently confirm a group")
+	await _circle_group(paper, group)
+	_expect(paper.get_pending_group() == &"test_terms_connection", "Actual closed mouse stroke selects related known words")
+	await _snap("05-conclusion-options")
+	session.open_menu()
+	_expect(not paper.choose_option(0), "Hidden journal rejects stale conclusion choice")
+	session.resume_menu()
+	await _settle()
 	await _key(KEY_ESCAPE)
-	_expect(session.mode == NarrativeSession.JOURNAL and session.journal.notebook.get_notes(0)[0].text == notes[0].text, "Escape cancels edit without closing journal or changing note")
-	_expect(panel.request_page(1) and paper.sheet == 1 and session.journal.notebook.get_notes(0).size() == 2, "Page corner turns to independent empty spread")
-	_expect(not panel.get_node("%Previous").disabled, "Previous page corner updates after committing note spread turn")
-	panel.request_page(-1)
+	_expect(paper.get_pending_group() == &"" and session.mode == NarrativeSession.JOURNAL, "Escape after menu cancels pending interpretation before closing book")
+	await _circle_group(paper, group)
+	var choice := paper.global_position + paper.get_option_rect(1).get_center()
+	await _click(choice, true)
+	await _click(choice, false)
+	_expect(session.journal.has_conclusion(&"test_different_subjects"), "Actual click writes chosen interpretation without free text")
+	_expect(not paper.choose_option(0), "Stale option cannot replace committed conclusion")
+	await _snap("06-recorded-conclusion")
 	tab = panel.get_node("%RecipesTab")
 	await _click(tab.get_global_rect().get_center(), true)
 	await _click(tab.get_global_rect().get_center(), false)
 	await _settle()
-	_expect(panel.current_section == &"recipes" and paper.section == &"recipes", "Recipe tab opens personal recipe pages")
-	await _double_click(paper.global_position + Vector2(paper.size.x * 0.75, 140))
-	writer.text = "[TEST] Первая проба\n\nСостав\n20 мл плотного компонента\n20 мл лёгкого компонента\n\nКак готовил\nМягко налить второй по ложке.\n\nВ следующий раз\nСравнить с перемешанным вариантом."
-	await _key(KEY_ENTER, true)
-	_expect(session.journal.notebook.get_recipes().size() == 1, "Recipe page stores player's own proportions and method")
-	await _snap("06-personal-recipe")
-	_expect(not panel.get_node("%Next").disabled, "Long recipe exposes next page corner without a scrollbar")
-	_expect(panel.request_page(1) and paper.recipe_page == 1, "Long recipe continues on next paper page")
-	panel.request_page(-1)
-	await _double_click(paper.global_position + Vector2(paper.size.x * 0.75, 140))
-	writer.text = "x".repeat(4001)
-	_expect(not paper.finish_edit() and writer.visible and not panel.select_section(&"notes") and not panel.begin_close(), "Oversized draft stays editable and blocks navigation/close rather than losing text")
-	paper.finish_edit(true)
-	var snapshot := session.journal.notebook.export_data()
-	session.open_menu()
-	_expect(not paper.editing_enabled, "Hidden journal cannot edit personal pages")
-	session.resume_menu()
-	await _settle()
+	_expect(panel.current_section == &"recipes" and not session.journal.get_journal_recipes().is_empty() and paper.get_child_count() == 0, "Recipes are authored read-only pages without typing or adding")
+	await _snap("07-readonly-recipe")
 	session.close_journal()
 	session.open_journal()
 	await _settle()
-	_expect(session.journal.notebook.export_data() == snapshot and session.shift.remaining == 2, "Reopen keeps personal pages without time cost")
+	_expect(session.journal.has_conclusion(&"test_different_subjects") and session.shift.remaining == 2, "Reopen preserves conclusion without costing shift time")
+	panel.select_section(&"notes")
+	await _settle()
+	JournalPanel.motion_mode = &"full"
+	panel.request_page(1)
+	await get_tree().create_timer(0.16).timeout
+	_expect(panel.is_transitioning() and panel.get_node("%Leaf").turn_amount > 0, "Curved paper leaf animates before committing page")
+	if DisplayServer.get_name() != "headless":
+		_expect(panel.get_node("%Leaf").turn_texture != null, "GPU turn carries real page ink snapshot")
+	await _snap("08-curved-page")
+	session.open_menu()
+	var paused: float = panel.get_node("%Leaf").turn_amount
+	await get_tree().create_timer(0.1).timeout
+	_expect(is_equal_approx(paused, panel.get_node("%Leaf").turn_amount), "New curved animation pauses in menu")
+	session.resume_menu()
+	await _settle()
+	_expect(paper.sheet == 1, "Page turn commits once after resume")
+	panel.request_page(-1)
+	await _settle()
 	panel.select_section(&"words")
 	await _settle()

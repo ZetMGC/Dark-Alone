@@ -1,5 +1,7 @@
 # Диалоги и термины: формат v1
 
+DA-066: добавлены опциональные glossary.reasoning_groups/journal_recipes и choice.required_conclusions. Опоры/ID вариантов проверяются каталогом, Runner проверяет выбранную интерпретацию отдельно от required_terms. Формат/ограничения/TEST-пример — [JOURNAL_REASONING](JOURNAL_REASONING.md). Правильность в UI не объявляется, две версии могут вести к разным узлам. Основной intro не менялся; отдельный test_reasoning_guest_intro демонстрирует варианты без утверждения сюжета.
+
 Статус: формат, загрузка и проверка реализованы в DA-020; исполнение, получение терминов и UI — в DA-021. Решение формата: [ADR-0003](decisions/0003-dialogue-content.md). Работа в игре описана в [DIALOGUE_RUNTIME](DIALOGUE_RUNTIME.md).
 
 ## Начало работы для автора

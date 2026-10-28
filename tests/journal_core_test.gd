@@ -124,21 +124,16 @@ func _test_shifts_and_ui() -> void:
 		panel.select_section(&"notes")
 		await process_frame
 		var paper := panel.get_node("%PaperPages") as JournalPaperPages
-		paper.begin_edit(-1, Vector2(180, 160))
-		for code: Key in [KEY_J, KEY_T, KEY_B]:
-			var event := InputEventKey.new()
-			event.physical_keycode = code
-			event.keycode = code
-			event.unicode = code + 32
-			event.pressed = true
-			root.push_input(event)
-		_expect(session.mode == NarrativeSession.JOURNAL and paper.get_node("Writer").text == "jtb", "Typing a personal note cannot trigger game shortcuts")
-		paper.finish_edit()
+		_expect(not paper.has_node("Writer") and paper.get_child_count() == 0, "Notes have no free text editor")
+		_expect(paper.journal == session.journal, "Notes derive words from actual shared knowledge")
 		panel.select_section(&"words")
+		if number == 2:
+			_expect(session.journal.choose_conclusion(&"test_terms_connection", &"test_different_subjects"), "Second shift can commit a conclusion after acquiring enough words")
 		_expect(session.shift.remaining == 2 and session.runner.current_node_id == &"goodbye", "Paper writing/bookmarks preserve time and dialogue")
 		session.set_journal_reading_position(session.journal.selected_term_id, 5)
 		session.close_journal()
 		var personal_snapshot := session.journal.notebook.export_data()
+		var conclusions_snapshot := session.journal.reasoning.export_data()
 		session.finish_for_node(&"test_guest_intro", &"goodbye")
 		main.open_service_menu()
 		session.serve_drink(&"test_water")
@@ -153,6 +148,7 @@ func _test_shifts_and_ui() -> void:
 		main = current_scene
 		var next := main.get_node("NarrativeSession") as NarrativeSession
 		_expect(next.journal.notebook.export_data() == personal_snapshot, "Personal writing survives actual next-shift scene reload")
+		_expect(next.journal.reasoning.export_data() == conclusions_snapshot, "Chosen interpretation survives actual next-shift scene reload")
 		_expect(next.journal == remembered and next.shift_number == number + 1 and next.journal.get_entries().size() == number and next.journal.get_entry(next.journal.selected_term_id).reading_offset == 5, "Ordinary shift retains exact journal and reading offset, bumps shift and keeps terms")
 		_expect(next.shift.remaining == 2 and not next.service.served and not has_meta(&"dark_alone_journal_handoff"), "Transient models reset and handoff consumed")
 	var final_session := main.get_node("NarrativeSession") as NarrativeSession

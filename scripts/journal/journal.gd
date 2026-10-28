@@ -21,6 +21,8 @@ var _annotations: Dictionary = {}
 var _ink_undo: Dictionary = {}
 var _ink_redo: Dictionary = {}
 var notebook := JournalNotebook.new()
+var reasoning := JournalReasoning.new()
+var _recipe_definitions: Array = []
 const MAX_ANNOTATIONS := 64
 const MAX_INK_HISTORY := 32
 
@@ -120,6 +122,8 @@ func configure(catalog: DialogueCatalog) -> bool:
 		return false
 	for id in catalog.get_term_ids():
 		_definitions[id] = catalog.get_term(StringName(id))
+	reasoning.configure(catalog.get_reasoning_groups())
+	_recipe_definitions = catalog.get_journal_recipes()
 	_configured = true
 	return true
 
@@ -134,7 +138,40 @@ func matches_catalog(catalog: DialogueCatalog) -> bool:
 	for id in catalog.get_term_ids():
 		if not _definitions.has(id) or _definitions[id] != catalog.get_term(StringName(id)):
 			return false
-	return true
+	return reasoning.get_definitions() == catalog.get_reasoning_groups() and _recipe_definitions == catalog.get_journal_recipes()
+
+
+func choose_conclusion(group_id: StringName, option_id: StringName, evidence: PackedStringArray = []) -> bool:
+	var allowed := PackedStringArray()
+	for group in reasoning.get_definitions():
+		if group.id == str(group_id):
+			allowed = PackedStringArray(group.terms)
+	var seen := PackedStringArray()
+	for id in evidence:
+		if not has_term(StringName(id)) or id not in allowed or id in seen:
+			return false
+		seen.append(id)
+	return reasoning.choose(group_id, option_id, get_known_term_ids() if evidence.is_empty() else evidence)
+
+
+func has_conclusion(option_id: StringName) -> bool:
+	return reasoning.has_conclusion(option_id)
+
+
+func get_reasoning_groups(sheet: int) -> Array:
+	return reasoning.get_groups(get_known_term_ids(), sheet)
+
+
+func get_journal_recipes() -> Array:
+	var result: Array = []
+	for recipe in _recipe_definitions:
+		var available := true
+		for id in recipe.required_terms:
+			if not has_term(StringName(id)):
+				available = false
+		if available:
+			result.append(recipe.duplicate(true))
+	return result
 
 
 func add_term(term_id: StringName, source: Dictionary = {}) -> bool:
@@ -264,6 +301,8 @@ func export_progress() -> Dictionary:
 		progress["annotations"] = marks
 	if not notebook.is_empty():
 		progress["notebook"] = notebook.export_data()
+	if not reasoning.export_data().is_empty():
+		progress["conclusions"] = reasoning.export_data()
 	return progress
 
 
@@ -271,7 +310,7 @@ func restore_progress(data: Dictionary) -> bool:
 	if not _configured or _mutating or not _known.is_empty() or not notebook.is_empty() or not data.get("entries") is Array or not data.get("selected") is String:
 		return false
 	for key in data:
-		if key not in ["entries", "selected", "annotations", "notebook"]:
+		if key not in ["entries", "selected", "annotations", "notebook", "conclusions"]:
 			return false
 	var personal := JournalNotebook.new()
 	if data.has("notebook") and (not data.notebook is Dictionary or not personal.restore_data(data.notebook)):
@@ -299,11 +338,16 @@ func restore_progress(data: Dictionary) -> bool:
 	var ink := _restore_ink(data.get("annotations", {}), known)
 	if not ink.valid:
 		return false
+	var deductions := JournalReasoning.new()
+	deductions.configure(reasoning.get_definitions())
+	if not deductions.restore_data(data.get("conclusions", []), order):
+		return false
 	_known = known
 	_order = order
 	_selected = StringName(data.selected)
 	_annotations = ink.marks
 	notebook = personal
+	reasoning = deductions
 	return true
 
 

@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-066 заменяет игровое письмо DA-065: [JOURNAL_REASONING](JOURNAL_REASONING.md), ADR-0029. Новые Catalog getters, Journal.choose_conclusion/has_conclusion/get_reasoning_groups/get_journal_recipes, JournalReasoning и optional conclusions в progress; choice.required_conclusions/missing_conclusions в Runner. PaperPages.bind теперь принимает Journal; редактор удалён, choose_option проверяет видимость/порог/контекст, finish_edit — no-op совместимости. Notebook читается архивом. Потребители: Catalog/Validator/Journal/Runner/оба dialogue UI/Session/Panel/PaperPages/BookArt, профильные тесты. Верхние checkpoint/Session-сигналы прежние, источниковые определения не переписываются выбором.
+
 DA-065: [личные страницы/изменённые UI-контракты](PERSONAL_JOURNAL.md), [ADR-0028](decisions/0028-personal-paper-journal.md). Journal.notebook и опциональный notebook в progress; старые сохранения читаются. Поиск/фильтры/InkTool удалены из сцены, select_section/set_ink_tool заменяют управление. Сигналы Session/семантические пометки/граница checkpoint прежние. Потребители перечислены по ссылкам.
 
 DA-063 объединяет действующие [барные контракты](parallel/bar/CONTRACTS.md) с домашними/дневниковыми ниже. DA-060 и WORKBENCH-01–04 включают одновременное обслуживание/речь, независимые составы и технологию смешивания. [ADR-0026](decisions/0026-bar-home-journal-integration.md) фиксирует совместимость и общие профили; checkpoint/preferences/Home API не меняются барной интеграцией.
