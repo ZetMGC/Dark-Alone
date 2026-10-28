@@ -240,6 +240,8 @@ func _test_format_and_long(main: Node, rig: FreeRoamCamera) -> void:
 	await get_tree().process_frame
 	_expect(bubble.selected_index == 0 and bubble.get_node("%VoiceChoices").get_child_count() == 8 and not bubble.submit_choice(0), "Locked answer hidden, visible indices start at zero before final speech page")
 	_expect(bubble.get_page_count() > 1 and bubble.get_page_index() == 0, "Long speech creates sequential bubbles")
+	bubble._process(20)
+	_expect(bubble.get_node("%VoiceBubble").visible and bubble.get_node("%VoiceBubble").modulate.a == 1, "Earlier pages do not disappear before advancing")
 	_expect(not bubble.select_relative(-1) and not bubble.can_answer(), "Earlier bubble cannot select answers")
 	await _snap("05-first-page")
 	var held_page := bubble.get_page_index()
@@ -323,7 +325,23 @@ func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
 			break
 	await get_tree().process_frame
 	_expect(bubble.get_node("%VoiceChoices").get_child_count() == 1 and bubble.selected_index == 0, "Only available fallback shown as first response")
-	_expect(bubble.get_node("%VoiceChoices").get_child(0).text.contains("1. Не буду"), "Visible numbers have no gaps from hidden deductions")
+	_expect(bubble.get_node("%VoiceChoices").get_child(0).text.contains("Не буду"), "Visible numbers have no gaps from hidden deductions")
+	await _snap("06a-single-compact")
+	_expect(bubble.get_node("%VoiceReplies").size.y < 58, "Single reply panel has no reserved empty row")
+	_expect(bubble.get_node("%VoiceReplies").size.x < 600, "Single reply width follows text")
+	var row = bubble.get_node("%VoiceChoices").get_child(0)
+	_expect(row.key_label.text == "[E]" and not row.body.text.begins_with("1."), "Single choice has separate E column without redundant number")
+	bubble._process(bubble.speech_hold_seconds + 0.3)
+	_expect(bubble.get_node("%VoiceBubble").modulate.a > 0 and bubble.get_node("%VoiceBubble").modulate.a < 1, "Finished speech fades gradually")
+	var alpha: float = bubble.get_node("%VoiceBubble").modulate.a
+	bubble._window_focused = false
+	bubble._process(20)
+	_expect(is_equal_approx(bubble.get_node("%VoiceBubble").modulate.a, alpha), "Focus loss pauses speech fade")
+	bubble._window_focused = true
+	bubble._process(bubble.speech_fade_seconds + 0.1)
+	_expect(not bubble.get_node("%VoiceBubble").visible and bubble.get_node("%VoiceReplies").visible and bubble.can_answer(), "Speech disappears while answers stay available")
+	await _snap("06b-faded-speech-with-replies")
+
 	journal.choose_conclusion(&"test_memories", &"test_cinema")
 	journal.choose_conclusion(&"test_arsenal", &"test_props")
 	bubble.render(runner, journal)
@@ -344,6 +362,7 @@ func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
 	bubble.render(runner, journal)
 	bubble.reveal_text()
 	await get_tree().process_frame
+	_expect(bubble.get_node("%VoiceBubble").visible and bubble.get_node("%VoiceBubble").modulate.a > 0.95, "New speech resets fade")
 	_expect(not bubble.get_node("%VoiceReplies").visible and bubble.get_node("%VoiceChoices").get_child_count() == 0, "Terminal speech never leaves empty reply card")
 	_expect(bubble.get_node("%VoiceHint").text.contains("E — закончить"), "Finish hint stays outside hidden answer card")
 	await _snap("07-terminal-no-card")

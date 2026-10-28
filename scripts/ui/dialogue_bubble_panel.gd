@@ -8,6 +8,10 @@ var _response_input_enabled: bool = true
 var _service_overlay: bool = false
 var _workbench_overlay: bool = false
 @export var characters_per_second: float = 38.0
+@export var speech_hold_seconds: float = 3.0
+@export var speech_fade_seconds: float = 1.2
+var _speech_idle: float = 0.0
+var _speech_alpha: float = 1.0
 var looking_at_speaker: bool = false
 var edge_mode: bool = false
 var selected_index: int = -1
@@ -88,13 +92,9 @@ func _rebuild_choices(_journal: Journal) -> void:
 		child.queue_free()
 	for index in _choices_data.size():
 		var choice: Dictionary = _choices_data[index]
-		var label := Label.new()
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.text = "%d. %s" % [index + 1, choice.text]
-		label.add_theme_font_override("font", %VoiceText.get_theme_font("normal_font"))
-		label.add_theme_font_size_override("font_size", 18)
-		%VoiceChoices.add_child(label)
+		var row = preload("res://scripts/ui/reply_choice_row.gd").new()
+		%VoiceChoices.add_child(row)
+		row.set_choice(str(choice.text), index, _choices_data.size(), index == selected_index, %VoiceText.get_theme_font("normal_font"))
 	_refresh_selection()
 
 
@@ -137,6 +137,9 @@ func is_speech_complete() -> bool:
 
 
 func _show_page() -> void:
+	_speech_idle = 0
+	_speech_alpha = 1
+	%VoiceBubble.modulate.a = 1
 	if _pages[_page_index].literal:
 		%VoiceText.clear()
 		%VoiceText.add_text(_pages[_page_index].text)
@@ -210,9 +213,7 @@ func confirm() -> bool:
 
 func _refresh_selection() -> void:
 	for index in %VoiceChoices.get_child_count():
-		var label := %VoiceChoices.get_child(index) as Label
-		label.modulate = Color(0.88, 0.87, 0.79) if index == selected_index else Color(0.63, 0.66, 0.64)
-		label.text = ("› [E] " if index == selected_index else "  ") + label.text.trim_prefix("› ").trim_prefix("  ").trim_prefix("[E] ")
+		%VoiceChoices.get_child(index).set_selected(index == selected_index)
 
 
 func _process(delta: float) -> void:
@@ -221,6 +222,10 @@ func _process(delta: float) -> void:
 	if _window_focused and not is_line_complete():
 		_typed = minf(_length, _typed + maxf(characters_per_second, 1.0) * delta)
 		%VoiceText.visible_characters = int(_typed)
+	if _window_focused and is_speech_complete():
+		_speech_idle += delta
+		_speech_alpha = 1.0 - clampf((_speech_idle - speech_hold_seconds) / maxf(speech_fade_seconds, 0.01), 0, 1)
+	%VoiceBubble.modulate.a = _speech_alpha
 	_update_layout()
 	if _position_ready and _window_focused:
 		%VoiceBubble.position = %VoiceBubble.position.lerp(_position_target, 1.0 - exp(-minf(delta, 0.05) / 0.16))
@@ -241,7 +246,7 @@ func _update_layout() -> void:
 		%VoiceBubble.hide()
 		%VoiceReplies.hide()
 		return
-	%VoiceBubble.show()
+	%VoiceBubble.visible = _speech_alpha > 0
 	var head := _speaker.global_position + Vector3.UP * 0.36
 	var face := _speaker.global_position + Vector3.UP * 0.06
 	var area := screen.size
@@ -279,11 +284,10 @@ func _update_layout() -> void:
 		%VoiceDirection.text = "Голос за преградой · посмотрите на говорящего"
 	%VoiceTail.visible = not edge_mode
 	%VoiceReplies.visible = can_answer() and not _terminal and not _choices_data.is_empty()
-	var reply_width := minf(680, area.x - 48)
-	%VoiceReplies.offset_left = -reply_width * 0.5
-	%VoiceReplies.offset_right = reply_width * 0.5
-	var reply_height := clampf(%VoiceChoices.get_combined_minimum_size().y + 44, 70, minf(220, area.y * 0.32))
-	%VoiceReplies.offset_top = -60 - reply_height
+	var reply_rect := preload("res://scripts/ui/reply_panel_layout.gd").rect(%VoiceChoices, area)
+	%VoiceReplies.offset_left = -reply_rect.size.x * 0.5
+	%VoiceReplies.offset_right = reply_rect.size.x * 0.5
+	%VoiceReplies.offset_top = -60 - reply_rect.size.y
 	%VoiceReplies.offset_bottom = -60
 	if %VoiceReplies.visible and selected_index >= 0 and selected_index < %VoiceChoices.get_child_count():
 		(%VoiceChoices.get_parent() as ScrollContainer).ensure_control_visible(%VoiceChoices.get_child(selected_index))

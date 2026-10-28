@@ -96,21 +96,14 @@ func _update_actions(area: Vector2) -> void:
 		choices.remove_child(last)
 		last.queue_free()
 	while choices.get_child_count() < actions.size():
-		var row := Label.new()
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_theme_font_size_override("font_size", 17)
+		var row = preload("res://scripts/ui/reply_choice_row.gd").new()
 		choices.add_child(row)
 	for index in actions.size():
-		var row := choices.get_child(index) as Label
-		var binding := "[E]" if actions.size() == 1 else ("[%d]" % [index + 1] + ("  [E]" if index == selected else ""))
-		row.text = ("› " if index == selected else "  ") + binding + "  " + str(actions[index].text)
-		row.modulate = Color(0.88, 0.87, 0.79) if index == selected else Color(0.63, 0.66, 0.64)
+		choices.get_child(index).set_choice(str(actions[index].text), index, actions.size(), index == selected, null, 17)
 	action_panel.visible = not actions.is_empty()
-	var reply_width := minf(680, area.x - 48)
-	var reply_height := clampf(choices.get_combined_minimum_size().y + 44, 70, minf(220, area.y * 0.32))
-	action_panel.size = Vector2(reply_width, reply_height)
-	action_panel.position = Vector2((area.x - reply_width) * 0.5, area.y - 60 - reply_height)
+	var reply_rect := preload("res://scripts/ui/reply_panel_layout.gd").rect(choices, area)
+	action_panel.size = reply_rect.size
+	action_panel.position = reply_rect.position
 
 
 func clear_context() -> void:

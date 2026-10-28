@@ -100,6 +100,7 @@ theme_override_constants/separation = 8
 
 [node name="VoiceReplyHelp" type="Label" parent="Screen/VoiceReplies/Content"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 mouse_filter = 2
 autowrap_mode = 3
