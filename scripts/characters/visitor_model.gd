@@ -242,6 +242,16 @@ func _place_support_hand(weight: float = 1.0) -> void:
 	var forearm: int = _bones.ForearmR
 	skeleton.set_bone_pose_position(forearm, skeleton.get_bone_rest(forearm).origin)
 	skeleton.force_update_all_bone_transforms()
+	# Ладонь лежит на поверхности: её плоскость не наследует крен плеч/рукава.
+	# Небольшой разворот наружу разносит пальцы и корпус в силуэте.
+	var palm_forward := Vector3(0.12, 0, 1).normalized()
+	var palm_right := Vector3.UP.cross(palm_forward).normalized()
+	var palm_world := global_basis.orthonormalized() * Basis(palm_right, Vector3.UP, palm_forward)
+	var parent_world_basis := (skeleton.global_basis * skeleton.get_bone_global_pose(forearm).basis).orthonormalized()
+	var flat_hand := (parent_world_basis.inverse() * palm_world * (_hand_frames.HandR as Basis).inverse()).get_rotation_quaternion()
+	var hand_index: int = _bones.HandR
+	skeleton.set_bone_pose_rotation(hand_index, skeleton.get_bone_pose_rotation(hand_index).slerp(flat_hand, weight))
+	skeleton.force_update_all_bone_transforms()
 	var hand_world := skeleton.global_transform * skeleton.get_bone_global_pose(_bones.HandR)
 	var bottom := INF
 	for point in _support_points:
@@ -424,9 +434,9 @@ func _build_arm(side: int) -> void:
 		_ring(shoulder.lerp(elbow, 0.72), 0.072, 0.070, upper, forearm, 0.1, 0.43),
 		_ring(elbow, 0.074, 0.075, upper, forearm, 0.5, 0.53),
 		_ring(elbow.lerp(hand, 0.20), 0.073, 0.067, upper, forearm, 0.95, 0.63),
-		_ring(elbow.lerp(hand, 0.55), 0.064, 0.061, forearm, "", 0, 0.77),
-		_ring(elbow.lerp(hand, 0.91), 0.050, 0.047, forearm, wrist, 0.05, 0.94),
-		_ring(hand, 0.051, 0.045, forearm, wrist, 0.15, 1.0)]
+		_ring(elbow.lerp(hand, 0.55), 0.058 if side > 0 else 0.064, 0.049 if side > 0 else 0.061, forearm, "", 0, 0.77),
+		_ring(elbow.lerp(hand, 0.91), 0.041 if side > 0 else 0.050, 0.028 if side > 0 else 0.047, forearm, wrist, 0.05, 0.94),
+		_ring(hand, 0.039 if side > 0 else 0.051, 0.025 if side > 0 else 0.045, forearm, wrist, 0.15, 1.0)]
 	_loft("Clothing", _cloth_material, sleeve, 12, Rect2(0.008, 0.508, 0.484, 0.484))
 	# Запястье заходит внутрь манжеты, чтобы при жесте не открывалась щель.
 	var palm := [_ring(hand + Vector3(0, 0, -0.035), 0.031, 0.017, wrist, "", 0, 0), _ring(hand, 0.033, 0.017, wrist, "", 0, 0.15), _ring(hand + Vector3(0, -0.009, 0.039), 0.038, 0.018, wrist, "", 0, 0.4), _ring(hand + Vector3(0, -0.015, 0.076), 0.034, 0.014, wrist, "", 0, 1)]

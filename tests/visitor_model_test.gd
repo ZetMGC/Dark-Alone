@@ -160,15 +160,19 @@ func _run() -> void:
 	var forearm_left := model.skeleton.find_bone("ForearmL")
 	var resting_arm := model.skeleton.get_bone_pose_rotation(forearm_left)
 	var contact_valid := true
+	var palm_flat := true
 	var arm_range := 0.0
 	var head_range := 0.0
 	var resting_head := model.skeleton.get_bone_pose_rotation(2)
 	for frame in 420:
 		model._pose(1.0 / 60.0)
 		contact_valid = contact_valid and absf(_support_bottom(model) - 1.163) < 0.001
+		var palm_basis: Basis = model.skeleton.global_basis * model.skeleton.get_bone_global_pose(model.skeleton.find_bone("HandR")).basis * model._hand_frames.HandR
+		palm_flat = palm_flat and palm_basis.y.normalized().dot(Vector3.UP) > 0.999
 		arm_range = maxf(arm_range, resting_arm.angle_to(model.skeleton.get_bone_pose_rotation(forearm_left)))
 		head_range = maxf(head_range, resting_head.angle_to(model.skeleton.get_bone_pose_rotation(2)))
 	_expect(contact_valid, "Entire support hand stays above tabletop across all three gestures")
+	_expect(palm_flat, "Support palm stays flat instead of inheriting sleeve and shoulder tilt")
 	_expect(arm_range > 0.20 and head_range > 0.05, "Conversation moves free arm and head through distinct poses")
 	var panel: DialogueBubblePanel = main.get_node("DialoguePanel")
 	panel.bubble_enabled = true

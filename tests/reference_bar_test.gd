@@ -65,6 +65,8 @@ func run() -> void:
 	await capture(main, Vector3(2.65, 1.7, 1.6), Vector3(-2.8, 1.1, -0.5), "hall")
 	await capture(main, Vector3(0.6, 1.6, 1.6), Vector3(2.1, 1.1, -1.4), "passage")
 	await capture(main, Vector3(-2.3, 1.35, 0.2), Vector3(-3.4, 0.65, -1.9), "seating")
+	await capture(main, Vector3(-0.2, 1.65, -2.0), Vector3(-0.2, 1.43, -0.45), "support_front")
+	await capture(main, Vector3(-1.2, 1.5, -1.8), Vector3(-0.2, 1.32, -0.65), "support_side")
 	level.get_node("Geometry/Ceiling").hide()
 	await capture(main, Vector3(0, 13, 0.01), Vector3.ZERO, "plan", true)
 	behavior.request_departure()
@@ -81,6 +83,8 @@ func capture(main: Node, pos: Vector3, target: Vector3, label: String, plan: boo
 	if DisplayServer.get_name() == "headless":
 		return
 	var camera := Camera3D.new()
+	if label.begins_with("support_"):
+		camera.fov = 42
 	main.add_child(camera)
 	camera.position = pos
 	camera.look_at(target)
