@@ -95,6 +95,8 @@ func _rebuild_choices(_journal: Journal) -> void:
 		var row = preload("res://scripts/ui/reply_choice_row.gd").new()
 		%VoiceChoices.add_child(row)
 		row.set_choice(str(choice.text), index, _choices_data.size(), index == selected_index, %VoiceText.get_theme_font("normal_font"))
+		row.hovered.connect(_hover_choice.bind(index))
+		row.activated.connect(func() -> void: submit_choice(index))
 	_refresh_selection()
 
 
@@ -103,6 +105,8 @@ func set_open(value: bool) -> void:
 		super.set_open(value)
 		return
 	screen.visible = value
+	if not value:
+		_set_reply_pointer(false)
 	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$Screen/Card.hide()
 	$Screen/Shade.hide()
@@ -237,6 +241,7 @@ func _update_layout() -> void:
 	if _runner == null or not _runner.active:
 		%VoiceBubble.hide()
 		%VoiceReplies.hide()
+		_set_reply_pointer(false)
 		%VoiceHint.hide()
 		_position_ready = false
 		_edge_side = 0
@@ -245,6 +250,7 @@ func _update_layout() -> void:
 		looking_at_speaker = false
 		%VoiceBubble.hide()
 		%VoiceReplies.hide()
+		_set_reply_pointer(false)
 		return
 	%VoiceBubble.visible = _speech_alpha > 0
 	var head := _speaker.global_position + Vector3.UP * 0.36
@@ -288,6 +294,7 @@ func _update_layout() -> void:
 		%VoiceDirection.text = "Голос за преградой · посмотрите на говорящего"
 	%VoiceTail.visible = not edge_mode
 	%VoiceReplies.visible = can_answer() and not _terminal and not _choices_data.is_empty()
+	_set_reply_pointer(%VoiceReplies.visible)
 	var reply_rect := preload("res://scripts/ui/reply_panel_layout.gd").rect(%VoiceChoices, area)
 	%VoiceReplies.offset_left = -reply_rect.size.x * 0.5
 	%VoiceReplies.offset_right = reply_rect.size.x * 0.5
@@ -295,7 +302,7 @@ func _update_layout() -> void:
 	%VoiceReplies.offset_bottom = -60
 	if %VoiceReplies.visible and selected_index >= 0 and selected_index < %VoiceChoices.get_child_count():
 		(%VoiceChoices.get_parent() as ScrollContainer).ensure_control_visible(%VoiceChoices.get_child(selected_index))
-	%VoiceReplyHelp.text = "E — закончить разговор" if _terminal else "1–9 — ответить · Колесо — выбор · E — подтвердить"
+	%VoiceReplyHelp.text = "E — закончить разговор" if _terminal else "E — подтвердить"
 	%VoiceHint.text = "E — показать реплику целиком · J — дневник · Esc — меню" if not is_line_complete() else ("Посмотрите на говорящего, чтобы ответить" if not looking_at_speaker else "J — дневник · Esc — меню · Backspace — прервать")
 	if is_line_complete() and not is_speech_complete():
 		%VoiceHint.text = "E — следующий пузырёк · J — дневник · Esc — меню"
@@ -315,9 +322,11 @@ func _update_layout() -> void:
 func _input(event: InputEvent) -> void:
 	if not _response_input_enabled or not bubble_enabled or not screen.visible or not _window_focused or event.is_echo():
 		return
-	if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-		select_relative(-1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1)
-		get_viewport().set_input_as_handled()
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			confirm()
+			get_viewport().set_input_as_handled()
+		return
 	elif event is InputEventKey and event.pressed:
 		var key: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
 		if key == KEY_E:
@@ -327,8 +336,6 @@ func _input(event: InputEvent) -> void:
 			if is_instance_valid(target) and not target is DialogueTrigger and target.is_available():
 				return
 			confirm()
-		elif key >= KEY_1 and key <= KEY_9:
-			submit_choice(key - KEY_1)
 		elif key == KEY_BACKSPACE:
 			cancel_requested.emit()
 		else:
@@ -341,3 +348,12 @@ func _notification(what: int) -> void:
 		_window_focused = false
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		_window_focused = true
+
+func _hover_choice(index: int) -> void:
+	if can_answer() and index >= 0 and index < _choices_data.size():
+		selected_index = index
+		_refresh_selection()
+
+func _set_reply_pointer(value: bool) -> void:
+	if is_instance_valid(_camera) and _camera.get_parent() is FreeRoamCamera:
+		(_camera.get_parent() as FreeRoamCamera).set_dialogue_pointer(value)

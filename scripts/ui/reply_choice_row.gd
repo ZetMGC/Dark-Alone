@@ -1,12 +1,16 @@
 extends HBoxContainer
 ## Клавиша и реплика имеют отдельные колонки и общую базовую линию.
+signal hovered
+signal activated
+
 var key_label := Label.new()
 var body := Label.new()
 var text: String:
 	get: return key_label.text + " " + body.text
 
 func _init() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_entered.connect(func() -> void: hovered.emit())
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation", 8)
 	key_label.custom_minimum_size.x = 34
@@ -20,7 +24,7 @@ func _init() -> void:
 	add_child(body)
 
 func set_choice(caption: String, index: int, count: int, chosen: bool, font: Font = null, font_size: int = 18) -> void:
-	body.text = caption if count == 1 else "%d. %s" % [index + 1, caption]
+	body.text = caption
 	for label in [key_label, body]:
 		label.add_theme_font_size_override("font_size", font_size)
 		if font != null:
@@ -33,3 +37,8 @@ func set_selected(chosen: bool) -> void:
 
 func natural_width() -> float:
 	return body.get_theme_font("font").get_string_size(body.text, HORIZONTAL_ALIGNMENT_LEFT, -1, body.get_theme_font_size("font_size")).x + 42
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		activated.emit()
+		accept_event()

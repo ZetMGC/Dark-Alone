@@ -65,11 +65,15 @@ func run() -> void:
 	bubble.refresh_context()
 	expect(bubble.text_label.text.contains("Открыто"), "Action feedback stays by object")
 	expect(bubble.actions.size() == 2, "Only target actions listed")
-	expect(bubble.handle_input(key(KEY_2)) and target.calls == 2, "Number activates corresponding action")
+	expect(not bubble.handle_input(key(KEY_2)) and target.calls == 0, "Digit cannot activate action")
+	bubble.choices.get_child(1).activated.emit()
+	expect(target.calls == 2, "Click activates corresponding action")
 	var wheel := InputEventMouseButton.new()
 	wheel.pressed = true
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
-	expect(bubble.handle_input(wheel) and bubble.selected == 1, "Wheel chooses next action")
+	expect(not bubble.handle_input(wheel), "Wheel is not required to select action")
+	bubble.choices.get_child(1).hovered.emit()
+	expect(bubble.selected == 1, "Hover chooses next action")
 	expect(not bubble.handle_input(key(KEY_F)) and target.calls == 2, "Old F binding does not execute actions")
 	expect(bubble.handle_input(key(KEY_E)) and target.calls == 4, "E confirms selected action")
 	controller.selected = null

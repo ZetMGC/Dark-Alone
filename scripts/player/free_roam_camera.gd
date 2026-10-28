@@ -15,6 +15,12 @@ var focus_active: bool = false
 var _return_basis: Basis
 var _nearby: PackedStringArray = []
 var _dialogue_look: bool = false
+var dialogue_pointer: bool = false
+
+func set_dialogue_pointer(value: bool) -> void:
+	if dialogue_pointer != value:
+		dialogue_pointer = value
+		_update_capture()
 
 
 func set_dialogue_look(enabled: bool) -> void:
@@ -118,7 +124,7 @@ func set_controls_enabled(enabled: bool) -> void:
 
 
 func _update_capture() -> void:
-	if ((_controls_enabled and not focus_active) or _dialogue_look) and not is_transitioning and _window_focused and view.current and DisplayServer.get_name() != "headless":
+	if not dialogue_pointer and ((_controls_enabled and not focus_active) or _dialogue_look) and not is_transitioning and _window_focused and view.current and DisplayServer.get_name() != "headless":
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	else:

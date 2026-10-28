@@ -97,6 +97,9 @@ func _update_actions(area: Vector2) -> void:
 		last.queue_free()
 	while choices.get_child_count() < actions.size():
 		var row = preload("res://scripts/ui/reply_choice_row.gd").new()
+		var index := choices.get_child_count()
+		row.hovered.connect(func() -> void: selected = index)
+		row.activated.connect(func() -> void: _activate_choice(index))
 		choices.add_child(row)
 	for index in actions.size():
 		choices.get_child(index).set_choice(str(actions[index].text), index, actions.size(), index == selected, null, 17)
@@ -121,15 +124,16 @@ func handle_input(event: InputEvent) -> bool:
 	if not is_instance_valid(target) or interaction.get_target() != target or not target.is_available():
 		clear_context()
 		return false
-	if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-		selected = posmod(selected + (-1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1), actions.size())
-		return true
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		return _activate_choice(selected) if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else false
 	if event is InputEventKey and event.pressed:
 		var key: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
-		var index := selected if key == KEY_E else int(key - KEY_1)
-		if key != KEY_E and (key < KEY_1 or key > KEY_9):
-			return false
-		if index < 0 or index >= actions.size():
-			return false
-		return target.activate_context_action(StringName(actions[index].id))
+		if key == KEY_E:
+			return _activate_choice(selected)
 	return false
+
+func _activate_choice(index: int) -> bool:
+	if not enabled or not is_visible_in_tree() or not is_instance_valid(target) or interaction.get_target() != target or not target.is_available() or index < 0 or index >= actions.size():
+		clear_context()
+		return false
+	return target.activate_context_action(StringName(actions[index].id))

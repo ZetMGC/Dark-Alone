@@ -128,10 +128,10 @@ func _run() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_expect(panel.can_answer() and not panel.edge_mode, "Looking back restores same line and replies")
-	await _wheel(MOUSE_BUTTON_WHEEL_DOWN)
-	_expect(panel.selected_index == 1, "Wheel selects next response")
-	await _wheel(MOUSE_BUTTON_WHEEL_UP)
-	_expect(panel.selected_index == 0, "Wheel selects previous response")
+	panel._hover_choice(1)
+	_expect(panel.selected_index == 1, "Hover selects next response")
+	panel._hover_choice(0)
+	_expect(panel.selected_index == 0, "Hover selects previous response")
 	await _key(KEY_E, true)
 	_expect(session.runner.current_node_id == &"opening", "Held key echo ignored")
 	await _key(KEY_E)
@@ -166,8 +166,8 @@ func _run() -> void:
 	session.close_journal()
 	_expect(text.visible_characters == count, "Return keeps reading progress")
 	await _key(KEY_E)
-	await _key(KEY_1)
-	_expect(session.runner.current_node_id == &"goodbye", "Number directly chooses available reply")
+	panel.get_node("%VoiceChoices").get_child(0).activated.emit()
+	_expect(session.runner.current_node_id == &"goodbye", "Click chooses available reply")
 	await _key(KEY_E)
 	_expect(session.runner.active, "Terminal first F only reveals")
 	await _key(KEY_E)
@@ -347,17 +347,23 @@ func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
 	bubble.render(runner, journal)
 	await get_tree().process_frame
 	_expect(bubble.get_node("%VoiceChoices").get_child_count() == 2 and bubble.selected_index == 1, "New deduction inserts answer while preserving selected fallback by ID")
-	_expect(bubble.get_node("%VoiceChoices").get_child(0).text.contains("1. Ты коллекционируешь") and bubble.get_node("%VoiceChoices").get_child(1).text.contains("2. Не буду"), "New reply and fallback renumber contiguously")
+	_expect(bubble.get_node("%VoiceChoices").get_child(0).text.contains("Ты коллекционируешь") and bubble.get_node("%VoiceChoices").get_child(1).text.contains("Не буду"), "Replies have captions without numeric hints")
 	var emitted: Array = []
 	bubble.choice_requested.connect(func(_dialogue: StringName, _node: StringName, id: StringName) -> void: emitted.append(id))
 	await _snap("06-reasoning-replies")
 	await _key(KEY_1)
-	_expect(emitted == [&"props"], "Actual digit one submits displayed first reply after deduction")
 	await _key(KEY_2)
-	_expect(emitted.back() == &"leave", "Actual digit two submits displayed fallback")
-	await _wheel(MOUSE_BUTTON_WHEEL_UP)
+	_expect(emitted.is_empty(), "Digit keys cannot submit replies")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	await _click_reply(bubble, 0)
+	_expect(emitted == [&"props"], "Click submits corresponding reply")
+	await _click_reply(bubble, 1)
+	_expect(emitted.back() == &"leave", "Click submits fallback")
+	bubble._hover_choice(0)
 	await _key(KEY_E)
-	_expect(bubble.selected_index == 0 and emitted.back() == &"props", "Wheel and E use the same visible indices after conclusion")
+	_expect(bubble.selected_index == 0 and emitted.back() == &"props", "Hover and E use the same reply after conclusion")
 	runner.choose(&"props")
 	bubble.render(runner, journal)
 	bubble.reveal_text()
@@ -398,3 +404,20 @@ func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
 	await get_tree().process_frame
 	_expect(bubble.get_node("%VoiceReplies").visible and bubble.selected_index == 0 and bubble.get_node("%VoiceChoices").get_child_count() == 2, "Answer card returns only when responses become available")
 	bubble.queue_free()
+
+func _click_reply(bubble: DialogueBubblePanel, index: int) -> void:
+	var row: Control = bubble.get_node("%VoiceChoices").get_child(index)
+	var point := row.get_global_rect().get_center()
+	var motion := InputEventMouseMotion.new()
+	motion.position = point
+	motion.global_position = point
+	get_viewport().push_input(motion, true)
+	await get_tree().process_frame
+	for pressed in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		click.position = point
+		click.global_position = point
+		get_viewport().push_input(click, true)
+	await get_tree().process_frame
