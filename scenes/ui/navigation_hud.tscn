@@ -172,6 +172,8 @@ text = "ПАУЗА"
 horizontal_alignment = 1
 
 [node name="SettingsScroll" type="ScrollContainer" parent="Screen/Menu/Center/Content"]
+unique_name_in_owner = true
+visible = false
 custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 horizontal_scroll_mode = 0
@@ -379,6 +381,19 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 text = "Продолжить"
+
+[node name="OpenSettings" type="Button" parent="Screen/Menu/Center/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Настройки"
+
+[node name="SettingsBack" type="Button" parent="Screen/Menu/Center/Content"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Назад"
 
 [node name="Quit" type="Button" parent="Screen/Menu/Center/Content"]
 unique_name_in_owner = true

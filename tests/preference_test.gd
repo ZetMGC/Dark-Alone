@@ -26,7 +26,8 @@ func _fixture() -> Dictionary:
 
 
 func _main(store: PreferenceStore, enabled: bool = true) -> Node:
-	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	var entry := str(ProjectSettings.get_setting("application/run/main_scene")) if "--default-entry" in OS.get_cmdline_user_args() else "res://scenes/main/main.tscn"
+	var main := (load(entry) as PackedScene).instantiate()
 	main.checkpoint_enabled = false
 	main.preferences_enabled = enabled
 	main.preference_store = store
@@ -80,6 +81,7 @@ func _run() -> void:
 	var store := PreferenceStore.new("user://preference_tests/unit_" + str(Time.get_ticks_usec()))
 	_test_store(store)
 	await _test_main(store)
+	await _test_default_entry(store)
 	_clean(store)
 	print("%s: preferences, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])
 	get_tree().quit(0 if _failures == 0 else 1)
@@ -161,6 +163,7 @@ func _test_main(store: PreferenceStore) -> void:
 	hud.get_node("%ResetPreferences").pressed.emit()
 	_expect(JournalPanel.motion_mode == &"reduced", "Hidden reset button rejected")
 	session.open_menu()
+	hud.show_settings(true)
 	hud.get_node("%AmbienceVolume").value = 0.25
 	hud.get_node("%LookSensitivity").value = 1.2
 	await get_tree().create_timer(0.5).timeout
@@ -205,6 +208,7 @@ func _test_main(store: PreferenceStore) -> void:
 	_expect(FileAccess.file_exists(store.get_path()), "New game did not delete preference file")
 	_expect(get_window().size == size_before and get_window().position == position_before, "Scene reload does not reposition window")
 	session.open_menu()
+	hud.show_settings(true)
 	hud.get_node("%ResetPreferences").pressed.emit()
 	saved = store.load_preferences()
 	_expect(saved.presentation == PreferenceStore.defaults().presentation and saved.camera == PreferenceStore.defaults().camera and saved.book == PreferenceStore.defaults().book, "Explicit reset writes defaults")
@@ -224,6 +228,51 @@ func _test_main(store: PreferenceStore) -> void:
 	main.get_node("PreferenceController").reset_preferences()
 	main.get_node("PreferenceController").flush()
 	_expect(FileAccess.get_file_as_string(store.get_path()) == "{broken", "Disabled preferences reject even explicit reset API")
+	get_tree().current_scene = null
+	main.queue_free()
+	await get_tree().process_frame
+
+
+func _test_default_entry(store: PreferenceStore) -> void:
+	_clean(store)
+	var entry := str(ProjectSettings.get_setting("application/run/main_scene"))
+	var main := (load(entry) as PackedScene).instantiate()
+	_expect(main.preferences_enabled, "Shortcut entry enables persistent preferences")
+	main.preference_store = store
+	main.checkpoint_enabled = false
+	get_tree().root.add_child(main)
+	get_tree().current_scene = main
+	await get_tree().process_frame
+	var hud: NavigationHUD = main.get_node("NavigationHUD")
+	var session: NarrativeSession = main.get_node("NarrativeSession")
+	session.open_menu()
+	_expect(not hud.get_node("%SettingsScroll").visible and hud.get_node("%OpenSettings").visible and hud.get_node("%Resume").visible, "Escape starts with short pause page")
+	if not _capture.is_empty() and DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(_capture.path_join("pause-short.png"))
+	hud.get_node("%OpenSettings").pressed.emit()
+	_expect(hud.get_node("%SettingsScroll").visible and not hud.get_node("%Resume").visible, "Settings open as separate page")
+	if not _capture.is_empty() and DisplayServer.get_name() != "headless":
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(_capture.path_join("settings-page.png"))
+	hud.get_node("%AmbienceVolume").value = 0.4
+	await get_tree().create_timer(0.5).timeout
+	_expect(is_equal_approx(store.load_preferences().presentation.ambience, 0.4), "Default entry actually saves preference edits")
+	await _key(KEY_ESCAPE)
+	_expect(session.mode == NarrativeSession.MENU and not hud.get_node("%SettingsScroll").visible, "Escape from settings returns to pause without resuming game")
+	await _key(KEY_ESCAPE)
+	_expect(session.mode == NarrativeSession.EXPLORATION, "Second Escape resumes game")
+	get_tree().current_scene = null
+	main.queue_free()
+	await get_tree().process_frame
+	main = (load(entry) as PackedScene).instantiate()
+	main.preference_store = store
+	main.checkpoint_enabled = false
+	get_tree().root.add_child(main)
+	get_tree().current_scene = main
+	await get_tree().process_frame
+	_expect(is_equal_approx(main.get_node("Presentation").get_ambience_gain(), 0.4), "Reopening actual default scene restores saved settings")
 	get_tree().current_scene = null
 	main.queue_free()
 	await get_tree().process_frame

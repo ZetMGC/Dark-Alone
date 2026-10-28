@@ -14,6 +14,7 @@ var _buttons: Dictionary = {}
 var _shift_number: int = 1
 var _free_roam: bool = false
 var _pointer_hint: bool = false
+var _settings_open: bool = false
 
 @onready var _location: Label = %Location
 @onready var _message: Label = %Message
@@ -24,6 +25,8 @@ var _pointer_hint: bool = false
 
 
 func _ready() -> void:
+	%OpenSettings.pressed.connect(func() -> void: show_settings(true))
+	%SettingsBack.pressed.connect(func() -> void: show_settings(false))
 	%LeaveWorkstation.pressed.connect(func() -> void: leave_workstation_requested.emit())
 	_resume.pressed.connect(func() -> void: resume_requested.emit())
 	%Quit.pressed.connect(func() -> void: quit_requested.emit())
@@ -128,7 +131,30 @@ func _process(_delta: float) -> void:
 		%Prompt.position = point.clamp(Vector2(8, 8), ($Screen.size - %Prompt.size - Vector2(8, 8)).max(Vector2(8, 8)))
 
 
+func show_settings(value: bool) -> void:
+	_settings_open = value
+	%SettingsScroll.visible = value
+	%SettingsBack.visible = value
+	%OpenSettings.visible = not value
+	%Resume.visible = not value
+	%Quit.visible = not value
+	$Screen/Menu/Center/Content/Caption.text = "НАСТРОЙКИ" if value else "ПАУЗА"
+	if value:
+		%SettingsBack.grab_focus()
+	else:
+		%OpenSettings.grab_focus()
+
+
+func close_settings() -> bool:
+	if not _settings_open:
+		return false
+	show_settings(false)
+	return true
+
+
 func set_menu_visible(value: bool) -> void:
+	if value and not _menu.visible:
+		show_settings(false)
 	_menu.visible = value
 	if value:
 		_resume.grab_focus()

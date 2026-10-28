@@ -111,7 +111,12 @@ func get_choices() -> Array[Dictionary]:
 			if not _journal.has_term(StringName(id)):
 				missing.append(id)
 		choice["missing_terms"] = missing
-		choice["available"] = missing.is_empty()
+		var missing_conclusions := PackedStringArray()
+		for id: String in original.get("required_conclusions", []):
+			if not _journal.has_conclusion(StringName(id)):
+				missing_conclusions.append(id)
+		choice["missing_conclusions"] = missing_conclusions
+		choice["available"] = missing.is_empty() and missing_conclusions.is_empty()
 		result.append(choice)
 	return result
 

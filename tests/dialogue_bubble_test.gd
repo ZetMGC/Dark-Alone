@@ -98,12 +98,25 @@ func _run() -> void:
 	Input.action_release("move_forward")
 	_expect(rig.body.global_position.distance_to(position) > 0.1 and not rig.focus_active and session.shift.remaining == 2, "Dialogue permits walking without spending time")
 	var facing := rig.view.global_basis
+	var bubble_before_turn: Vector2 = panel.get_node("%VoiceBubble").position
 	rig.apply_look_delta(Vector2(PI, 0))
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_expect(not rig.view.global_basis.is_equal_approx(facing), "Dialogue permits turning head")
 	_expect(panel.edge_mode and not panel.looking_at_speaker and panel.get_node("%VoiceDirection").visible, "Behind speaker moves bubble to corner with direction")
 	_expect(not panel.get_node("%VoiceReplies").visible, "Answers hidden when looking away")
+	var voice: Control = panel.get_node("%VoiceBubble")
+	var target: Vector2 = panel._position_target
+	_expect(voice.position.distance_to(target) > 5 and voice.position.distance_to(bubble_before_turn) < target.distance_to(bubble_before_turn), "Turning away begins smooth travel instead of teleporting to edge")
+	var direction: String = panel.get_node("%VoiceDirection").text
+	for yaw in [0.025, -0.05, 0.025]:
+		rig.apply_look_delta(Vector2(yaw, 0))
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_expect(panel.get_node("%VoiceDirection").text == direction, "Rear-centre jitter preserves chosen edge")
+	var distance := voice.position.distance_to(panel._position_target)
+	await get_tree().create_timer(0.18).timeout
+	_expect(voice.position.distance_to(panel._position_target) < distance, "Bubble eases towards edge while speech state remains intact")
 	await _key(KEY_2)
 	await _key(KEY_F)
 	_expect(session.runner.current_node_id == &"opening", "Away keys cannot answer")
@@ -167,6 +180,7 @@ func _run() -> void:
 	rig.apply_look_delta(Vector2(-PI, 0))
 	main.start_test_dialogue()
 	panel.set_open(false)
+	await _test_reasoning_replies(main, rig)
 	await _test_format_and_long(main, rig)
 	_test_pagination(panel)
 	JournalPanel.motion_mode = &"full"
@@ -221,7 +235,7 @@ func _test_format_and_long(main: Node, rig: FreeRoamCamera) -> void:
 	bubble.set_open(true)
 	bubble.reveal_text()
 	await get_tree().process_frame
-	_expect(bubble.selected_index == 1 and not bubble.submit_choice(0), "Locked answer cannot be selected")
+	_expect(bubble.selected_index == 0 and bubble.get_node("%VoiceChoices").get_child_count() == 8 and not bubble.submit_choice(0), "Locked answer hidden, visible indices start at zero before final speech page")
 	_expect(bubble.get_page_count() > 1 and bubble.get_page_index() == 0, "Long speech creates sequential bubbles")
 	_expect(not bubble.select_relative(-1) and not bubble.can_answer(), "Earlier bubble cannot select answers")
 	await _snap("05-first-page")
@@ -256,7 +270,7 @@ func _test_format_and_long(main: Node, rig: FreeRoamCamera) -> void:
 			_expect(bubble.get_page_index() == 1 and not bubble.is_line_complete(), "Repeated render preserves active continuation")
 	_expect(pages_checked == bubble.get_page_count() and joined == DialogueText.plain(document.dialogues[0].nodes[0].text), "All pages preserve exact text without omissions")
 	_expect(runner.current_node_id == &"opening" and journal.get_known_term_ids() == known_before, "Bubble changes do not advance story or grant knowledge")
-	_expect(bubble.select_relative(-1) and bubble.selected_index == 8, "Final bubble unlocks wheel and skips locked answer")
+	_expect(bubble.select_relative(-1) and bubble.selected_index == 7, "Final bubble unlocks wheel and skips locked answer")
 	var rect: Rect2 = bubble.get_node("%VoiceBubble").get_global_rect()
 	_expect(Rect2(Vector2.ZERO, bubble.screen.size).encloses(rect), "Bubble stays within viewport")
 	await _snap("04-long-conditional")
@@ -281,3 +295,82 @@ func _test_pagination(panel: DialogueBubblePanel) -> void:
 			joined += page.text if page.literal else DialogueText.plain(page.text)
 		_expect(joined == DialogueText.plain(source), "Bold, paragraphs and unbroken words roundtrip")
 	_expect(DialogueText.styled_slice("до **важное слово** после", 5, 5) == "**жное **", "Bold span remains balanced across cut")
+
+
+func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
+	var catalog := DialogueCatalog.new()
+	_expect(catalog.load_files("res://content/glossary/test_war_cinema_terms.json", ["res://content/dialogues/test_war_cinema_guest.json"]), "Reasoning dialogue fixture valid")
+	var journal := Journal.new()
+	journal.configure(catalog)
+	var runner := DialogueRunner.new()
+	runner.configure(catalog, journal)
+	runner.start(&"test_war_cinema_guest")
+	runner.choose(&"more")
+	var bubble := (load("res://scenes/ui/dialogue_bubble_panel.tscn") as PackedScene).instantiate() as DialogueBubblePanel
+	bubble.bubble_enabled = true
+	add_child(bubble)
+	bubble.configure_speaker(rig.view, main.get_node("DialogueTrigger"))
+	bubble.render(runner, journal)
+	bubble.set_open(true)
+	while not bubble.is_speech_complete():
+		bubble.reveal_text()
+		if not bubble.advance_page():
+			break
+	await get_tree().process_frame
+	_expect(bubble.get_node("%VoiceChoices").get_child_count() == 1 and bubble.selected_index == 0, "Only available fallback shown as first response")
+	_expect(bubble.get_node("%VoiceChoices").get_child(0).text.contains("1. Не буду"), "Visible numbers have no gaps from hidden deductions")
+	journal.choose_conclusion(&"test_memories", &"test_cinema")
+	journal.choose_conclusion(&"test_arsenal", &"test_props")
+	bubble.render(runner, journal)
+	await get_tree().process_frame
+	_expect(bubble.get_node("%VoiceChoices").get_child_count() == 2 and bubble.selected_index == 1, "New deduction inserts answer while preserving selected fallback by ID")
+	_expect(bubble.get_node("%VoiceChoices").get_child(0).text.contains("1. Ты коллекционируешь") and bubble.get_node("%VoiceChoices").get_child(1).text.contains("2. Не буду"), "New reply and fallback renumber contiguously")
+	var emitted: Array = []
+	bubble.choice_requested.connect(func(_dialogue: StringName, _node: StringName, id: StringName) -> void: emitted.append(id))
+	await _snap("06-reasoning-replies")
+	await _key(KEY_1)
+	_expect(emitted == [&"props"], "Actual digit one submits displayed first reply after deduction")
+	await _key(KEY_2)
+	_expect(emitted.back() == &"leave", "Actual digit two submits displayed fallback")
+	await _wheel(MOUSE_BUTTON_WHEEL_UP)
+	await _key(KEY_F)
+	_expect(bubble.selected_index == 0 and emitted.back() == &"props", "Wheel and F use the same visible indices after conclusion")
+	runner.choose(&"props")
+	bubble.render(runner, journal)
+	bubble.reveal_text()
+	await get_tree().process_frame
+	_expect(not bubble.get_node("%VoiceReplies").visible and bubble.get_node("%VoiceChoices").get_child_count() == 0, "Terminal speech never leaves empty reply card")
+	_expect(bubble.get_node("%VoiceHint").text.contains("F — закончить"), "Finish hint stays outside hidden answer card")
+	await _snap("07-terminal-no-card")
+	runner.finish()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_expect(not bubble.get_node("%VoiceReplies").visible and not bubble.get_node("%VoiceBubble").visible, "Inactive runner hides stale speech and replies even before panel is closed")
+	bubble.queue_free()
+	await get_tree().process_frame
+	# Нетерминальная реплика с единственным пока недоступным ответом.
+	var glossary: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://content/glossary/test_terms.json"))
+	var document: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://content/dialogues/test_guest.json"))
+	for choice in document.dialogues[0].nodes[0].choices:
+		choice.required_terms = ["test_marker"]
+	catalog = DialogueCatalog.new()
+	_expect(catalog.load_data(glossary, [document]), "All-locked fixture validates")
+	journal = Journal.new()
+	journal.configure(catalog)
+	runner = DialogueRunner.new()
+	runner.configure(catalog, journal)
+	runner.start(&"test_guest_intro")
+	bubble = (load("res://scenes/ui/dialogue_bubble_panel.tscn") as PackedScene).instantiate() as DialogueBubblePanel
+	bubble.bubble_enabled = true
+	add_child(bubble)
+	bubble.configure_speaker(rig.view, main.get_node("DialogueTrigger"))
+	bubble.render(runner, journal)
+	bubble.set_open(true)
+	bubble.reveal_text()
+	await get_tree().process_frame
+	_expect(not bubble.get_node("%VoiceReplies").visible and not bubble.select_relative(1) and not bubble.submit_choice(0), "No available reply hides card and rejects wheel/digit actions")
+	journal.add_term(&"test_marker")
+	bubble.render(runner, journal)
+	await get_tree().process_frame
+	_expect(bubble.get_node("%VoiceReplies").visible and bubble.selected_index == 0 and bubble.get_node("%VoiceChoices").get_child_count() == 2, "Answer card returns only when responses become available")
+	bubble.queue_free()

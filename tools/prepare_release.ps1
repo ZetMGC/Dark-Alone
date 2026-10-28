@@ -31,7 +31,7 @@ Copy-Item -LiteralPath ($buildRoot + '.zip') -Destination $asset
 Copy-Item -LiteralPath (Join-Path $buildRoot 'build-manifest.json') -Destination $releaseRoot
 $checksum = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
 Set-Content -LiteralPath (Join-Path $releaseRoot 'SHA256SUMS.txt') -Value ($checksum + '  ' + $assetName) -Encoding utf8
-$notes = Get-Content -LiteralPath (Join-Path $projectRoot 'docs/releases/NEXT.md') -Raw
+$notes = Get-Content -LiteralPath (Join-Path $projectRoot 'docs/releases/NEXT.md') -Raw -Encoding utf8
 $notes = $notes.Replace('{{TAG}}', $Tag).Replace('{{REVISION}}', [string]$revision)
 Set-Content -LiteralPath (Join-Path $releaseRoot 'release-notes.md') -Value $notes -Encoding utf8
 Write-Output "PASS: release files prepared: $releaseRoot"

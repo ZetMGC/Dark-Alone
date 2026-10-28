@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "test_content": true,
+  "dialogues": [
+    {
+      "id": "test_war_cinema_guest",
+      "title": "[TEST] Война или кино — не канон",
+      "start_node": "opening",
+      "allow_cycles": false,
+      "nodes": [
+        {
+          "id": "opening",
+          "speaker": "[TEST] Вымышленный гость",
+          "text": "Опять всю ночь вспоминал **войну**. Эти **битвы**, приказы, один и тот же мост… Каждый раз думаю: как можно было послать людей именно туда?",
+          "end": false,
+          "effects": [
+            {
+              "effect_id": "learn_test_war",
+              "type": "grant_term",
+              "term_id": "test_war"
+            },
+            {
+              "effect_id": "learn_test_battles",
+              "type": "grant_term",
+              "term_id": "test_battles"
+            }
+          ],
+          "choices": [
+            {
+              "id": "more",
+              "text": "Ты часто об этом вспоминаешь?",
+              "target": "crates"
+            }
+          ]
+        },
+        {
+          "id": "crates",
+          "speaker": "[TEST] Вымышленный гость",
+          "text": "Когда знаешь, как выглядит старое **оружие**, сразу видишь, где всё настоящее, а где краска. У меня дома **ящики** стоят, под тканью. Только без меня их не открывай.",
+          "end": false,
+          "effects": [
+            {
+              "effect_id": "learn_test_weapons",
+              "type": "grant_term",
+              "term_id": "test_weapons"
+            },
+            {
+              "effect_id": "learn_test_crates",
+              "type": "grant_term",
+              "term_id": "test_crates"
+            }
+          ],
+          "choices": [
+            {
+              "id": "arms",
+              "text": "Ты привёз домой оружие с войны?",
+              "target": "arms_reply",
+              "required_conclusions": [
+                "test_hidden_arms"
+              ]
+            },
+            {
+              "id": "keepsakes",
+              "text": "Это твои обезвреженные трофеи?",
+              "target": "keepsakes_reply",
+              "required_conclusions": [
+                "test_keepsakes"
+              ]
+            },
+            {
+              "id": "props",
+              "text": "Ты коллекционируешь муляжи?",
+              "target": "props_reply",
+              "required_conclusions": [
+                "test_props"
+              ]
+            },
+            {
+              "id": "set",
+              "text": "Ты работал на съёмках?",
+              "target": "set_reply",
+              "required_conclusions": [
+                "test_set"
+              ]
+            },
+            {
+              "id": "leave",
+              "text": "Не буду лезть. Налить ещё?",
+              "target": "goodbye"
+            }
+          ]
+        },
+        {
+          "id": "arms_reply",
+          "speaker": "[TEST] Вымышленный гость",
+          "text": "С войны? Я там не был. Ты уже всё за меня придумал? Давай закроем эту тему.",
+          "end": true,
+          "effects": [],
+          "choices": []
+        },
+        {
+          "id": "keepsakes_reply",
+          "speaker": "[TEST] Вымышленный гость",
+          "text": "Трофеи… Звучит красиво. Только не мои. Их прошлое я знаю по чужим рассказам.",
+          "end": true,
+          "effects": [],
+          "choices": []
+        },
+        {
+          "id": "props_reply",
+          "speaker": "[TEST] Вымышленный гость",
+          "text": "Есть и муляжи. Долго искал тот самый силуэт из старого фильма. Наконец-то кто-то понял, почему мне это интересно.",
+          "end": true,
+          "effects": [],
+          "choices": []
+        },
+        {
+          "id": "set_reply",
+          "speaker": "[TEST] Вымышленный гость",
+          "text": "Один раз помогал знакомому с реквизитом. С тех пор и не могу выбросить эти ящики.",
+          "end": true,
+          "effects": [],
+          "choices": []
+        },
+        {
+          "id": "goodbye",
+          "speaker": "[TEST] Вымышленный гость",
+          "text": "Налей. Про ящики как-нибудь в другой раз.",
+          "end": true,
+          "effects": [],
+          "choices": []
+        }
+      ]
+    }
+  ]
+}

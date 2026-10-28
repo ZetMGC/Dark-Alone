@@ -79,6 +79,10 @@ func _run() -> void:
 	get_tree().root.add_child(main)
 	get_tree().current_scene = main
 	var rig: FreeRoamCamera = main.get_node("AnchorCamera")
+	# Этот тест направляет камеру сам. Системные события захвата мыши
+	# не должны поворачивать её между _place и взаимодействием.
+	# Настоящий ввод мыши проверяется в dialogue_bubble_test.
+	rig.set_process_unhandled_input(false)
 	var interaction: InteractionController = main.get_node("InteractionController")
 	var session: NarrativeSession = main.get_node("NarrativeSession")
 	var guest: ServiceGuest = main.get_node("DialogueTrigger")

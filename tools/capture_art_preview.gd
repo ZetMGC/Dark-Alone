@@ -51,7 +51,7 @@ func _capture() -> void:
 			session.resume_menu()
 			main.start_test_dialogue()
 			await _save("dialogue")
-			session.open_journal()
+			session.open_journal(true)
 			await _save("journal")
 			session.close_journal()
 			session.cancel_dialogue()

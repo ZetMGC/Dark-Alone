@@ -27,7 +27,7 @@ func _capture() -> void:
 	root.add_child(main)
 	current_scene = main
 	var session := main.get_node("NarrativeSession") as NarrativeSession
-	session.open_journal()
+	session.open_journal(true)
 	await _save("empty")
 	session.close_journal()
 	var rig := main.get_node("AnchorCamera") as AnchorCamera
@@ -35,22 +35,17 @@ func _capture() -> void:
 	await rig.anchor_reached
 	main.start_test_dialogue()
 	session.choose_for_node(&"test_guest_intro", &"opening", &"ask_more")
-	session.open_journal()
+	session.open_journal(true)
 	await _save("index")
 	var panel := main.get_node("JournalPanel") as JournalPanel
-	panel.get_node("%Section").select(1)
-	panel.get_node("%Section").item_selected.emit(1)
-	await _save("new")
+	panel.select_section(&"notes")
+	await _save("notes")
+	panel.select_section(&"recipes")
+	await _save("recipes")
+	panel.select_section(&"words")
 	session.select_journal_entry(&"test_marker")
 	session.bookmark_journal_entry(&"test_marker", true)
-	panel.get_node("%Section").select(2)
-	panel.get_node("%Section").item_selected.emit(2)
 	await _save("bookmarks")
-	panel.get_node("%Section").select(0)
-	panel.get_node("%Section").item_selected.emit(0)
-	panel.get_node("%Search").text = "первый"
-	panel.get_node("%Search").text_changed.emit("первый")
-	await _save("search")
 	session.close_journal()
 	session.choose_for_node(&"test_guest_intro", &"explanation", &"finish")
 	session.finish_for_node(&"test_guest_intro", &"goodbye")
@@ -63,7 +58,7 @@ func _capture() -> void:
 	await process_frame
 	await process_frame
 	var fresh := current_scene
-	fresh.get_node("NarrativeSession").open_journal()
+	fresh.get_node("NarrativeSession").open_journal(true)
 	await _save("retained")
 	fresh.get_node("NarrativeSession").close_journal()
 	# Стресс-данные только в памяти, исходные пакеты не меняются.

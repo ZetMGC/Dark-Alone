@@ -68,7 +68,7 @@ func _run() -> void:
 			_capture(frame, "%dx%d_%s" % [size.x, size.y, detail])
 		session.start_dialogue(&"test_guest_intro")
 		session.choose_for_node(&"test_guest_intro", &"opening", &"ask_more")
-		session.open_journal()
+		session.open_journal(true)
 		await _frame()
 		_capture(get_viewport().get_texture().get_image(), "%dx%d_book" % [size.x, size.y])
 		session.close_journal()

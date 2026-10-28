@@ -94,6 +94,7 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"off"
 	_test_service_model()
 	_test_spills()
+	await _test_pour_control()
 	await _test_controls()
 	await _test_mixing_surface()
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
@@ -168,8 +169,50 @@ func _run() -> void:
 		await _move(bench, point)
 	await _button(MOUSE_BUTTON_LEFT, false)
 	_expect(bench.preparation.get_snapshot().structure == "homogeneous", "Spoon gesture actually mixes composition")
+	var before_transfer := bench.preparation.get_volume_ml()
 	await _drag(bench, &"cup", bench.get_item_position(&"shaker"))
-	_expect(bench.is_in_shaker(), "Transfer portion into shaker")
+	_expect(not bench.is_in_shaker() and bench.preparation.get_volume_ml() == before_transfer, "Dropping glass on shaker no longer teleports liquid")
+	_expect(bench.get_shaker_state() == &"open", "Shaker starts open for filling")
+	await _move(bench, bench.get_item_position(&"cup"))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _move(bench, bench.get_item_position(&"shaker") + Vector2(-62, -105))
+	await _button(MOUSE_BUTTON_RIGHT, true)
+	_expect(bench.stream_info().get("hit", false) and bench.stream_info().get("target") == &"shaker", "Actual visible stream enters open shaker mouth")
+	for step in 200:
+		bench.advance_pour(0.05)
+	await _button(MOUSE_BUTTON_RIGHT, false)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(bench.is_in_shaker() and bench.preparation.get_volume_ml() < DrinkPreparation.MIN_DOSE_ML, "Continuous pouring fills independent shaker")
+	await _drag(bench, &"cup", Vector2(810, 440))
+	await _snap("10-shaker-open")
+	bench.begin_drag(&"shaker", bench.get_item_position(&"shaker"))
+	for step in 6:
+		bench.drag_to(bench.get_item_position(&"shaker") + Vector2(30 if step % 2 == 0 else -30, 0))
+	_expect(bench.get_container_snapshot(&"shaker").technique.shaken_s == 0, "Open shaker cannot magically shake liquid")
+	_expect(not bench.toggle_shaker_lid(), "Cannot operate lid while holding vessel")
+	bench.end_drag()
+	var lid: Button = bench.get_node("ShakerLid")
+	await _move(bench, (lid.position + lid.size * 0.5 - bench._origin) / bench._scale)
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(bench.get_shaker_state() == &"sealed", "Actual lid button closes shaker")
+	await _snap("11-shaker-closed")
+	var closed_volume: float = bench.get_container_snapshot(&"shaker").overall.volume_ml
+	var stock_before := bench.get_bottle_remaining(&"test_base")
+	var spill_before := bench.get_spilled_ml()
+	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.drag_to(bench.get_item_position(&"shaker") + Vector2(-58, -140))
+	bench.tilt_by(70)
+	_expect(bench.stream_info().get("blocked", false), "Closed shaker lid intercepts stream")
+	for step in 10:
+		bench.advance_pour(0.05)
+	bench.end_drag()
+	_expect(bench.get_container_snapshot(&"shaker").overall.volume_ml == closed_volume and bench.get_bottle_remaining(&"test_base") < stock_before and bench.get_spilled_ml() > spill_before, "Pour on lid consumes stock into spill without filling sealed shaker")
+	var ice_before: float = bench.get_container_snapshot(&"shaker").technique.ice_ml
+	bench.begin_drag(&"ice", bench.get_item_position(&"ice"))
+	bench.drag_to(bench.get_item_position(&"shaker"))
+	bench.end_drag()
+	_expect(bench.get_container_snapshot(&"shaker").technique.ice_ml == ice_before, "Ice cannot pass through closed lid")
 	var amount: float = bench.get_container_snapshot(&"shaker").overall.volume_ml
 	await _drag(bench, &"cup", DrinkWorkbench.SINK.get_center())
 	_expect(bench.is_in_shaker() and bench.preparation.get_volume_ml() == 0 and bench.get_container_snapshot(&"shaker").overall.volume_ml == amount, "Empty glass cannot discard independent contents of shaker")
@@ -179,9 +222,17 @@ func _run() -> void:
 	_expect(bench.get_held_item() == &"shaker", "Mouse picks loaded shaker")
 	for step in 6:
 		await _move(bench, shaker + Vector2(65 if step % 2 == 0 else -65, 25))
+	await _button(MOUSE_BUTTON_RIGHT, true)
+	_expect(bench.stream_info().is_empty(), "Sealed cap prevents pouring")
+	await _button(MOUSE_BUTTON_RIGHT, false)
+	await _button(MOUSE_BUTTON_LEFT, false)
+	_expect(bench.toggle_shaker_cap() and bench.get_shaker_state() == &"straining", "Remove cap before straining")
+	await _snap("12-shaker-straining")
+	await _move(bench, bench.get_item_position(&"shaker") + Vector2(0, 25))
+	await _button(MOUSE_BUTTON_LEFT, true)
 	await _move(bench, Vector2(748, 335))
 	await _button(MOUSE_BUTTON_RIGHT, true)
-	_expect(bench.stream_info().hit, "Shaker return aimed at glass")
+	_expect(bench.stream_info().get("hit", false), "Shaker strainer return aimed at glass")
 	for step in 200:
 		bench.advance_pour(0.05)
 	await _button(MOUSE_BUTTON_RIGHT, false)
@@ -245,6 +296,49 @@ func _run() -> void:
 	JournalPanel.motion_mode = &"full"
 	print("%s: drink workbench, %d checks, %d failures" % ["PASS" if _failures == 0 else "FAIL", _checks, _failures])
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _test_pour_control() -> void:
+	var bench := DrinkWorkbench.new()
+	get_tree().root.add_child(bench)
+	bench.set_active(true)
+	bench.set_process(false)
+	await get_tree().process_frame
+	await _drag(bench, &"spoon", bench.get_item_position(&"cup") + Vector2(34, -10))
+	await _move(bench, bench.get_item_position(&"test_light"))
+	await _button(MOUSE_BUTTON_LEFT, true)
+	await _move(bench, Vector2(785, 395))
+	for index in 5:
+		await _button(MOUSE_BUTTON_WHEEL_UP, true)
+	_expect(bench.stream_info().is_empty(), "Wheel before pour threshold keeps bottle closed")
+	await _button(MOUSE_BUTTON_WHEEL_UP, true)
+	var slow := bench.stream_info()
+	_expect(not slow.is_empty() and slow.rate <= 4 and slow.hit, "Small wheel tilt produces actual low flow into cup")
+	_expect(bench._pour_hint(slow).contains("По каплям") and bench._pour_hint(slow).contains("по ложке"), "Slow pour explains drop flow and actual spoon hit")
+	await _snap("08-drop-pour")
+	var before := bench.get_bottle_remaining(&"test_light")
+	for step in 10:
+		bench.advance_pour(0.05)
+	var slow_used := before - bench.get_bottle_remaining(&"test_light")
+	for index in 4:
+		await _button(MOUSE_BUTTON_WHEEL_UP, true)
+	var fast := bench.stream_info()
+	_expect(fast.rate > slow.rate * 3 and bench._pour_hint(fast).contains("Сильная струя"), "Larger wheel tilt increases real flow and visible intensity state")
+	await _snap("09-strong-pour")
+	before = bench.get_bottle_remaining(&"test_light")
+	for step in 10:
+		bench.advance_pour(0.05)
+	_expect(before - bench.get_bottle_remaining(&"test_light") > slow_used * 3, "Same pour duration consumes more actual stock at higher tilt")
+	for index in 5:
+		await _button(MOUSE_BUTTON_WHEEL_DOWN, true)
+	_expect(bench.stream_info().is_empty(), "Reverse wheel straightens held bottle and stops stream")
+	before = bench.get_bottle_remaining(&"test_light")
+	bench.advance_pour(0.05)
+	_expect(bench.get_bottle_remaining(&"test_light") == before, "Stopped tilt consumes no stock while bottle is still held")
+	await _button(MOUSE_BUTTON_LEFT, false)
+	bench.set_active(false)
+	bench.queue_free()
+	await get_tree().process_frame
 
 
 func _test_controls() -> void:

@@ -8,7 +8,7 @@ func _initialize() -> void:
 	var entries := DirAccess.get_files_at(directory)
 	entries.sort()
 	for entry in entries:
-		if entry.get_extension().to_lower() == "json":
+		if entry.get_extension().to_lower() == "json" and entry != "test_war_cinema_guest.json":
 			paths.append(directory.path_join(entry))
 	var catalog := DialogueCatalog.new()
 	if not catalog.load_files("res://content/glossary/test_terms.json", paths):
@@ -17,4 +17,11 @@ func _initialize() -> void:
 		quit(1)
 		return
 	print("PASS: content v1, %d dialogues, %d terms" % [catalog.get_dialogue_ids().size(), catalog.get_term_ids().size()])
+	var demo := DialogueCatalog.new()
+	if not demo.load_files("res://content/glossary/test_war_cinema_terms.json", ["res://content/dialogues/test_war_cinema_guest.json"]):
+		for error in demo.validation_errors:
+			printerr(error)
+		quit(1)
+		return
+	print("PASS: standalone TEST reasoning dialogue bundle")
 	quit(0)

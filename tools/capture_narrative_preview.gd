@@ -32,7 +32,7 @@ func _capture() -> void:
 	root.add_child(main)
 	var rig := main.get_node("AnchorCamera") as AnchorCamera
 	var session := main.get_node("NarrativeSession") as NarrativeSession
-	session.open_journal()
+	session.open_journal(true)
 	await _save("empty_journal")
 	session.close_journal()
 	rig.request_move(&"counter")
@@ -41,7 +41,7 @@ func _capture() -> void:
 	main.start_test_dialogue()
 	await _save("dialogue")
 	session.choose_for_node(&"test_guest_intro", &"opening", &"ask_more")
-	session.open_journal()
+	session.open_journal(true)
 	await _save("journal")
 	session.open_menu()
 	await _save("menu")

@@ -1,10 +1,12 @@
 # Тестовые релизы GitHub
 
+Текущий выпуск: [v0.1.0-alpha.4](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.4), 2026-10-28, чистый source/tag 44cb06c. Все ветки включены в main; комплект установлен до публикации. Windows ZIP/manifest/SHA256 опубликованы, скачаны, сверены и запущены. [Заметки](releases/v0.1.0-alpha.4.md), [протокол](worklog/2026-10-28-10-alpha4-integration.md). Следующий исправленный выпуск — alpha.5, прежние теги/вложения неизменяемы.
+
 Рабочие сборки выдаём коллегам через GitHub Releases с отметкой **Pre-release**. Новый выпуск имеет уникальную версию, архив Windows и описание проверок. Предлагаемый первый номер — `v0.1.0-alpha.1`, следующий исправленный билд — `v0.1.0-alpha.2`. Это правило команды для тестов, не объявление готовности MVP. Публичность репозитория не менять; доступ к релизу определяется доступом к репозиторию.
 
 ## Опубликованные выпуски
 
-[v0.1.0-alpha.3](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.3) — совместный бар/дом/рукописная книга, source cca792e, 2026-10-27. [Заметки](releases/v0.1.0-alpha.3.md), [полный протокол](worklog/2026-10-27-14-bar-release-integration.md). Windows ZIP, manifest и SHA256 опубликованы/скачаны/сверены; EXE запущен вне проекта. Следующая версия alpha.4, опубликованные вложения не заменять.
+[v0.1.0-alpha.3](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.3) — совместный бар/дом/рукописная книга, source cca792e, 2026-10-27. [Заметки](releases/v0.1.0-alpha.3.md), [полный протокол](worklog/2026-10-27-14-bar-release-integration.md). Windows ZIP, manifest и SHA256 опубликованы/скачаны/сверены; EXE запущен вне проекта. Исторический выпуск; опубликованные вложения не заменять.
 
 [v0.1.0-alpha.2](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.2) — детализация под экран, MSDF-шрифты и временные TEST-лица; source 0dadbdf, 2026-10-26. [Заметки](releases/v0.1.0-alpha.2.md), [протокол](worklog/2026-10-26-17-realism-direction-and-alpha2.md). Исторический выпуск; текущая версия указана выше.
 
