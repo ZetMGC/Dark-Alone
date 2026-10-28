@@ -3,6 +3,7 @@ extends CanvasLayer
 
 signal drink_requested(drink_id: StringName)
 signal preparation_requested(preparation: DrinkPreparation)
+var preparation_stager: Callable
 var workbench_enabled: bool = false
 var workbench: DrinkWorkbench
 signal close_requested
@@ -24,7 +25,13 @@ func enable_workbench() -> void:
 	workbench = DrinkWorkbench.new()
 	workbench.name = "DrinkWorkbench"
 	screen.add_child(workbench)
-	workbench.preparation_requested.connect(func(value: DrinkPreparation) -> void: preparation_requested.emit(value))
+	workbench.preparation_requested.connect(func(value: DrinkPreparation) -> void:
+		if preparation_stager.is_valid():
+			if preparation_stager.call(value):
+				workbench.mark_world_staged()
+		else:
+			preparation_requested.emit(value)
+	)
 	workbench.close_requested.connect(func() -> void: close_requested.emit())
 	workbench.menu_requested.connect(func() -> void: menu_requested.emit())
 	$Screen/Card.hide()

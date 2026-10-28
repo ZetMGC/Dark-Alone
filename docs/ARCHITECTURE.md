@@ -138,3 +138,7 @@ DA-057: PreferenceStore/PreferenceController отделяют параметры
 Main добавляет независимую scenes/levels/back_counter.tscn и AnchorPoint back_counter по дочернему WorkPosition перед configure камеры. Только back_counter в focus_anchor_ids текущего бара. Физические привязки: BackCounter/{Top,Cabinet}/Body и BarLevel/Geometry/{ShelfBack,ShelfUpper,ShelfLower}/Body. CounterTop/Base/Trim не интерактивны. Отсутствие обязательного Body — ошибка настройки. Старый counter/граф и legacy fixtures остаются прежними; Home не меняется.
 
 Потребители: Main, NavigationHUD, back_counter.tscn, world_target_test/free_roam_test/dialogue_bubble_test; check.ps1/Windows Validation уже включают их. Session/Runner/GuestService, сохранения и настройки прежние. Программные service API и UI пока разрешают подачу только exploration у back_counter (legacy: required_anchor). Готовить параллельно разговору будет DA-060 с отдельным решением, сейчас не обещать такую возможность.
+
+## DA-081: предмет напитка
+
+scripts/service/drinks/world_drink.gd создаёт стакан/слои/лёд из DrinkPreparation и цель Interactable3D. scripts/player/drink_carry.gd владеет порцией и тем же узлом в мире/под камерой. Main связывает верстак, перенос и существующую подачу; пружина не изменяет рецептуру и время. [ADR-0042](decisions/0042-drink-carry.md).

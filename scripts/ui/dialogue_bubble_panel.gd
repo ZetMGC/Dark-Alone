@@ -324,16 +324,15 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			if _world_action_precedes_speech():
+				return
 			confirm()
 			get_viewport().set_input_as_handled()
 		return
 	elif event is InputEventKey and event.pressed:
 		var key: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
 		if key == KEY_E:
-			# E у доступного предмета остаётся взаимодействием даже во время речи.
-			var interaction := get_parent().get_node_or_null("InteractionController") as InteractionController
-			var target: Interactable3D = interaction.get_target() if interaction != null else null
-			if is_instance_valid(target) and not target is DialogueTrigger and target.is_available():
+			if _world_action_precedes_speech():
 				return
 			confirm()
 		elif key == KEY_BACKSPACE:
@@ -357,3 +356,10 @@ func _hover_choice(index: int) -> void:
 func _set_reply_pointer(value: bool) -> void:
 	if is_instance_valid(_camera) and _camera.get_parent() is FreeRoamCamera:
 		(_camera.get_parent() as FreeRoamCamera).set_dialogue_pointer(value)
+
+func _world_action_precedes_speech() -> bool:
+	var interaction := get_parent().get_node_or_null("InteractionController") as InteractionController
+	var target: Interactable3D = interaction.get_target() if interaction != null else null
+	if not is_instance_valid(target) or not target.is_available():
+		return false
+	return not target is DialogueTrigger or (target is ServiceGuest and target.carry_mode and not can_answer())

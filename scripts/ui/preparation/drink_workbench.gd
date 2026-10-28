@@ -27,6 +27,7 @@ var _active: bool = false
 var _focused: bool = true
 @onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
 var _last_notice: String = ""
+var world_output: bool = false
 var _dragging: StringName = &""
 var _offset := Vector2.ZERO
 var _pointer := Vector2.ZERO
@@ -175,7 +176,7 @@ func set_active(value: bool) -> void:
 
 
 func select_vessel(id: StringName) -> bool:
-	if (preparation != null and (not _active or not _focused)) or not _catalog.is_loaded() or _catalog.get_vessel(id).is_empty() or _dragging != &"":
+	if _delivered or (preparation != null and (not _active or not _focused)) or not _catalog.is_loaded() or _catalog.get_vessel(id).is_empty() or _dragging != &"":
 		return false
 	if preparation != null and preparation.get_volume_ml() > 0:
 		_message = "Сначала опустошите посуду над сливом — напиток внутри"
@@ -255,8 +256,8 @@ func request_delivery() -> bool:
 	if not _active or not _focused or _dragging != &"" or not is_ready_to_deliver():
 		return false
 	preparation_requested.emit(preparation)
-	_delivered = not preparation.get_result().is_empty()
-	_message = "Напиток передан на стойку перед гостем" if _delivered else "Сейчас подать нельзя — проверьте оставшееся время смены"
+	_delivered = _delivered or not preparation.get_result().is_empty()
+	_message = ("Напиток готов на рабочей поверхности" if world_output else "Напиток передан на стойку перед гостем") if _delivered else "Сейчас подать нельзя — проверьте оставшееся время смены"
 	_refresh_buttons()
 	queue_redraw()
 	return _delivered
@@ -270,7 +271,7 @@ func _refresh_buttons() -> void:
 		_shaker_cap_button.text = "Снять колпачок" if _shaker_cap_on else "Надеть колпачок"
 		_shaker_cap_button.disabled = _shaker_lid_button.disabled
 	if _delivery_button != null:
-		_delivery_button.text = "Подать гостю →" if is_ready_to_deliver() else "Поставьте сюда напиток"
+		_delivery_button.text = ("Завершить напиток" if world_output else "Подать гостю →") if is_ready_to_deliver() else "Поставьте сюда напиток"
 		_delivery_button.disabled = not is_ready_to_deliver()
 	for id in _vessel_buttons:
 		var current: bool = preparation != null and preparation.get_vessel().id == str(id)
@@ -344,7 +345,7 @@ func logical_to_screen(point: Vector2) -> Vector2:
 
 
 func begin_drag(id: StringName, point: Vector2) -> bool:
-	if not _active or not _focused or preparation == null or not preparation.get_result().is_empty() or not _positions.has(str(id)) or _dragging != &"" or not point.is_finite():
+	if not _active or not _focused or preparation == null or not preparation.get_result().is_empty() or _delivered or not _positions.has(str(id)) or _dragging != &"" or not point.is_finite():
 		return false
 	_dragging = id
 	_offset = get_item_position(id) - point
@@ -772,10 +773,10 @@ func _draw() -> void:
 	var hover: bool = _dragging == &"cup" and SERVE_ZONE.has_point(get_item_position(&"cup"))
 	draw_rect(SERVE_ZONE, Color(0.55, 0.49, 0.30) if hover or _cup_on_tray else Color(0.35, 0.33, 0.27))
 	draw_rect(SERVE_ZONE.grow(-6), Color(0.21, 0.22, 0.19))
-	_text(SERVE_ZONE.position + Vector2(18, 25), "ВЫДАЧА → ГОСТЮ", Color(0.9, 0.82, 0.61), 18)
+	_text(SERVE_ZONE.position + Vector2(18, 25), "ГОТОВЫЙ НАПИТОК" if world_output else "ВЫДАЧА → ГОСТЮ", Color(0.9, 0.82, 0.61), 18)
 	if not _cup_on_tray:
 		_text(SERVE_ZONE.position + Vector2(18, 78), "Перетащите сюда стакан", Color(0.83, 0.78, 0.63), 16)
-		_text(SERVE_ZONE.position + Vector2(18, 104), "Затем нажмите «Подать»", Color(0.83, 0.78, 0.63), 16)
+		_text(SERVE_ZONE.position + Vector2(18, 104), "Затем завершите напиток" if world_output else "Затем нажмите «Подать»", Color(0.83, 0.78, 0.63), 16)
 	draw_rect(SINK, Color(0.43, 0.44, 0.39))
 	draw_rect(SINK.grow(-10), Color(0.075, 0.09, 0.08))
 	draw_circle(SINK.get_center(), 15, Color(0.025, 0.035, 0.03))
@@ -1057,3 +1058,8 @@ func get_hovered_bottle_info(point: Vector2) -> Dictionary:
 	if str(id) not in _ids:
 		return {}
 	return {"id": id, "title": str(_catalog.get_ingredient(id).title).trim_prefix("[TEST] "), "remaining_ml": get_bottle_remaining(id), "strength": _catalog.get_ingredient(id).strength}
+
+func mark_world_staged() -> void:
+	_delivered = true
+	_refresh_buttons()
+	queue_redraw()

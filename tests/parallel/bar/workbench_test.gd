@@ -98,6 +98,7 @@ func _run() -> void:
 	await _test_controls()
 	await _test_mixing_surface()
 	var main := (load("res://scenes/main/main.tscn") as PackedScene).instantiate()
+	main.physical_drinks_enabled = false
 	main.preferences_enabled = false
 	main.checkpoint_enabled = false
 	get_tree().root.add_child(main)

@@ -404,3 +404,6 @@ func _sync_panels() -> void:
 		var home_journal := _mode == JOURNAL and _journal_return == HOME
 		var show_home_panel := not _explorable_home and (_mode == HOME or home_journal)
 		_commute_panel.set_open(_mode == TRAVEL or show_home_panel, _mode == TRAVEL, not home_journal)
+
+func can_stage_preparation() -> bool:
+	return _configured and _service_ready and not _changing and _mode == SERVICE and not service.served and _has_service_time()

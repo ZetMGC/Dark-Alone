@@ -207,3 +207,7 @@ DA-078: object_context 20 проверок расположения панели
 DA-079: dialogue_bubble_test проверяет размеры одиночного выбора, колонки [E]/текст, плавное затухание после последней страницы, сохранение ответов после исчезновения, паузу отсчёта и сброс новой страницы. Кадры 06a-single-compact / 06b-faded-speech-with-replies в графическом профиле.
 
 DA-080: проверки ответов передают реальные MouseMotion/MouseButton в viewport; два разных варианта выполняются кликом ровно один раз, цифры не выполняют ответ. Новый visitor_model_test из main коллеги остаётся в общем runner.
+
+## DA-081: перенос
+
+`tests/drink_carry_test.tscn` / Windows Validation `--drink-carry-check`: готовая порция на поверхности, реальное наведение/E, подбор/возврат/подача, разговор и одно списание времени, состав, пауза, положение справа, пределы/затухание пружины и 30/120 FPS. Включён в tools/check.ps1 и check_windows_export.ps1. Source: 33 headless, 37 GPU в 1280×720 и 960×600; release_integration 23, legacy service 52, полный check PASS.

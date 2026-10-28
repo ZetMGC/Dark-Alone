@@ -4,6 +4,9 @@ extends DialogueTrigger
 
 @export var guest_id: StringName = &"test_guest"
 
+var carry_mode: bool = false
+var carry_delivery: Callable
+
 var _target_shape: CapsuleShape3D
 var _walk_shape: CapsuleShape3D
 var _target_size: Vector2
@@ -110,4 +113,11 @@ func show_prepared(result: Dictionary, surface_position: Vector3) -> void:
 
 
 func get_prompt() -> String:
-	return "E — поговорить с [TEST] гостем"
+	return "E — подать напиток" if carry_mode else "E — поговорить с [TEST] гостем"
+
+func interact() -> void:
+	if carry_mode:
+		if is_available() and carry_delivery.is_valid():
+			carry_delivery.call()
+	else:
+		super.interact()

@@ -53,6 +53,7 @@ func _wait_book() -> void:
 
 func _run() -> void:
 	var profiles := {"--workbench-check": "res://tests/parallel/bar/workbench_test.tscn", "--bar-service-check": "res://tests/bar_service_dialogue_test.tscn", "--home-target-check": "res://tests/home_target_test.tscn", "--house-layout-check": "res://tests/parallel/home/house_layout_test.tscn", "--journal-ink-check": "res://tests/journal_ink_test.tscn"}
+	profiles["--drink-carry-check"] = "res://tests/drink_carry_test.tscn"
 	profiles["--release-integration-check"] = "res://tests/release_integration_test.tscn"
 	for argument in profiles:
 		if argument in OS.get_cmdline_user_args():

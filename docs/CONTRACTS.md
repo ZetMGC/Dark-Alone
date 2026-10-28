@@ -335,3 +335,9 @@ DialogueTrigger.show_marker: bool=true отделяет маркер от дос
 Main добавляет независимую scenes/levels/back_counter.tscn и AnchorPoint back_counter по дочернему WorkPosition перед configure камеры. Только back_counter в focus_anchor_ids текущего бара. Физические привязки: BackCounter/{Top,Cabinet}/Body и BarLevel/Geometry/{ShelfBack,ShelfUpper,ShelfLower}/Body. CounterTop/Base/Trim не интерактивны. Отсутствие обязательного Body — ошибка настройки. Старый counter/граф и legacy fixtures остаются прежними; Home не меняется.
 
 Потребители: Main, NavigationHUD, back_counter.tscn, world_target_test/free_roam_test/dialogue_bubble_test; check.ps1/Windows Validation уже включают их. Session/Runner/GuestService, сохранения и настройки прежние. Программные service API и UI пока разрешают подачу только exploration у back_counter (legacy: required_anchor). Готовить параллельно разговору будет DA-060 с отдельным решением, сейчас не обещать такую возможность.
+
+## DA-081: перенос напитка
+
+ServicePanel.preparation_stager: Callable(DrinkPreparation)->bool перехватывает завершение; успех вызывает DrinkWorkbench.mark_world_staged(), блокирует редактирование/повтор. Без callback прежний preparation_requested сохранён. world_output меняет подпись на «Завершить напиток».
+
+NarrativeSession.can_stage_preparation()->bool проверяет готовность сервиса/время/режим без подачи. DrinkCarry.configure(camera, session, root), stage(preparation)->bool, pick_up()->bool, place()->bool, consume()->void; changed обновляет навигацию. Одна незапечатанная порция принадлежит переносчику до serve_preparation. ServiceGuest.carry_mode/carry_delivery заменяют разговор подачей только при доступном сервисе. Потребители: Main, ServicePanel, DrinkWorkbench, ServiceGuest, DialogueBubblePanel; проверки drink_carry/release_integration/legacy workbench.
