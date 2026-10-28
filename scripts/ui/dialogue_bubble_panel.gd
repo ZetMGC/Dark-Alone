@@ -2,6 +2,7 @@ class_name DialogueBubblePanel
 extends DialoguePanel
 ## Позиция речи зависит от головы, ответы — от взгляда; правила диалога в Session.
 
+@onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
 var bubble_enabled: bool = false
 var _response_input_enabled: bool = true
 var _service_overlay: bool = false
@@ -24,6 +25,11 @@ var _page_index: int = 0
 var _edge_side: int = 0
 var _position_ready: bool = false
 var _position_target := Vector2.ZERO
+
+
+func _ready() -> void:
+	super._ready()
+	screen.add_child(_notice)
 
 
 func set_response_input_enabled(enabled: bool) -> void:
@@ -102,7 +108,7 @@ func set_open(value: bool) -> void:
 	$Screen/Shade.hide()
 	%VoiceBubble.visible = value
 	%VoiceReplies.visible = false
-	%VoiceHint.visible = value
+	%VoiceHint.visible = false
 	if not value and _runner != null and not _runner.active:
 		_line_key = ""
 	if value:
@@ -289,9 +295,13 @@ func _update_layout() -> void:
 		%VoiceHint.text = "F — закончить разговор · J — дневник"
 	elif is_speech_complete() and looking_at_speaker and _choices_data.is_empty():
 		%VoiceHint.text = "J — дневник · Backspace — прервать разговор"
-	%VoiceHint.visible = not _service_overlay
+	%VoiceHint.visible = false
+	%VoiceReplyHelp.hide()
 	if not _response_input_enabled:
 		%VoiceHint.text = "Esc — отойти от стойки и продолжить разговор"
+
+	if not _service_overlay:
+		_notice.show_hint(%VoiceHint.text)
 
 
 func _input(event: InputEvent) -> void:

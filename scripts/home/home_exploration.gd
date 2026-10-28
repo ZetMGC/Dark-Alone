@@ -19,6 +19,7 @@ var _inspection: StringName = &""
 var _event: StringName = &""
 var house: Node3D
 var _house_inspection: bool = false
+@onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
 var _feedback: Label
 var _feedback_remaining: float = 0
 
@@ -43,6 +44,7 @@ func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: Home
 	(rig as FreeRoamCamera).availability_changed.connect(_refresh)
 	if not rig.configure($Anchors, &"home_entry"):
 		return false
+	$HomeHUD/Screen.add_child(_notice)
 	_session = session
 	_bar_hud = hud
 	if shared_state != null:
@@ -51,7 +53,11 @@ func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: Home
 	interaction.configure(rig.view)
 	if free_roam and not _configure_surfaces():
 		return false
-	interaction.prompt_changed.connect(func(text: String) -> void: %Prompt.text = text)
+	interaction.prompt_changed.connect(func(text: String) -> void:
+		%Prompt.text = text
+		if not text.is_empty():
+			_notice.show_hint(text, "interact")
+	)
 	rig.transition_started.connect(func(_from: StringName, _to: StringName) -> void: _refresh())
 	rig.anchor_reached.connect(func(_id: StringName) -> void: _refresh())
 	for anchor in rig.get_anchors():
@@ -135,6 +141,7 @@ func _world_enabled() -> bool:
 
 
 func _process(_delta: float) -> void:
+	%Prompt.hide()
 	if _session == null or not (rig as FreeRoamCamera).free_roam_enabled:
 		return
 	interaction.set_enabled(_world_enabled())
@@ -222,11 +229,11 @@ func _refresh() -> void:
 		%Work.visible = rig.current_anchor_id == &"home_entry"
 		%Event.visible = focused and not state.get_available_events().is_empty()
 		$HomeHUD/Screen/Reticle.visible = not focused and not _has_inspection()
-		%MovementHint.visible = not focused and not _has_inspection()
+		%MovementHint.visible = false
 		%Prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if focused else HORIZONTAL_ALIGNMENT_CENTER
 		if not focused:
 			%Prompt.position = get_viewport().get_visible_rect().size * 0.5 + Vector2(-320, 24)
-		%Prompt.visible = enabled and not rig.is_transitioning
+		%Prompt.visible = false
 
 
 func _move(id: StringName) -> void:

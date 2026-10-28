@@ -149,7 +149,7 @@ func _run() -> void:
 	_expect((-rig.view.global_basis.z).dot(Vector3.LEFT) > 0.85 and (-rig.view.global_basis.z).y < -0.3, "Workstation faces bottle shelves behind bartender")
 	await _point(rig, Vector3(-5.6, 1.12, -2))
 	_expect(interaction.get_target() == counter, "Cursor over back countertop selects workstation")
-	_expect(hud.get_node("%Prompt").visible, "World hint remains visible at workstation")
+	_expect(not hud.get_node("%Prompt").visible, "Persistent world hint replaced by passive notice")
 	await _snap("03-back-counter")
 	await _key(KEY_T)
 	_expect(session.mode == NarrativeSession.DIALOGUE and not rig.focus_active, "Talk shortcut releases back counter into walking conversation")

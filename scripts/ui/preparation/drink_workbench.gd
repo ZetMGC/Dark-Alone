@@ -25,6 +25,8 @@ var _parking: Dictionary = {}
 var _ids: PackedStringArray = []
 var _active: bool = false
 var _focused: bool = true
+@onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
+var _last_notice: String = ""
 var _dragging: StringName = &""
 var _offset := Vector2.ZERO
 var _pointer := Vector2.ZERO
@@ -63,6 +65,7 @@ var _view := Transform2D.IDENTITY
 
 
 func _ready() -> void:
+	add_child(_notice)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = load("res://scenes/ui/prototype_theme.tres")
 	var font := SystemFont.new()
@@ -715,6 +718,9 @@ func _spoon_position() -> Vector2:
 func _process(delta: float) -> void:
 	if not _active or not _focused:
 		return
+	if _message != _last_notice:
+		_last_notice = _message
+		_notice.show_hint(_message)
 	advance_motion(delta)
 	advance_pour(delta)
 
@@ -802,21 +808,8 @@ func _draw() -> void:
 		_draw_bottle(_dragging)
 	_draw_stream()
 	_local()
-	_text(Vector2(28, 662), _pour_hint(stream_info()) if _angles.has(str(_dragging)) else _message)
-	var help := "ЛКМ — предметы · посуда — слева · готовый напиток — в выдачу справа"
-	if _dragging == &"cup":
-		help = "Колесо — лить в открытую тару · выдача справа → «Подать» · слив — опустошить"
-	elif _dragging == &"spoon":
-		help = "Ложка в смесительном стакане — stir · у края — мягкая струя для слоёв"
-	elif _dragging == &"shaker":
-		help = "Влево-вправо — встряхивать закрытый · для перелива поставьте и снимите колпачок"
-	elif _dragging == &"mixing":
-		help = "Колесо — наклонить и перелить смесь · для слоя лейте медленно по ложке"
-	elif _dragging == &"ice":
-		help = "Положите лёд в смесительный стакан, шейкер или посуду для подачи"
-	elif _angles.has(str(_dragging)):
-		help = "Колесо ↑ — сильнее наклон и поток · ↓ — слабее, до остановки · отпустить ЛКМ — поставить"
-	_text(Vector2(28, 695), help, Color(0.7, 0.69, 0.61), 16)
+	_draw_hover_card()
+
 
 
 func _draw_rack() -> void:
@@ -851,8 +844,7 @@ func _draw_bottle(id: StringName) -> void:
 	draw_rect(Rect2(20, 62, 5, 80), Color(0.08, 0.12, 0.1, 0.7))
 	draw_rect(Rect2(20, 142 - fill * 80, 5, fill * 80), color.lightened(0.25))
 	_local()
-	if _dragging == id:
-		_text(Vector2(32, 153), "Бутылка пуста" if fill <= 0 else str(item.title).trim_prefix("[TEST] "), Color(0.8, 0.75, 0.61), 18)
+
 
 
 func _draw_cup() -> void:
@@ -1043,3 +1035,25 @@ func _draw_stream() -> void:
 		for direction in [-1, 1]:
 			var phase := fposmod(seconds * 3 + (0.4 if direction < 0 else 0), 1)
 			draw_circle(endpoint + Vector2(direction * splash * phase, -sin(phase * PI) * splash * 0.6), width * 0.2, color)
+
+
+func _draw_hover_card() -> void:
+	var point := (get_local_mouse_position() - _origin) / _scale
+	var info := get_hovered_bottle_info(point)
+	if info.is_empty():
+		return
+	var title := str(info.title)
+	var width := clampf(_font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 28, 180, 360)
+	var position := (point + Vector2(18, 22)).clamp(Vector2(8, 8), DESIGN - Vector2(width + 8, 70))
+	draw_rect(Rect2(position, Vector2(width, 62)), Color(0.04, 0.05, 0.045, 0.94))
+	_text(position + Vector2(12, 23), title, Color(0.94, 0.88, 0.74), 16)
+	_text(position + Vector2(12, 47), "%d мл · Крепость %d%%" % [info.remaining_ml, info.strength * 100], Color(0.72, 0.74, 0.67), 14)
+
+
+func get_hovered_bottle_info(point: Vector2) -> Dictionary:
+	if _dragging != &"" or not _active or not _focused:
+		return {}
+	var id := _hit_item(point)
+	if str(id) not in _ids:
+		return {}
+	return {"id": id, "title": str(_catalog.get_ingredient(id).title).trim_prefix("[TEST] "), "remaining_ml": get_bottle_remaining(id), "strength": _catalog.get_ingredient(id).strength}

@@ -15,6 +15,7 @@ static var page_volume: float = 0.35
 static var _rustle: AudioStreamWAV
 
 @onready var screen: Control = $Screen
+@onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
 var _journal: Journal
 var _ids: Array[StringName] = []
 var _index_start: int = 0
@@ -41,6 +42,8 @@ const INK_TOOLS: Array[StringName] = [&"select", &"underline", &"circle", &"eras
 
 
 func _ready() -> void:
+	screen.add_child(_notice)
+	%Hint.hide()
 	for tab in [%NotesTab, %RecipesTab, %WordsTab]:
 		var paper := StyleBoxFlat.new()
 		paper.bg_color = Color("b8ab86") if tab == %NotesTab else (Color("a5ad92") if tab == %RecipesTab else Color("c4b499"))
@@ -67,6 +70,7 @@ func _ready() -> void:
 	%WordsTab.pressed.connect(func() -> void: select_section(&"words"))
 	%PaperPages.hint_changed.connect(func(text: String) -> void:
 		%Hint.text = text
+		_notice.show_hint(text)
 		_update_controls()
 	)
 	%PaperPages.navigation_changed.connect(_update_controls)

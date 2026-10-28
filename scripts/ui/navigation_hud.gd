@@ -10,6 +10,7 @@ signal service_requested
 signal new_game_requested
 signal leave_workstation_requested
 
+@onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
 var _buttons: Dictionary = {}
 var _shift_number: int = 1
 var _free_roam: bool = false
@@ -25,6 +26,13 @@ var _settings_open: bool = false
 
 
 func _ready() -> void:
+	$Screen.add_child(_notice)
+	_prompt.hide()
+	for button in [%Resume, %OpenSettings, %SettingsBack, %Quit, %ResetPreferences, %ResetCamera, %NewGame]:
+		button.custom_minimum_size = Vector2(300, 40)
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	get_viewport().size_changed.connect(_layout_menu)
+	_layout_menu()
 	%OpenSettings.pressed.connect(func() -> void: show_settings(true))
 	%SettingsBack.pressed.connect(func() -> void: show_settings(false))
 	%LeaveWorkstation.pressed.connect(func() -> void: leave_workstation_requested.emit())
@@ -86,16 +94,21 @@ func update_navigation(rig: AnchorCamera) -> void:
 
 func set_prompt(prompt: String) -> void:
 	_prompt.text = prompt
+	if not prompt.is_empty():
+		_notice.show_hint(prompt, "interact")
 
 
 func show_notice(message: String) -> void:
 	_message.text = message
+	_notice.show_hint(message)
 	if _free_roam:
 		%MovementHint.text = message
 
 
 func update_workstation(rig: FreeRoamCamera, exploration: bool, dialogue: bool = false) -> void:
 	_free_roam = true
+	if exploration and not rig.focus_active:
+		_notice.show_hint("WASD — идти · E — взаимодействовать · J — дневник", "walk")
 	$Screen/Actions.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	$Screen/Actions.offset_left = 24
 	$Screen/Actions.offset_right = -24
@@ -108,7 +121,7 @@ func update_workstation(rig: FreeRoamCamera, exploration: bool, dialogue: bool =
 	%ServiceStatus.offset_bottom = -112
 	$Screen/Bottom.hide()
 	$Screen/Reticle.visible = exploration and not rig.focus_active
-	%Prompt.visible = exploration
+	%Prompt.visible = false
 	_pointer_hint = exploration and rig.focus_active
 	if not _pointer_hint:
 		%Prompt.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -119,11 +132,14 @@ func update_workstation(rig: FreeRoamCamera, exploration: bool, dialogue: bool =
 	$Screen/Actions.visible = exploration and rig.focus_active and not rig.is_transitioning
 	%ServiceStatus.visible = $Screen/Actions.visible
 	%LeaveWorkstation.visible = $Screen/Actions.visible
-	%MovementHint.visible = exploration and (not dialogue or rig.focus_active)
+	%MovementHint.visible = false
 	%MovementHint.text = ("Разговор продолжается · E — напитки · Esc — отойти" if dialogue else "Рабочая стойка у полок · E — напитки · T — разговор · Esc — отойти") if rig.focus_active else "WASD — идти · Мышь — обзор · E — взаимодействовать · J — дневник · Escape — меню"
 
 
 func _process(_delta: float) -> void:
+	%MovementHint.hide()
+	%Prompt.hide()
+	$Screen/Bottom.hide()
 	if _pointer_hint and %Prompt.visible:
 		%Prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 		%Prompt.size = Vector2(430, 35)
@@ -133,6 +149,7 @@ func _process(_delta: float) -> void:
 
 func show_settings(value: bool) -> void:
 	_settings_open = value
+	_layout_menu()
 	%SettingsScroll.visible = value
 	%SettingsBack.visible = value
 	%OpenSettings.visible = not value
@@ -156,6 +173,8 @@ func set_menu_visible(value: bool) -> void:
 	if value and not _menu.visible:
 		show_settings(false)
 	_menu.visible = value
+	if value:
+		_notice.hide()
 	if value:
 		_resume.grab_focus()
 	else:
@@ -181,3 +200,9 @@ func update_shift(remaining: int, budget: int, number: int = 0) -> void:
 	if number > 0:
 		_shift_number = number
 	%ShiftTime.text = "Смена %d · Время: %d / %d" % [_shift_number, remaining, budget]
+
+
+func _layout_menu() -> void:
+	var content := $Screen/Menu/Center/Content
+	content.custom_minimum_size.x = 560 if _settings_open else 360
+	%SettingsScroll.custom_minimum_size.y = clampf(get_viewport().get_visible_rect().size.y - 240, 180, 420)
