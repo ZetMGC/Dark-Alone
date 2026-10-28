@@ -80,8 +80,10 @@ func _run() -> void:
 	await _snap("04-bathroom")
 	await _use("HallSwitch", Vector3(-1.1, 0, 2.1), "HallSwitch")
 	_expect(not house.switches.HallSwitch and not house.get_node("HallLight").visible, "Switch turns hall light off")
-	await _key(KEY_E)
+	home.object_context.refresh_context()
+	await _key(KEY_F)
 	_expect(house.switches.HallSwitch, "Switch turns light back on")
+	await _snap("action-light")
 	await _use("Fridge", Vector3(-1.1, 0, -2.9), "FridgeHinge/FridgeDoor")
 	_expect(house.switches.Fridge and absf(house.get_node("FridgeHinge").rotation.y) > 1, "Fridge opens physically")
 	await _use("Fridge", Vector3(-1.1, 0, -2.9), "FridgeHinge/FridgeDoor")
@@ -133,11 +135,12 @@ func _run() -> void:
 		["Toilet", Vector3(-3.7, 0, 1.65), "Toilet"],
 	]:
 		await _use(item[0], item[1], item[2])
-		_expect(home.get_node("%Inspection").visible and not home.interaction.try_interact(), "House inspection modal: " + item[0])
-		session.open_journal(true)
-		_expect(not home.close_inspection(true), "Cannot close hidden inspection")
-		session.close_journal()
-		_expect(home.close_inspection(true), "House inspection returns from journal and closes")
+		home.object_context.refresh_context()
+		_expect(not home.get_node("%Inspection").visible and home.object_context.visible, "Passive inspection stays by object: " + item[0])
+		_expect(not house.actions[item[0]].context_description.is_empty(), "Passive description available")
+		_expect(house.actions[item[0]].get_context_actions().is_empty(), "Passive view requires no action")
+		_expect(not home.close_inspection(true), "Passive view has no modal to close")
+		await _snap("info-" + item[0])
 	for item in [
 		["Wardrobe", Vector3(2.8, 0, -2.8), "WardrobeHinge/WardrobeDoor"],
 		["BathroomCabinet", Vector3(-3.65, 0, 1.8), "BathroomCabinetHinge/BathroomCabinetDoor"],

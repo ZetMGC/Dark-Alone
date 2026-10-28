@@ -19,5 +19,5 @@ func get_unavailable_prompt() -> String:
 
 
 func interact() -> void:
-	if is_available() and action.is_valid():
+	if not context_passive and is_available() and action.is_valid():
 		action.call()

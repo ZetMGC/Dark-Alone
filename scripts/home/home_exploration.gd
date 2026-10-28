@@ -20,8 +20,10 @@ var _event: StringName = &""
 var house: Node3D
 var _house_inspection: bool = false
 @onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
+@onready var object_context = preload("res://scripts/ui/object_context_bubble.gd").new()
 var _feedback: Label
 var _feedback_remaining: float = 0
+var feedback_target: Interactable3D
 
 @onready var rig: AnchorCamera = $AnchorCamera
 @onready var interaction: InteractionController = $InteractionController
@@ -51,12 +53,14 @@ func configure(session: NarrativeSession, hud: NavigationHUD, shared_state: Home
 		state = shared_state
 	state.changed.connect(_refresh)
 	interaction.configure(rig.view)
+	$HomeHUD/Screen.add_child(object_context)
+	if free_roam:
+		object_context.configure(interaction, rig.view)
 	if free_roam and not _configure_surfaces():
 		return false
 	interaction.prompt_changed.connect(func(text: String) -> void:
 		%Prompt.text = text
-		if not text.is_empty():
-			_notice.show_hint(text, "interact")
+
 	)
 	rig.transition_started.connect(func(_from: StringName, _to: StringName) -> void: _refresh())
 	rig.anchor_reached.connect(func(_id: StringName) -> void: _refresh())
@@ -117,6 +121,10 @@ func _has_inspection() -> bool:
 	return _inspection != &"" or _event != &"" or _house_inspection
 
 
+func house_information_allowed() -> bool:
+	return _world_enabled()
+
+
 func house_actions_allowed() -> bool:
 	return _world_enabled() and not (rig as FreeRoamCamera).focus_active
 
@@ -131,9 +139,9 @@ func show_house_inspection(title: String, text: String) -> void:
 
 
 func house_feedback(text: String) -> void:
-	if is_instance_valid(_feedback):
-		_feedback.text = text
-		_feedback_remaining = 4.0
+	if is_instance_valid(feedback_target):
+		feedback_target.context_feedback = text
+		object_context.refresh_context()
 
 
 func _world_enabled() -> bool:
@@ -303,6 +311,8 @@ func request_work() -> bool:
 func handle_input(event: InputEvent) -> bool:
 	if _session == null or _session.mode != NarrativeSession.HOME or event.is_echo() or not rig.view.is_current():
 		return false
+	if object_context.handle_input(event):
+		return true
 	if event.is_action_pressed("toggle_menu") and _has_inspection():
 		close_inspection(false)
 		return true

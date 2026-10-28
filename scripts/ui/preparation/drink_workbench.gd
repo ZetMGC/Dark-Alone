@@ -1045,7 +1045,7 @@ func _draw_hover_card() -> void:
 	var title := str(info.title)
 	var width := clampf(_font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 28, 180, 360)
 	var position := (point + Vector2(18, 22)).clamp(Vector2(8, 8), DESIGN - Vector2(width + 8, 70))
-	draw_rect(Rect2(position, Vector2(width, 62)), Color(0.04, 0.05, 0.045, 0.94))
+	draw_style_box(preload("res://scenes/ui/context_bubble_style.tres"), Rect2(position, Vector2(width, 62)))
 	_text(position + Vector2(12, 23), title, Color(0.94, 0.88, 0.74), 16)
 	_text(position + Vector2(12, 47), "%d мл · Крепость %d%%" % [info.remaining_ml, info.strength * 100], Color(0.72, 0.74, 0.67), 14)
 

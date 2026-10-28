@@ -15,6 +15,7 @@ var pointer_mode: bool = false:
 var _surfaces: Dictionary = {}
 
 var _view: Camera3D
+var hit_position: Vector3 = Vector3.ZERO
 var _target: Interactable3D
 var _enabled: bool = true
 var _last_prompt: String = ""
@@ -86,6 +87,7 @@ func _refresh_target() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, end, 3)
 	query.collide_with_areas = true
 	var hit := _view.get_world_3d().direct_space_state.intersect_ray(query)
+	hit_position = hit.get("position", end)
 	var collider := hit.get("collider") as CollisionObject3D
 	var target := collider as Interactable3D
 	if target == null and is_instance_valid(collider) and _surfaces.has(collider.get_instance_id()):

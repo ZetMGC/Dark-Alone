@@ -71,8 +71,12 @@ func _bind(id: String, parts: Array, caption: Callable, action: Callable) -> voi
 	target.collision_mask = 0
 	target.monitoring = false
 	target.caption = caption
-	target.action = action
+	target.action = func() -> void:
+		home.feedback_target = target
+		action.call()
+		home.feedback_target = null
 	var primary: Node3D = parts[0]
+	target.context_anchor = primary
 	target.allowed = func() -> bool: return home.house_actions_allowed() and home.rig.view.global_position.distance_to(primary.global_position) <= 2.5
 	add_child(target)
 	for part: Node3D in parts:
@@ -85,6 +89,11 @@ func _bind(id: String, parts: Array, caption: Callable, action: Callable) -> voi
 
 func _inspect(id: String, parts: Array, title: String, text: String) -> void:
 	_bind(id, parts, func() -> String: return "осмотреть: " + title, func() -> void: home.show_house_inspection(title, text))
+	actions[id].context_title = title
+	actions[id].context_description = text.replace(" J — открыть дневник.", "")
+	actions[id].context_passive = true
+	var primary: Node3D = parts[0]
+	actions[id].allowed = func() -> bool: return home.house_information_allowed() and home.rig.view.global_position.distance_to(primary.global_position) <= 2.5
 
 
 func _light(id: String, position: Vector3, color: Color, energy: float) -> OmniLight3D:

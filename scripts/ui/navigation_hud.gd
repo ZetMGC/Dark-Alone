@@ -11,6 +11,7 @@ signal new_game_requested
 signal leave_workstation_requested
 
 @onready var _notice = preload("res://scripts/ui/notice_bubble.gd").new()
+@onready var object_context = preload("res://scripts/ui/object_context_bubble.gd").new()
 var _buttons: Dictionary = {}
 var _shift_number: int = 1
 var _free_roam: bool = false
@@ -27,6 +28,7 @@ var _settings_open: bool = false
 
 func _ready() -> void:
 	$Screen.add_child(_notice)
+	$Screen.add_child(object_context)
 	_prompt.hide()
 	for button in [%Resume, %OpenSettings, %SettingsBack, %Quit, %ResetPreferences, %ResetCamera, %NewGame]:
 		button.custom_minimum_size = Vector2(300, 40)
@@ -94,8 +96,7 @@ func update_navigation(rig: AnchorCamera) -> void:
 
 func set_prompt(prompt: String) -> void:
 	_prompt.text = prompt
-	if not prompt.is_empty():
-		_notice.show_hint(prompt, "interact")
+
 
 
 func show_notice(message: String) -> void:

@@ -10,7 +10,7 @@ func _process(delta: float) -> void:
 		amount = 0.0
 		return
 	var target: Interactable3D = interaction.get_target() if is_instance_valid(interaction) else null
-	var active := is_instance_valid(target) and target.is_available()
+	var active := is_instance_valid(target) and target.is_available() and not target.context_passive
 	amount = lerpf(amount, 1.0 if active else 0.0, 1.0 - exp(-delta / 0.12))
 	queue_redraw()
 func _draw() -> void:
