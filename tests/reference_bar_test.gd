@@ -94,6 +94,8 @@ func run() -> void:
 	await capture(main, Vector3(2.65, 1.7, 1.6), Vector3(-2.8, 1.1, -0.5), "hall")
 	await capture(main, Vector3(0.6, 1.6, 1.6), Vector3(2.1, 1.1, -1.4), "passage")
 	await capture(main, Vector3(-2.3, 1.35, 0.2), Vector3(-3.4, 0.65, -1.9), "seating")
+	await capture(main, Vector3(-0.4, 1.65, -2.0), Vector3(2.3, 1.1, -0.4), "service_left")
+	await capture(main, Vector3(3.5, 1.65, -2.5), Vector3(4.65, 0.7, -3.45), "store")
 	expect(session.start_dialogue(&"test_war_cinema_guest"), "Conversation remains available in night lighting")
 	await get_tree().create_timer(0.7).timeout
 	await capture(main, Vector3(-0.2, 1.65, -2.0), Vector3(-0.2, 1.43, -0.45), "support_front")

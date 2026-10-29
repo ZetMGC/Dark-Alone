@@ -122,8 +122,8 @@ func _ready() -> void:
 	lamp(Vector3(-1.6, 2.5, 1.4), 0.0, 2.4)
 	lamp(Vector3(-1.2, 2.5, -1.2), 1.25, 3.0)
 	lamp(Vector3(0.7, 2.5, -1.2), 1.25, 3.0)
-	lamp(Vector3(2.2, 2.5, -2.5), 0.65, 2.4, Color(0.72, 0.86, 0.77))
-	lamp(Vector3(4, 2.5, -2.5), 0.25, 2.0, Color(0.70, 0.78, 0.74))
+	lamp(Vector3(2.2, 2.5, -2.5), 1.2, 3.1, Color(0.72, 0.86, 0.77))
+	lamp(Vector3(4, 2.5, -2.5), 1.4, 3.0, Color(0.70, 0.78, 0.74))
 	lamp(Vector3(4, 2.5, 0.5), 0.4, 2.0, Color(0.72, 0.80, 0.76))
 	lamp(Vector3(3, 2.5, 3), 0.25, 2.0)
 	lamp(Vector3(-0.6, 2.5, 3.4), 0.35, 2.1)
@@ -143,6 +143,16 @@ func _ready() -> void:
 	bounce.omni_range = 3.6
 	bounce.shadow_enabled = true
 	add_child(bounce)
+	# Боковое заполнение показывает мебель/ящики, которые не ловят свет сверху.
+	for data in [["LeftSeatingFill", Vector3(-3.55, 1.6, 0), 0.85, 4.3, Color(0.78, 0.80, 0.78)], ["StoreFill", Vector3(4.0, 1.65, -2.4), 0.7, 2.5, Color(0.76, 0.82, 0.77)], ["ServicePassageFill", Vector3(2.2, 1.5, 0.2), 0.55, 2.6, Color(0.78, 0.80, 0.76)]]:
+		var fill := OmniLight3D.new()
+		fill.name = data[0]
+		fill.position = data[1]
+		fill.light_energy = data[2]
+		fill.omni_range = data[3]
+		fill.light_color = data[4]
+		fill.shadow_enabled = true
+		add_child(fill)
 	var environment := WorldEnvironment.new()
 	environment.environment = Environment.new()
 	environment.environment.background_mode = Environment.BG_COLOR
