@@ -12,7 +12,7 @@ Codex; codex/da092-tabletop-physics, база 29302d9.
 
 Tabletop headless 22/0, GPU 24/0 (1280×720 и 960×600). Проверены непрерывность release, масса, границы/затухание крышки, 30/120 Гц, реальный клик подъёма, повторный захват, мировой масштаб стакана и пиксель вне его силуэта. Просмотрены da092-drawer-glass, table, bottle-flight, bottle-lying, held-shadow. Small bottle включает реальный жест снятия; workbench адаптирован к ожиданию подъёма перед наливом.
 
-Общий первый check PASS; финальный check/Windows/установка выполняются, результаты дополняются.
+Полный финальный tools/check.ps1 PASS (включая full playthrough 50/0). Windows Validation GPU: tabletop 24/0, small bottle 34/0, faceted glass 16/0, supplies 24/0, workbench 144/0, drink carry 33/0, cabinet 19/0 — всего 294/0. Production из чистого 0a5877d: builds/windows-20261029-175433-fcfd69a7. После закрытия игры владельцем прежняя установка D:/Games/Dark Alone/v0.1.0-alpha.4 обновлена; SHA256 всех файлов и графический startup PASS.
 
 ## Решения и ограничения
 
@@ -20,4 +20,4 @@ Tabletop headless 22/0, GPU 24/0 (1280×720 и 960×600). Проверены н�
 
 ## Продолжение
 
-Завершить проверки и обновление прежней установки, затем ручной проход владельцем. Merge/push/релиз не выполнять. STATUS/BACKLOG/HANDOFF обновить по результату.
+Ручной проход владельцем с прежнего ярлыка. Merge/push/публикация не выполнялись. STATUS/BACKLOG/HANDOFF обновлены.
