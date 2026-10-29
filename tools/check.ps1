@@ -50,6 +50,7 @@ Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res:
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/world_target_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/home_target_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/parallel/home/house_layout_test.tscn')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/house_visual_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/journal_ink_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/parallel/bar/drink_core_test.gd')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, '--script', 'res://tests/parallel/bar/drink_lab_test.gd')

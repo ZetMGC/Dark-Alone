@@ -251,6 +251,10 @@ func build(owner_home: Node3D) -> void:
 	_build_living()
 	_build_bedroom()
 	_build_bath()
+	var dressing := preload("res://scripts/home/house_dressing.gd").new()
+	dressing.name = "VisualDressing"
+	add_child(dressing)
+	dressing.build(self)
 
 
 func _build_entry() -> void:

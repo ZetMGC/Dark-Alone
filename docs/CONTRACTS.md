@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+HOME-03: публичный API HOME-02 прежний. HouseInterior после построения основы создаёт локальный VisualDressing и вызывает build(source: Node3D)->void. Единственный игровой потребитель — HouseInterior. Декор не добавляет коллизий/состояний прогресса; накладки следуют старым петлям, ткань — размерам/положению старой шторы, источники — выключателям. Environment назначена только домашней камере. [ADR-0045](decisions/0045-house-visual-layer.md), house_visual_test/house_layout_test.
+
 BAR-NIGHT-01: EnvironmentAudio.configure_night_bar()->void переключает Street на тихий 16-секундный дождь и переносит Street/Furniture к окну/посадочным местам новой локации. Вызывает только Main при reference_bar_enabled. set_gain/set_context и схема предпочтений прежние. [ADR-0044](decisions/0044-night-bar-atmosphere.md); проверяет reference_bar_test, старый профиль — environment_camera_test.
 
 DA-080: ReplyChoiceRow body содержит только авторский caption; hovered/activated позволяют выбрать и выполнить строку без номеров. DialogueBubblePanel принимает E и клик, цифровые/колёсные shortcut-ветки удалены. FreeRoamCamera.set_dialogue_pointer(bool) освобождает курсор только для доступных ответов, не блокируя ходьбу; скрытие панели/закрытие режима возвращает прежний захват. Повторная проверка can_answer и актуальной цели сохранена. Подпись мыши на экране не выводится. Исторические записи о номерах ниже не являются текущим управлением.
