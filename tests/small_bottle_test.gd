@@ -65,12 +65,32 @@ func run() -> void:
 	bench.advance_pour(0.2)
 	expect(bench.get_bottle_remaining(id) == 250, "Closed bottle loses no liquid")
 	bench.end_drag(false)
+	bench.bottle_motion.erase(str(id))
 	bench._angles[str(id)] = 0.0
 	await click(bench, bench.get_bottle_cap_rect().get_center())
-	expect(bench.cap_item.animating, "Removal is animated")
+	expect(bench.is_bottle_capped(id), "Click alone does not remove cap")
+	var pull_start := bench.get_bottle_cap_rect().get_center()
+	var pull_press := InputEventMouseButton.new()
+	pull_press.button_index = MOUSE_BUTTON_LEFT
+	pull_press.pressed = true
+	pull_press.position = bench.logical_to_screen(pull_start)
+	pull_press.global_position = pull_press.position
+	get_viewport().push_input(pull_press, true)
+	var pull := InputEventMouseMotion.new()
+	pull.position = bench.logical_to_screen(pull_start + Vector2(45, -40))
+	pull.global_position = pull.position
+	pull.relative = Vector2(45, -40) * bench._scale
+	pull.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(pull, true)
+	var pull_release := InputEventMouseButton.new()
+	pull_release.button_index = MOUSE_BUTTON_LEFT
+	pull_release.position = pull.position
+	pull_release.global_position = pull.position
+	get_viewport().push_input(pull_release, true)
+	expect(bench.cap_item.motion.active and not bench.is_bottle_capped(id), "Pull gesture detaches and releases physical cap")
 	var moving_start := bench.cap_item.logical_position
 	bench.cap_item.advance(0.1)
-	expect(not bench.cap_item.logical_position.is_equal_approx(moving_start) and bench.cap_item.animating, "Cap moves through intermediate positions")
+	expect(not bench.cap_item.logical_position.is_equal_approx(moving_start) and bench.cap_item.motion.active, "Released cap follows continuous trajectory")
 	var midflight := bench.cap_item.logical_position
 	bench._focused = false
 	bench._process(0.4)
@@ -79,9 +99,9 @@ func run() -> void:
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(capture_root.path_join("da091-cap-midflight.png"))
-	expect(not bench.toggle_bottle_cap(id) and not bench.begin_drag(id, bench.get_item_position(id)), "Repeated clicks and bottle drag cannot interrupt cap motion")
-	await wait_cap(bench)
-	expect(not bench.is_bottle_capped(id) and not visual.cap.visible, "Mouse click removes cap in UI and world")
+	for step in 720: bench.cap_item.advance(1.0 / 120.0)
+	await get_tree().process_frame
+	expect(not bench.is_bottle_capped(id) and not visual.cap.visible, "Pull removes cap in UI and world")
 	expect(bench._dragging == &"", "Cap click does not start bottle drag")
 	var cap_place := bench.cap_item.logical_position
 	var free_place := Vector2(100, 225)
@@ -112,12 +132,12 @@ func run() -> void:
 	release.global_position = move.position
 	get_viewport().push_input(release, true)
 	await get_tree().process_frame
-	expect(bench.cap_item.logical_position.is_equal_approx(cap_place + Vector2(80,45)), "Detached cap can be dragged independently")
+	expect(bench.cap_item.logical_position.distance_to(cap_place) > 40, "Detached cap can be dragged and thrown independently")
 	expect(not bench.is_bottle_capped(id) and not bench.cap_item.animating, "Dragging cap does not trigger return")
 	bench.begin_drag(id, free_place + Vector2(0,70))
 	bench.drag_to(Vector2(405, 435))
 	bench.end_drag()
-	expect(bench._hit_item(bench.get_item_position(id) + Vector2(0,70)) == id, "Absent shaker does not block bottle selection")
+	expect(bench._hit_item(bench._bottle_transform(id) * Vector2(0,70)) == id, "Absent shaker does not block rotated bottle selection")
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw

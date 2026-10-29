@@ -56,6 +56,7 @@ func _run() -> void:
 	profiles["--drink-carry-check"] = "res://tests/drink_carry_test.tscn"
 	profiles["--small-bottle-check"] = "res://tests/small_bottle_test.tscn"
 	profiles["--faceted-glass-check"] = "res://tests/faceted_glass_test.tscn"
+	profiles["--tabletop-check"] = "res://tests/tabletop_test.tscn"
 	profiles["--release-integration-check"] = "res://tests/release_integration_test.tscn"
 	for argument in profiles:
 		if argument in OS.get_cmdline_user_args():

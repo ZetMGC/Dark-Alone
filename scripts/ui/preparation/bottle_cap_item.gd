@@ -21,8 +21,16 @@ var _moving: bool = false
 var _press_point := Vector2.ZERO
 var _grab_position := Vector2.ZERO
 var input_enabled: bool = true
+var external_drag: bool = false
+var motion := TabletopMotion.new()
+var _velocity := Vector2.ZERO
+var _last_motion: int = 0
+var _rotation: float = 0
+var _return_rotation: float = 0
 
 func _ready() -> void:
+	motion.half_size = DIMENSIONS / 2
+	motion.is_cap = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	hide()
 
@@ -35,6 +43,8 @@ func logical_rect() -> Rect2:
 	return Rect2(logical_position, DIMENSIONS)
 
 func start_motion(from: Vector2, to: Vector2, attach: bool) -> void:
+	motion.active = false
+	_return_rotation = _rotation
 	_from = from
 	_to = to
 	returning = attach
@@ -46,12 +56,20 @@ func start_motion(from: Vector2, to: Vector2, attach: bool) -> void:
 	_sync()
 
 func advance(delta: float) -> void:
-	if not animating or not is_finite(delta) or delta <= 0: return
+	if not is_finite(delta) or delta <= 0: return
+	if not animating:
+		if detached and not _pressed and motion.active:
+			motion.advance(delta)
+			logical_position = motion.center() - DIMENSIONS / 2
+			_rotation = motion.angle
+			_sync()
+		return
 	_elapsed = minf(DURATION, _elapsed + delta)
 	var t := _elapsed / DURATION
 	var eased := t * t * (3.0 - 2.0 * t)
 	# Короткая дуга: при снятии сначала поднимается, при возврате опускается на горлышко.
 	logical_position = _from.lerp(_to, eased) + Vector2(0, -sin(PI * eased) * 24)
+	_rotation = lerpf(_return_rotation, 0, eased)
 	_sync()
 	if _elapsed >= DURATION:
 		animating = false
@@ -60,8 +78,13 @@ func advance(delta: float) -> void:
 		motion_finished.emit(returning)
 
 func cancel_drag() -> void:
+	if _pressed and detached:
+		_velocity = Vector2.ZERO
+		_moving = true
+		release_pointer()
 	_pressed = false
 	_moving = false
+	external_drag = false
 
 func _sync() -> void:
 	position = _view_origin + logical_position * _view_scale
@@ -70,29 +93,74 @@ func _sync() -> void:
 
 func _draw() -> void:
 	if texture == null: return
-	if not animating:
-		draw_set_transform(Vector2(size.x * 0.5, size.y - 4 * _view_scale), 0, Vector2(10, 2) * _view_scale)
-		draw_circle(Vector2.ZERO, 1, Color(0, 0, 0, 0.28))
-		draw_set_transform(Vector2.ZERO)
-	draw_texture_rect(texture, Rect2(Vector2.ONE * 2 * _view_scale, size - Vector2.ONE * 4 * _view_scale), false)
+	var ground_y := maxf(TabletopMotion.TABLE.position.y + 18, logical_position.y + 27)
+	var lift := maxf(0, ground_y - logical_position.y - 27)
+	if motion.active and not _pressed:
+		ground_y = motion.ground.y
+		lift = motion.elevation
+	elif _pressed:
+		ground_y = minf(TabletopMotion.TABLE.end.y, ground_y + 18)
+		lift += 18
+	var view := Transform2D(Vector2(_view_scale, 0), Vector2(0, _view_scale), Vector2.ZERO)
+	TabletopMotion.shadow(self, view, Vector2(14.5, ground_y - logical_position.y), Vector2(10, 3), 0, lift, 0.35)
+	draw_set_transform(size / 2, _rotation)
+	draw_texture_rect(texture, Rect2(-size / 2 + Vector2.ONE * 2 * _view_scale, size - Vector2.ONE * 4 * _view_scale), false)
+
+func take_from_bottle(at: Vector2, pointer: Vector2, radians: float = 0) -> void:
+	detached = true
+	animating = false
+	logical_position = at
+	_rotation = radians
+	show()
+	press_pointer(pointer)
+	_moving = true
+	external_drag = true
+	_sync()
+
+func press_pointer(pointer: Vector2) -> void:
+	motion.active = false
+	_pressed = true
+	_moving = false
+	_press_point = pointer
+	_grab_position = logical_position
+	_velocity = Vector2.ZERO
+	_last_motion = Time.get_ticks_usec()
+
+func drag_pointer(pointer: Vector2) -> void:
+	if not _pressed: return
+	var travel := pointer - _press_point
+	_moving = _moving or travel.length() > 5
+	if _moving:
+		var old := logical_position
+		logical_position = (_grab_position + travel).clamp(Vector2(20, 120), Vector2(1230, 598))
+		var now := Time.get_ticks_usec()
+		var elapsed := clampf((now - _last_motion) / 1000000.0, 1.0 / 120.0, 0.1)
+		if logical_position.distance_to(old) > 0.1:
+			_velocity = _velocity.lerp(((logical_position - old) / elapsed).limit_length(1400), 0.7)
+			_last_motion = now
+		_sync()
+
+func release_pointer() -> void:
+	if not _pressed: return
+	_pressed = false
+	external_drag = false
+	if not _moving:
+		return_requested.emit()
+	else:
+		var speed := _velocity * clampf(1 - (Time.get_ticks_usec() - _last_motion) / 120000.0, 0, 1)
+		# Физическая поза строится из текущего центра, не меняя положение в кадре release.
+		var origin := logical_position + DIMENSIONS / 2 - Vector2(0, DIMENSIONS.y / 2).rotated(_rotation)
+		motion.release(origin, _rotation, speed, 0.008)
+	_moving = false
 
 func _gui_input(event: InputEvent) -> void:
 	if not input_enabled or animating: return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			_pressed = true
-			_moving = false
-			_press_point = event.global_position
-			_grab_position = logical_position
+			press_pointer((event.global_position - _view_origin) / _view_scale)
 		elif _pressed:
-			_pressed = false
-			if not _moving: return_requested.emit()
-			_moving = false
+			release_pointer()
 		accept_event()
 	elif event is InputEventMouseMotion and _pressed:
-		var travel: Vector2 = (event.global_position - _press_point) / _view_scale
-		_moving = _moving or travel.length() > 5
-		if _moving:
-			logical_position = (_grab_position + travel).clamp(Vector2(16, 165), Vector2(1235, 600))
-			_sync()
+		drag_pointer((event.global_position - _view_origin) / _view_scale)
 		accept_event()

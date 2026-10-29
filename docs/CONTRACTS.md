@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-092: [жест крышки и tabletop motion](decisions/0051-tabletop-motion.md). Клик надетой крышки больше не открывает её; BottleCapItem принимает drag/release, DrinkWorkbench.advance_motion включает физику и подъём. Новые stand/is_lying/tabletop API, мировой масштаб supplies нормализован. Потребители/проверки перечислены в ADR.
+
 DA-091: [анимированная самостоятельная крышка и общий стакан](decisions/0050-cap-motion-and-faceted-glass.md). toggle_bottle_cap начинает переход; is_bottle_capped становится true после завершения. Cap hover API, FacetedGlassVisual, новые внутренние узлы готового стакана; публичный ServiceGuest.show_prepared сохранён. Потребители и тесты перечислены в ADR.
 
 DA-090: [общая 3D/2D бутылка, API крышки и запасы по ID](decisions/0049-shared-small-bottle.md). Потребители: DrinkWorkbench, WorkbenchSupplies, профильные тесты. Checkpoint прежний.

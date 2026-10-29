@@ -52,9 +52,17 @@ func _button(button: MouseButton, pressed: bool) -> void:
 
 
 func _pour(bench: DrinkWorkbench, id: StringName) -> void:
-	await _move(bench, bench.get_item_position(id) + Vector2(0, 15))
+	# Изолировать сценарий налива от предыдущих бросков: физика проверяется отдельно.
+	bench.bottle_motion.erase(str(id))
+	bench._positions[str(id)] = Vector2(55, 300)
+	bench._angles[str(id)] = 0.0
+	if bench.bottle_motion.has(str(id)):
+		bench.stand_bottle(id)
+		for frame in 30: bench.advance_tabletop(1.0 / 120.0)
+	await _move(bench, bench._bottle_transform(id) * Vector2(0, 10))
 	await _button(MOUSE_BUTTON_LEFT, true)
-	await _move(bench, Vector2(785, 395))
+	await _move(bench, Vector2(785, 390))
+	await get_tree().create_timer(0.26).timeout
 	for index in 7:
 		await _button(MOUSE_BUTTON_WHEEL_UP, true)
 	_expect(not bench.stream_info().is_empty() and bench.stream_info().hit, "Mouse pour aims stream inside rim")
@@ -196,6 +204,7 @@ func _run() -> void:
 	await _drag(bench, &"cup", Vector2(810, 440))
 	await _snap("10-shaker-open")
 	bench.begin_drag(&"shaker", bench.get_item_position(&"shaker"))
+	bench.advance_tabletop(0.25)
 	for step in 6:
 		bench.drag_to(bench.get_item_position(&"shaker") + Vector2(30 if step % 2 == 0 else -30, 0))
 	_expect(bench.get_container_snapshot(&"shaker").technique.shaken_s == 0, "Open shaker cannot magically shake liquid")
@@ -212,6 +221,7 @@ func _run() -> void:
 	var stock_before := bench.get_bottle_remaining(&"test_base")
 	var spill_before := bench.get_spilled_ml()
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(bench.get_item_position(&"shaker") + Vector2(-58, -140))
 	bench.tilt_by(70)
 	_expect(bench.stream_info().get("blocked", false), "Closed shaker lid intercepts stream")
@@ -221,6 +231,7 @@ func _run() -> void:
 	_expect(bench.get_container_snapshot(&"shaker").overall.volume_ml == closed_volume and bench.get_bottle_remaining(&"test_base") < stock_before and bench.get_spilled_ml() > spill_before, "Pour on lid consumes stock into spill without filling sealed shaker")
 	var ice_before: float = bench.get_container_snapshot(&"shaker").technique.ice_ml
 	bench.begin_drag(&"ice", bench.get_item_position(&"ice"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(bench.get_item_position(&"shaker"))
 	bench.end_drag()
 	_expect(bench.get_container_snapshot(&"shaker").technique.ice_ml == ice_before, "Ice cannot pass through closed lid")
@@ -258,6 +269,7 @@ func _run() -> void:
 	bench.set_process(false)
 	# Пауза над подносом не должна случайно подать напиток.
 	bench.begin_drag(&"cup", bench.get_item_position(&"cup"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(DrinkWorkbench.SERVE_ZONE.get_center())
 	session.open_menu()
 	_expect(not session.service.served and bench.preparation.get_result().is_empty(), "Menu cancels pending drop without serving")
@@ -362,6 +374,7 @@ func _test_controls() -> void:
 	for item in [&"cup", &"spoon", &"shaker"]:
 		var position := bench.get_item_position(item)
 		bench.begin_drag(item, position)
+		bench.advance_tabletop(0.25)
 		bench.drag_to(position + Vector2(100, 0))
 		bench.advance_motion(0.016)
 		_expect(absf(bench.get_item_angle(item)) > 0.1, "Held object has cursor inertia: " + str(item))
@@ -373,6 +386,7 @@ func _test_controls() -> void:
 	var standing := bench.get_item_position(&"test_equal")
 	var saved_stock := bench.get_bottle_remaining(&"test_equal")
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(standing)
 	bench.advance_motion(0.016)
 	_expect(absf(bench.get_item_angle(&"test_equal")) > 0.1 and bench.get_item_position(&"test_equal") == standing and bench.get_bottle_remaining(&"test_equal") == saved_stock, "Passing bottle nudges standing glass without moving or losing contents")
@@ -381,6 +395,7 @@ func _test_controls() -> void:
 		bench.advance_motion(0.016)
 	_expect(absf(bench.get_item_angle(&"test_equal")) < 0.1, "Standing bottle nudge damps")
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(standing + Vector2(0, -100))
 	bench.drag_to(standing)
 	bench.advance_motion(0.016)
@@ -400,6 +415,7 @@ func _test_controls() -> void:
 	await _button(MOUSE_BUTTON_LEFT, false)
 	_expect(bench.preparation.get_snapshot().vessel.id == "test_glass", "Mouse selects tall glass from clean rack")
 	bench.begin_drag(&"test_heavy", bench.get_item_position(&"test_heavy"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(Vector2(785, 380))
 	bench.tilt_by(49)
 	bench.advance_pour(0.05)
@@ -412,6 +428,7 @@ func _test_controls() -> void:
 	bench.set_active(true)
 	_expect(bench.stream_info().is_empty(), "Returning from pause does not restart held stream")
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(Vector2(748, 310))
 	bench.tilt_by(90)
 	var overflow_stock := bench.get_bottle_remaining(&"test_base")
@@ -446,6 +463,7 @@ func _test_controls() -> void:
 	var volume := bench.preparation.get_volume_ml()
 	var waste := bench.get_spilled_ml()
 	bench.begin_drag(&"test_heavy", bench.get_item_position(&"test_heavy"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(Vector2(785, 380))
 	bench.tilt_by(49)
 	for step in 20:
@@ -454,6 +472,7 @@ func _test_controls() -> void:
 	_expect(is_equal_approx(stock - bench.get_bottle_remaining(&"test_heavy"), bench.preparation.get_volume_ml() - volume + bench.get_spilled_ml() - waste), "Bottle loss equals accepted liquid plus overflow")
 	# Инерция не зависит от частоты мыши: импульс, затухание, затем остановка паузой.
 	bench.begin_drag(&"test_heavy", bench.get_item_position(&"test_heavy"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(bench.get_item_position(&"test_heavy") + Vector2(160, 0))
 	bench.advance_motion(0.016)
 	var swing := bench.get_bottle_angle(&"test_heavy")
@@ -464,13 +483,15 @@ func _test_controls() -> void:
 	bench.drag_to(bench.get_item_position(&"test_heavy") + Vector2(-160, 0))
 	bench.advance_motion(0.016)
 	bench.set_active(false)
+	var paused_angle := bench.get_bottle_angle(&"test_heavy")
 	bench.advance_motion(1)
-	_expect(bench.get_held_item() == &"" and bench.get_bottle_angle(&"test_heavy") == 0, "Pause stops bottle inertia and hold")
+	_expect(bench.get_held_item() == &"" and bench.get_bottle_angle(&"test_heavy") == paused_angle, "Pause freezes bottle pose without snapping upright")
 	bench.set_active(true)
 	# Пролив на разной глубине стола, а не у нижнего края окна.
 	var endpoints: Array[Vector2] = []
 	for height in [230, 400]:
 		bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+		bench.advance_tabletop(0.25)
 		bench.drag_to(Vector2(50, height))
 		bench.tilt_by(70)
 		endpoints.append(bench.stream_info().end)
@@ -483,6 +504,7 @@ func _test_controls() -> void:
 	patches.back().volume_ml = -100
 	_expect(bench.get_spill_patches().back().volume_ml > 0, "Spill snapshots are isolated")
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(Vector2(50, 300))
 	bench.tilt_by(70)
 	bench.advance_pour(0.05)
@@ -491,6 +513,7 @@ func _test_controls() -> void:
 	stock = bench.get_bottle_remaining(&"test_base")
 	waste = bench.get_spilled_ml()
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(Vector2(50, 300))
 	bench.tilt_by(90)
 	for step in 1000:
@@ -570,6 +593,7 @@ func _test_mixing_surface() -> void:
 	_expect(bench.get_container_snapshot(&"mixing") == saved and bench.preparation.get_snapshot() == result, "Pause preserves both independent drafts")
 	# Пролив смеси сохраняет все составляющие, а не превращает её в один материал.
 	bench.begin_drag(&"mixing", bench.get_item_position(&"mixing"))
+	bench.advance_tabletop(0.25)
 	bench.drag_to(Vector2(50, 300))
 	bench.tilt_by(70)
 	var before_waste := bench.get_spilled_ml()

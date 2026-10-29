@@ -12,6 +12,14 @@ var _stvor_preview: SubViewport
 var _cap_preview: SubViewport
 var cap_item: BottleCapItem
 var _glass_preview: SubViewport
+var bottle_motion: Dictionary = {}
+var _pickup_angles: Dictionary = {}
+var _throw_velocity := Vector2.ZERO
+var _last_drag_time: int = 0
+var _cap_pull_pending: bool = false
+var _cap_pull_start := Vector2.ZERO
+var _standing_press: StringName = &""
+var _standing_press_point := Vector2.ZERO
 
 const DESIGN := Vector2(1280, 720)
 const MATERIALS := "res://content/drinks/test_materials.json"
@@ -109,7 +117,7 @@ func _ready() -> void:
 	_glass_preview = FacetedGlassVisual.make_preview(self)
 	spill_surface.configure(_catalog)
 	for index in _ids.size():
-		_positions[_ids[index]] = Vector2(100 + index * 105, 225)
+		_positions[_ids[index]] = Vector2(100 + index * 105, 247)
 		_angles[_ids[index]] = 0.0
 		_parking[_ids[index]] = _positions[_ids[index]]
 	_positions["cup"] = Vector2(810, 440)
@@ -198,6 +206,8 @@ func _resize() -> void:
 
 func set_active(value: bool) -> void:
 	if not value:
+		_cap_pull_pending = false
+		_standing_press = &""
 		end_drag(false)
 		if cap_item != null: cap_item.cancel_drag()
 	_active = value
@@ -288,7 +298,12 @@ func get_bottle_angle(id: StringName) -> float:
 
 func get_item_angle(id: StringName) -> float:
 	var inherited := get_item_angle(_spoon_container) if id == &"spoon" and _spoon_attached else 0.0
-	return inherited + float(_angles.get(str(id), 0.0)) + rad_to_deg(_swing if id == _dragging else float(_bumps.get(str(id), {}).get("angle", 0)))
+	var recovery_angle := 0.0
+	if _pickup_angles.has(str(id)):
+		var recovery: Dictionary = _pickup_angles[str(id)]
+		var t: float = recovery.time / 0.22
+		recovery_angle = float(recovery.from) * (1 - t * t * (3 - 2 * t))
+	return inherited + float(_angles.get(str(id), 0.0)) + rad_to_deg(recovery_angle + (_swing if id == _dragging else float(_bumps.get(str(id), {}).get("angle", 0))))
 
 
 func is_ready_to_deliver() -> bool:
@@ -332,6 +347,7 @@ func advance_motion(delta: float) -> void:
 	if not _active or not _focused or not is_finite(delta) or delta <= 0:
 		return
 	var dt := minf(delta, 0.05)
+	advance_tabletop(delta)
 	if _dragging != &"":
 		var velocity := (_cursor_travel / dt).limit_length(2200)
 		# Бутылка подвешена за горлышко: тело отстаёт от ускорения руки.
@@ -399,6 +415,14 @@ func begin_drag(id: StringName, point: Vector2) -> bool:
 	if not _active or not _focused or preparation == null or not preparation.get_result().is_empty() or _delivered or not _positions.has(str(id)) or _dragging != &"" or not point.is_finite():
 		return false
 	_dragging = id
+	if bottle_motion.has(str(id)):
+		var motion: TabletopMotion = bottle_motion[str(id)]
+		motion.active = false
+		if absf(motion.angle) > 0.05:
+			_pickup_angles[str(id)] = {"from": motion.angle, "time": 0.0}
+			_angles[str(id)] = 0.0
+	_throw_velocity = Vector2.ZERO
+	_last_drag_time = Time.get_ticks_usec()
 	_offset = get_item_position(id) - point
 	_gesture_distance = 0
 	_reversals = 0
@@ -431,6 +455,11 @@ func drag_to(point: Vector2) -> void:
 	target.y = clampf(target.y, 165, max_y)
 	_positions[str(_dragging)] = target
 	var movement := target - old
+	var now := Time.get_ticks_usec()
+	if movement.length() > 0.1:
+		var elapsed := clampf((now - _last_drag_time) / 1000000.0, 1.0 / 120.0, 0.1)
+		_throw_velocity = _throw_velocity.lerp((movement / elapsed).limit_length(1400), 0.65)
+		_last_drag_time = now
 	_cursor_travel += movement
 	if str(_dragging) in _ids:
 		var old_center := old + Vector2(0, 85).rotated(deg_to_rad(get_item_angle(_dragging)))
@@ -482,6 +511,8 @@ func end_drag(commit_drop: bool = true) -> void:
 		return
 	_flush_pour()
 	var item := _dragging
+	var release_angle := deg_to_rad(get_item_angle(item))
+	var release_velocity := _throw_velocity * clampf(1.0 - (Time.get_ticks_usec() - _last_drag_time) / 120000.0, 0, 1)
 	if commit_drop and item in [&"cup", &"spoon", &"shaker", &"mixing"]:
 		_bumps[str(item)] = {"angle": clampf(_swing, -0.08, 0.08), "velocity": _swing_velocity * 0.3}
 	_dragging = &""
@@ -492,9 +523,17 @@ func end_drag(commit_drop: bool = true) -> void:
 	_contacts.clear()
 	if not commit_drop:
 		_bumps.clear()
-	if _angles.has(str(item)):
+	if _angles.has(str(item)) and str(item) not in _ids:
 		_angles[str(item)] = 0.0
 	if str(item) in _ids:
+		_angles[str(item)] = rad_to_deg(release_angle)
+		_bumps.erase(str(item))
+		var motion := TabletopMotion.new()
+		if item == SmallBottleVisual.ID: motion.half_size = Vector2(25, 71)
+		var inset := Vector2(0, 6).rotated(release_angle) if item == SmallBottleVisual.ID else Vector2.ZERO
+		motion.release(get_item_position(item) + inset, release_angle, release_velocity if commit_drop else Vector2.ZERO, (0.18 if item == SmallBottleVisual.ID else 0.32) + get_bottle_remaining(item) * 0.001)
+		bottle_motion[str(item)] = motion
+		_pickup_angles.erase(str(item))
 		# Перекрытие экранных силуэтов не означает столкновения на поверхности.
 		# В частности, отсутствующие бутылки не должны резервировать невидимые места.
 		if commit_drop:
@@ -715,6 +754,19 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouse:
 		_pointer = (event.position - _origin) / _scale
 	if event is InputEventMouseMotion:
+		if _cap_pull_pending:
+			if _pointer.distance_to(_cap_pull_start) >= 8:
+				_detach_cap_by_drag(_cap_pull_start, _pointer)
+				_cap_pull_pending = false
+			accept_event()
+			return
+		if cap_item.external_drag:
+			cap_item.drag_pointer(_pointer)
+			accept_event()
+			return
+		if _standing_press != &"" and _pointer.distance_to(_standing_press_point) > 5:
+			begin_drag(_standing_press, _standing_press_point)
+			_standing_press = &""
 		if _dragging == &"":
 			var hovered := _hit_item(_pointer)
 			if hovered != &"":
@@ -725,7 +777,8 @@ func _gui_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				if _stvor_capped and _dragging == &"" and has_supply(SmallBottleVisual.ID) and get_bottle_cap_rect().has_point(_pointer):
-					toggle_bottle_cap(SmallBottleVisual.ID)
+					_cap_pull_pending = true
+					_cap_pull_start = _pointer
 					accept_event()
 					return
 				if supplies_required:
@@ -736,12 +789,21 @@ func _gui_input(event: InputEvent) -> void:
 				var item := _hit_item(_pointer)
 				_context_item = item
 				if item != &"":
-					begin_drag(item, _pointer)
+					if is_bottle_lying(item):
+						stand_bottle(item)
+						_standing_press = item
+						_standing_press_point = _pointer
+					else:
+						begin_drag(item, _pointer)
 				elif Rect2(35, 425, 90, 190).has_point(_pointer):
 					select_vessel(&"test_shot")
 				elif Rect2(130, 425, 90, 190).has_point(_pointer):
 					select_vessel(&"test_glass")
 			else:
+				_cap_pull_pending = false
+				_standing_press = &""
+				if cap_item.external_drag:
+					cap_item.release_pointer()
 				end_drag()
 		elif event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
 			tilt_by(7 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -7)
@@ -805,6 +867,8 @@ func _process(delta: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_cap_pull_pending = false
+		_standing_press = &""
 		end_drag(false)
 		if cap_item != null: cap_item.cancel_drag()
 		_focused = false
@@ -819,9 +883,7 @@ func _local(position: Vector2 = Vector2.ZERO, angle: float = 0) -> void:
 func _bottle_transform(id: StringName) -> Transform2D:
 	var angle := deg_to_rad(get_item_angle(id))
 	var position := get_item_position(id)
-	if id == _dragging:
-		return Transform2D(angle, position)
-	return Transform2D(0, position + Vector2(0, 153)) * Transform2D(angle, Vector2.ZERO) * Transform2D(0, Vector2(0, -153))
+	return Transform2D(angle, position)
 
 
 func _text(point: Vector2, value: String, color: Color = Color(0.84, 0.8, 0.69), font_size: int = 18) -> void:
@@ -866,12 +928,7 @@ func _draw() -> void:
 	draw_circle(SINK.get_center(), 15, Color(0.025, 0.035, 0.03))
 	_text(SINK.position + Vector2(42, -12), "СЛИВ")
 	_draw_rack()
-	for object_id in _positions:
-		if not has_supply(StringName(object_id)) or StringName(object_id) == _dragging: continue
-		var base: Vector2 = _positions[object_id] + Vector2(0, 153 if object_id in _ids else (get_cup_rect().size.y if object_id == "cup" else 125))
-		if object_id in ["spoon", "ice"]: continue
-		draw_set_transform_matrix(_view * Transform2D(0, Vector2(32, 5), 0, base))
-		draw_circle(Vector2.ZERO, 1, Color(0.015, 0.02, 0.015, 0.65))
+	_draw_item_shadows()
 	_local()
 	for patch in spill_surface.get_patches():
 		var radius := DrinkSpillSurface.radius(patch)
@@ -928,10 +985,6 @@ func _draw_rack() -> void:
 func _draw_bottle(id: StringName) -> void:
 	if not has_supply(id): return
 	var item := _catalog.get_ingredient(id)
-	if _dragging == id:
-		var ground := Vector2(get_item_position(id).x, clampf(get_item_position(id).y + 160, 410, 620))
-		draw_set_transform_matrix(_view * Transform2D(0, Vector2(31, 8), 0, ground))
-		draw_circle(Vector2.ZERO, 1, Color(0.02, 0.025, 0.02, 0.35))
 	draw_set_transform_matrix(_view * _bottle_transform(id))
 	if id == SmallBottleVisual.ID:
 		draw_texture_rect(_stvor_preview.get_texture(), Rect2(-45, 0, 90, 153), false)
@@ -969,7 +1022,6 @@ func _draw_cup() -> void:
 	var origin := get_item_position(&"cup")
 	_local(origin, deg_to_rad(get_item_angle(&"cup")))
 	rect.position -= origin
-	draw_rect(rect, Color(0.65, 0.73, 0.68, 0.07))
 	var state := preparation.get_view()
 	if preparation.get_vessel().id == "test_glass":
 		var visual := _glass_preview.get_node("GlassVisual") as FacetedGlassVisual
@@ -977,6 +1029,7 @@ func _draw_cup() -> void:
 		draw_texture_rect(_glass_preview.get_texture(), rect, false)
 		_local()
 		return
+	draw_rect(rect, Color(0.65, 0.73, 0.68, 0.07))
 	var level := rect.end.y - 4
 	for layer in state.layers:
 		var height: float = (rect.size.y - 8) * float(layer.volume_ml) / float(state.vessel.capacity_ml)
@@ -1261,7 +1314,7 @@ func is_bottle_capped(id: StringName) -> bool:
 
 
 func get_bottle_cap_rect() -> Rect2:
-	return Rect2(get_item_position(SmallBottleVisual.ID) + Vector2(-15, 0), Vector2(30, 25)) if _stvor_capped else cap_item.logical_rect()
+	return _bottle_transform(SmallBottleVisual.ID) * Rect2(-15, 0, 30, 25) if _stvor_capped else cap_item.logical_rect()
 
 
 func toggle_bottle_cap(id: StringName) -> bool:
@@ -1274,6 +1327,8 @@ func toggle_bottle_cap(id: StringName) -> bool:
 		bottle_cap_changed.emit(id, false)
 		cap_item.start_motion(neck, (get_item_position(id) + Vector2(32, 124)).clamp(Vector2(16, 165), Vector2(1235, 600)), false)
 	else:
+		if bottle_motion.has(str(id)) and stand_bottle(id):
+			neck = (bottle_motion[str(id)] as TabletopMotion).ground - Vector2(14.5, 148)
 		cap_item.start_motion(cap_item.logical_position, neck, true)
 	queue_redraw()
 	return true
@@ -1291,3 +1346,98 @@ func _on_bottle_cap_motion_finished(attached: bool) -> void:
 func get_hovered_cap_info(point: Vector2) -> Dictionary:
 	if not _active or not _focused or _dragging != &"" or cap_item.animating or not cap_item.detached or not cap_item.logical_rect().has_point(point): return {}
 	return {"id": SmallBottleVisual.ID, "title": "Крышка · Северный створ", "description": "Бутылка 0,25 л" if has_supply(SmallBottleVisual.ID) else "Бутылка вне рабочей зоны"}
+
+
+func _detach_cap_by_drag(start: Vector2, pointer: Vector2) -> void:
+	var neck := _bottle_transform(SmallBottleVisual.ID) * Vector2(0, 12.5) - BottleCapItem.DIMENSIONS / 2
+	_stvor_capped = false
+	(_stvor_preview.get_node("Bottle") as SmallBottleVisual).set_capped(false)
+	_stvor_preview.render_target_update_mode = SubViewport.UPDATE_ONCE
+	bottle_cap_changed.emit(SmallBottleVisual.ID, false)
+	cap_item.take_from_bottle(neck, start, deg_to_rad(get_item_angle(SmallBottleVisual.ID)))
+	cap_item.drag_pointer(pointer)
+	queue_redraw()
+
+
+func is_bottle_lying(id: StringName) -> bool:
+	return str(id) in _ids and absf(get_item_angle(id)) > 45 and _dragging != id
+
+
+func stand_bottle(id: StringName) -> bool:
+	if not has_supply(id) or not bottle_motion.has(str(id)) or not _active or not _focused: return false
+	(bottle_motion[str(id)] as TabletopMotion).stand_up()
+	return true
+
+
+func advance_tabletop(delta: float) -> void:
+	if not _active or not _focused or not is_finite(delta) or delta <= 0: return
+	for key in bottle_motion:
+		if not has_supply(StringName(key)): continue
+		var motion: TabletopMotion = bottle_motion[key]
+		if StringName(key) == _dragging:
+			if _pickup_angles.has(key):
+				var recovery: Dictionary = _pickup_angles[key]
+				recovery.time = minf(0.22, recovery.time + delta)
+				var t: float = recovery.time / 0.22
+				if t >= 1: _pickup_angles.erase(key)
+			continue
+		if motion.active:
+			motion.advance(delta)
+			_positions[key] = _motion_origin(StringName(key), motion)
+			_angles[key] = rad_to_deg(motion.angle)
+	queue_redraw()
+
+
+func _draw_item_shadows() -> void:
+	for key in _positions:
+		var id := StringName(key)
+		if not has_supply(id): continue
+		var at := get_item_position(id)
+		var axes := Vector2(30, 7)
+		var opacity := 0.56
+		var rotation := 0.0
+		var lift := 22.0 if id == _dragging else 0.0
+		if key in _ids:
+			var angle := deg_to_rad(get_item_angle(id))
+			var half := Vector2(25,71) if id == SmallBottleVisual.ID else Vector2(34,76.5)
+			var support := absf(cos(angle)) * half.y + absf(sin(angle)) * half.x
+			var center := at + Vector2(0, half.y + (6 if id == SmallBottleVisual.ID else 0)).rotated(angle)
+			var bottom := center.y + support
+			at = Vector2(center.x, clampf(bottom + lift, TabletopMotion.TABLE.position.y + 10, TabletopMotion.TABLE.end.y - 3))
+			lift = maxf(lift, at.y - bottom)
+			if bottle_motion.has(key) and id != _dragging:
+				var motion: TabletopMotion = bottle_motion[key]
+				at = motion.ground
+				lift = motion.elevation
+			var lying := absf(sin(angle))
+			axes = Vector2(lerpf(24, 73, lying), lerpf(5, 14, lying))
+			at.y -= lying * 6
+			rotation = sin(angle) * 0.12
+		elif id == &"cup":
+			if _delivered: continue
+			at += Vector2(0, get_cup_rect().size.y + lift)
+			axes = Vector2(get_cup_rect().size.x * 0.32, 6)
+			opacity = 0.30
+		elif id == &"spoon":
+			at += Vector2(-30, 60)
+			axes = Vector2(47, 3)
+			rotation = -0.85
+			opacity = 0.24
+		elif id == &"ice":
+			at += Vector2(0, 24)
+			axes = Vector2(16, 5)
+			opacity = 0.19
+		else:
+			at += Vector2(0, 125 + lift)
+			axes = Vector2(33, 8) if id == &"shaker" else Vector2(38, 7)
+		at.y = clampf(at.y, TabletopMotion.TABLE.position.y + 5, TabletopMotion.TABLE.end.y)
+		TabletopMotion.shadow(self, _view, at, axes, rotation, lift, opacity)
+	if supplies_required and preparation != null:
+		for vessel_id in _stored_cups:
+			if vessel_id == StringName(preparation.get_vessel().id): continue
+			var bottom: Vector2 = _cup_places[vessel_id] + Vector2(0, 105 if vessel_id == &"test_shot" else 175)
+			TabletopMotion.shadow(self, _view, bottom, Vector2(32, 6), 0, 0, 0.22)
+
+
+func _motion_origin(id: StringName, motion: TabletopMotion) -> Vector2:
+	return motion.origin() - (Vector2(0, 6).rotated(motion.angle) if id == SmallBottleVisual.ID else Vector2.ZERO)
