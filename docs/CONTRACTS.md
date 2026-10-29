@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-095: FacetedGlassVisual.new(shot=false) / make_preview(parent,shot=false), размеры vessel_height/vessel_radius. Рюмка и стакан в мире/подаче используют общие пути GlassVisual/Contents и DrinkGlassVisual/Contents. [ADR-0054](decisions/0054-shared-shot-glass.md).
+
 DA-094: BottleCapItem.bottle_obstacles — Callable от DrinkWorkbench, возвращает Array[Dictionary] с transform/rect корпуса. [ADR-0053](decisions/0053-cap-body-clearance.md).
 
 DA-093: dropped / start_motion(..., radians), двусторонний tilt_by и resting_bottle_streams — [ADR-0052](decisions/0052-bottle-stability-leaks.md). Заменяет click-to-return и отсутствие пролива из ADR-0051.

@@ -34,10 +34,10 @@ func configure(owner_main: Node) -> void:
 			var item = _target(titles[n], descriptions[n], Vector3(0.25,0.01,-0.4 + n * 0.25), Vector3(0.13,0.22,0.18), drawer.contents)
 			item.supply_id = StringName(ids[n])
 			item.global_basis = item.global_basis.orthonormalized()
-			if ids[n] == "test_glass":
-				item.context_title = "Стакан «Гранитоль»"
-				item.context_description = "Гранёное стекло · 240 мл"
-				var glass := FacetedGlassVisual.new()
+			if ids[n] in ["test_shot", "test_glass"]:
+				item.context_title = "Рюмка «Кромка»" if ids[n] == "test_shot" else "Стакан «Гранитоль»"
+				item.context_description = "Толстое дно · 60 мл" if ids[n] == "test_shot" else "Гранёное стекло · 240 мл"
+				var glass := FacetedGlassVisual.new(ids[n] == "test_shot")
 				glass.name = "GlassVisual"
 				item.add_child(glass)
 				glass.position.y = -0.08

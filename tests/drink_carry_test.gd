@@ -66,7 +66,7 @@ func run() -> void:
 	expect(is_instance_valid(carry.item) and not carry.holding and not session.service.served and session.shift.remaining == 2, "Finished drink waits in workspace without serving or time cost")
 	expect(bench.preparation.get_result().is_empty() and not bench.begin_drag(&"cup", bench.get_item_position(&"cup")), "Transferred portion cannot be edited or duplicated in workbench")
 	expect(not main._stage_physical_drink(bench.preparation), "Cannot stage same portion twice")
-	expect(is_equal_approx(carry.item.global_position.y, 1.13) and carry.item.get_node_or_null("Layer0") != null, "Drink with real liquid rests on work surface")
+	expect(is_equal_approx(carry.item.global_position.y, 1.13) and carry.item.get_node_or_null("GlassVisual/Contents/Layer0") != null, "Drink with real liquid rests on work surface")
 	var id: int = carry.item.get_instance_id()
 	if rig.focus_active:
 		rig.leave_focus()

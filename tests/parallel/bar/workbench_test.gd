@@ -298,9 +298,9 @@ func _run() -> void:
 	await _button(MOUSE_BUTTON_LEFT, false)
 	_expect(session.service.served and session.shift.remaining == 1 and session.runner.current_node_id == node and session.mode == NarrativeSession.DIALOGUE, "Delivery button serves real drink and keeps conversation")
 	var guest: ServiceGuest = main.get_node("DialogueTrigger")
-	_expect(guest.get_node("ServedGlass").visible and guest.get_node("ServedGlass/DrinkLayer0") != null, "Actual drink appears on counter in front of guest")
-	var served_glass: MeshInstance3D = guest.get_node("ServedGlass/Cup")
-	_expect(served_glass.global_position.x > -4.325 and served_glass.global_position.x < -2.875 and is_equal_approx(served_glass.global_position.y - served_glass.mesh.height / 2, 1.16), "Prepared glass rests on actual counter top")
+	_expect(guest.get_node("ServedGlass").visible and guest.get_node("ServedGlass/DrinkGlassVisual/Contents/Layer0") != null, "Actual drink appears on counter in front of guest")
+	var served_glass: FacetedGlassVisual = guest.get_node("ServedGlass/DrinkGlassVisual")
+	_expect(served_glass.global_position.x > -4.325 and served_glass.global_position.x < -2.875 and is_equal_approx(served_glass.global_position.y, 1.16), "Prepared glass rests on actual counter top")
 	_expect(session.service.get_prepared_drink().overall == prepared.overall and not bench.preparation.get_result().is_empty(), "Guest receives exact sealed composition")
 	if session.service.served:
 		_expect(not session.serve_preparation(bench.preparation) and session.shift.get_events().size() == 1, "Duplicate delivery rejected")

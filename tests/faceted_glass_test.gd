@@ -56,7 +56,7 @@ func run() -> void:
 	shot.configure(catalog, &"test_shot", &"legacy_shot")
 	shot.pour(&"fill_shot", &"test_base", 20)
 	guest.show_prepared(shot.get_view(), Vector3(0, 1.16, 0))
-	expect(not guest.has_node("ServedGlass/DrinkGlassVisual") and guest.get_node("ServedGlass/Cup").visible, "Later shot clears previous shared glass")
+	expect(guest.get_node("ServedGlass/DrinkGlassVisual").is_shot and not guest.get_node("ServedGlass/Cup").visible, "Later shot replaces tall glass with shared shot geometry")
 	world.queue_free()
 	guest.queue_free()
 	await get_tree().process_frame

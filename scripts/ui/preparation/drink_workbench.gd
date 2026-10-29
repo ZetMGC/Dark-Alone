@@ -12,6 +12,7 @@ var _stvor_preview: SubViewport
 var _cap_preview: SubViewport
 var cap_item: BottleCapItem
 var _glass_preview: SubViewport
+var _shot_preview: SubViewport
 var bottle_motion: Dictionary = {}
 var _pickup_angles: Dictionary = {}
 var _throw_velocity := Vector2.ZERO
@@ -117,6 +118,7 @@ func _ready() -> void:
 	cap_item.dropped.connect(_try_close_cap_at_neck)
 	cap_item.motion_finished.connect(_on_bottle_cap_motion_finished)
 	_glass_preview = FacetedGlassVisual.make_preview(self)
+	_shot_preview = FacetedGlassVisual.make_preview(self, true)
 	spill_surface.configure(_catalog)
 	for index in _ids.size():
 		_positions[_ids[index]] = Vector2(100 + index * 105, 247)
@@ -1032,28 +1034,10 @@ func _draw_cup() -> void:
 	_local(origin, deg_to_rad(get_item_angle(&"cup")))
 	rect.position -= origin
 	var state := preparation.get_view()
-	if preparation.get_vessel().id == "test_glass":
-		var visual := _glass_preview.get_node("GlassVisual") as FacetedGlassVisual
-		if visual.set_contents(state): _glass_preview.render_target_update_mode = SubViewport.UPDATE_ONCE
-		draw_texture_rect(_glass_preview.get_texture(), rect, false)
-		_local()
-		return
-	draw_rect(rect, Color(0.65, 0.73, 0.68, 0.07))
-	var level := rect.end.y - 4
-	for layer in state.layers:
-		var height: float = (rect.size.y - 8) * float(layer.volume_ml) / float(state.vessel.capacity_ml)
-		var color := Color(layer.color[0], layer.color[1], layer.color[2], 0.85)
-		draw_rect(Rect2(rect.position.x + 6, level - height, rect.size.x - 12, height), color)
-		draw_line(Vector2(rect.position.x + 7, level - height), Vector2(rect.end.x - 7, level - height), color.lightened(0.22), 2)
-		level -= height
-	_draw_ice_and_foam(state, rect)
-	draw_polyline(PackedVector2Array([rect.position, Vector2(rect.position.x + 5, rect.end.y), rect.end - Vector2(5, 0), Vector2(rect.end.x, rect.position.y)]), Color(0.65, 0.75, 0.7), 3)
-	var stream := stream_info()
-	var rim := PackedVector2Array()
-	for segment in 25:
-		var angle := TAU * segment / 24.0
-		rim.append(Vector2(rect.get_center().x + cos(angle) * rect.size.x * 0.5, rect.position.y + sin(angle) * 8))
-	draw_polyline(rim, Color(0.95, 0.85, 0.6) if not stream.is_empty() and stream.hit else Color(0.75,0.8,0.72), 2)
+	var preview := _shot_preview if preparation.get_vessel().id == "test_shot" else _glass_preview
+	var visual := preview.get_node("GlassVisual") as FacetedGlassVisual
+	if visual.set_contents(state): preview.render_target_update_mode = SubViewport.UPDATE_ONCE
+	draw_texture_rect(preview.get_texture(), rect, false)
 	_local()
 
 

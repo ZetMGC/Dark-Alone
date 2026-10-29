@@ -137,7 +137,7 @@
     {"id": "test_shaker", "title": "[TEST] Шейкер", "capacity_ml": 500},
     {
       "id": "test_shot",
-      "title": "[TEST] Шот",
+      "title": "[TEST] Рюмка «Кромка»",
       "capacity_ml": 60
     },
     {
