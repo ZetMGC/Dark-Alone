@@ -33,6 +33,15 @@ func configure(owner_main: Node) -> void:
 			var descriptions := ["Небольшая посуда для подачи", "Высокий стакан для подачи"] if index == 0 else ["Помешивание и послойный налив", "Смешивание встряхиванием", "Смешивание ложкой и перелив", "Охлаждение и разбавление напитка"]
 			var item = _target(titles[n], descriptions[n], Vector3(0.25,0.01,-0.4 + n * 0.25), Vector3(0.13,0.22,0.18), drawer.contents)
 			item.supply_id = StringName(ids[n])
+			if ids[n] == "test_glass":
+				item.context_title = "Стакан «Гранитоль»"
+				item.context_description = "Гранёное стекло · 240 мл"
+				var glass := FacetedGlassVisual.new()
+				glass.name = "GlassVisual"
+				item.add_child(glass)
+				glass.position.y = -0.08
+				item.collision_layer = 0
+				continue
 			if ids[n] == "spoon":
 				_box(item, Vector3.ZERO, Vector3(0.025,0.015,0.18), Color(0.6,0.62,0.55))
 			else: _cylinder(item, 0.045, 0.16 if ids[n] != "test_shot" else 0.08, Color(0.45,0.53,0.46))

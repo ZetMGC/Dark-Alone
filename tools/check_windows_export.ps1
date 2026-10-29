@@ -77,6 +77,7 @@ if ($Graphics) {
 }
 $integrationProfiles = @(
   @{ Name = 'small-bottle'; Flag = '--small-bottle-check'; Marker = 'PASS: small bottle,' },
+  @{ Name = 'faceted-glass'; Flag = '--faceted-glass-check'; Marker = 'PASS: faceted glass,' },
   @{ Name = 'drink-carry'; Flag = '--drink-carry-check'; Marker = 'PASS: drink carry,' },
   @{ Name = 'release-integration'; Flag = '--release-integration-check'; Marker = 'PASS: release integration,' },
   @{ Name = 'workbench'; Flag = '--workbench-check'; Marker = 'PASS: drink workbench,' },

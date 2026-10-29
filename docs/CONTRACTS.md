@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-091: [анимированная самостоятельная крышка и общий стакан](decisions/0050-cap-motion-and-faceted-glass.md). toggle_bottle_cap начинает переход; is_bottle_capped становится true после завершения. Cap hover API, FacetedGlassVisual, новые внутренние узлы готового стакана; публичный ServiceGuest.show_prepared сохранён. Потребители и тесты перечислены в ADR.
+
 DA-090: [общая 3D/2D бутылка, API крышки и запасы по ID](decisions/0049-shared-small-bottle.md). Потребители: DrinkWorkbench, WorkbenchSupplies, профильные тесты. Checkpoint прежний.
 
 DA-080: ReplyChoiceRow body содержит только авторский caption; hovered/activated позволяют выбрать и выполнить строку без номеров. DialogueBubblePanel принимает E и клик, цифровые/колёсные shortcut-ветки удалены. FreeRoamCamera.set_dialogue_pointer(bool) освобождает курсор только для доступных ответов, не блокируя ходьбу; скрытие панели/закрытие режима возвращает прежний захват. Повторная проверка can_answer и актуальной цели сохранена. Подпись мыши на экране не выводится. Исторические записи о номерах ниже не являются текущим управлением.

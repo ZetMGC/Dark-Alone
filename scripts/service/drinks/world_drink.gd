@@ -15,6 +15,19 @@ func setup(owner_node: Node, portion: DrinkPreparation) -> void:
 	collision_mask = 0
 	monitoring = false
 	var shot: bool = portion.get_vessel().id == "test_shot"
+	if not shot:
+		var visual := FacetedGlassVisual.new()
+		visual.name = "GlassVisual"
+		add_child(visual)
+		visual.set_contents(portion.get_view())
+		var collision := CollisionShape3D.new()
+		var shape := CylinderShape3D.new()
+		shape.height = FacetedGlassVisual.HEIGHT + 0.02
+		shape.radius = FacetedGlassVisual.RADIUS + 0.02
+		collision.shape = shape
+		collision.position.y = FacetedGlassVisual.HEIGHT / 2
+		add_child(collision)
+		return
 	var height := 0.10 if shot else 0.18
 	var radius := 0.05 if shot else 0.068
 	var glass := CylinderMesh.new()
@@ -74,6 +87,8 @@ func _mesh(id: String, mesh: Mesh, material: Material, offset: Vector3) -> void:
 func set_held(value: bool) -> void:
 	held = value
 	collision_layer = 0 if value else 2
+	var visual := get_node_or_null("GlassVisual") as FacetedGlassVisual
+	if visual != null: visual.set_held(value)
 	for material in materials:
 		material.no_depth_test = value
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED if value else BaseMaterial3D.SHADING_MODE_PER_PIXEL

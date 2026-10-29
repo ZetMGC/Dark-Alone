@@ -80,6 +80,17 @@ func show_prepared(result: Dictionary, surface_position: Vector3) -> void:
 			child.queue_free()
 	$ServedGlass.visible = true
 	var shot: bool = result.vessel.id == "test_shot"
+	$ServedGlass/Cup.visible = shot
+	if not shot:
+		$ServedGlass.global_position = surface_position + Vector3.UP * FacetedGlassVisual.HEIGHT / 2
+		var visual := FacetedGlassVisual.new()
+		visual.name = "DrinkGlassVisual"
+		$ServedGlass.add_child(visual)
+		visual.position.y = -FacetedGlassVisual.HEIGHT / 2
+		visual.set_contents(result)
+		$ServedGlass/Label.text = "Напиток подан · Гранитоль"
+		drink_presented.emit()
+		return
 	var height := 0.10 if shot else 0.18
 	var radius := 0.06 if shot else 0.075
 	# Точка столешницы приходит от Main и не зависит от поворота гостя.
