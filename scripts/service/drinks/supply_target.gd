@@ -7,6 +7,8 @@ var opened: bool = false
 var held: bool = false
 var contents: Node3D
 func is_available() -> bool:
+	if store != null and store.bottle_nodes.has(supply_id):
+		context_description = "Бутылка · %d мл" % store.bench.get_bottle_remaining(supply_id)
 	return not held and store != null and store.available(self)
 func get_prompt() -> String:
 	if return_slot: return "E — поставить бутылку на полку"
