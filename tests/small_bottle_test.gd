@@ -157,6 +157,9 @@ func run() -> void:
 	expect(bench.is_bottle_capped(id) and visual.cap.visible, "Drop on neck reseals same model")
 	bench.toggle_bottle_cap(id)
 	await wait_cap(bench)
+	# Перенос измеряет сохранение запаса, без отдельного пролива из лежащего состояния.
+	bench.stand_bottle(id)
+	bench.advance_tabletop(0.25)
 	var remaining := bench.get_bottle_remaining(id)
 	main.get_node("NarrativeSession").close_service()
 	await get_tree().process_frame
