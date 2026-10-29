@@ -42,15 +42,24 @@ func configure(owner_main: Node) -> void:
 				item.add_child(rim)
 			item.collision_layer = 0
 		drawer.contents.hide()
-	_box(self, Vector3(-0.08,1.65,0), Vector3(0.45,0.055,3.0), Color(0.19,0.16,0.11))
+	if not main.reference_bar_enabled:
+		_box(self, Vector3(-0.08,1.65,0), Vector3(0.45,0.055,3.0), Color(0.19,0.16,0.11))
 	var shelf_root := Node3D.new()
 	add_child(shelf_root)
 	var shelf = _target("Полка бутылок", "Верните сюда бутылку из рабочей зоны", Vector3(0.12,1.67,0), Vector3(0.40,0.10,3.0), shelf_root)
 	shelf.return_slot = true
+	if main.reference_bar_enabled:
+		shelf.position = to_local(Vector3(-0.25,1.45,-3.55))
+		(shelf.get_child(0).shape as BoxShape3D).size = Vector3(0.38,0.09,5.0)
 	for index in bench._ids.size():
 		var id := StringName(bench._ids[index])
 		var data: Dictionary = bench._catalog.get_ingredient(id)
 		var item = _target(str(data.title).trim_prefix("[TEST] "), "Бутылка · 500 мл. Перенесите на стол", Vector3(0.02,1.82,-1.2 + index * 0.36), Vector3(0.12,0.29,0.16))
+		if main.reference_bar_enabled:
+			var column := index % 4
+			var row := index / 4
+			var x := -1.60 + column * 0.90
+			item.position = to_local(Vector3(x,1.55 + row * 0.65,-3.58))
 		item.supply_id = id
 		bottle_homes[id] = item.transform
 		bottle_nodes[id] = item

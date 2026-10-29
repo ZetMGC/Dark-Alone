@@ -373,3 +373,7 @@ DrinkWorkbench.supplies_required, supplied, has_supply(id), add_supply(id): от
 ## DA-087: обратимый перенос бутылок
 
 WorkbenchSupplies хранит bottle_homes/bottle_nodes. Deposit переподчиняет ту же бутылку стойке и освобождает переносчик без queue_free. Взятие удаляет supplied через DrinkWorkbench.remove_bottle; stock не сбрасывается. SupplyTarget.return_slot на верхней полке вызывает return_bottle. Предмет на полке/в руке отсутствует в 2D. Посуда/инструменты сохраняют путь DA-085; публичные API напитка не менялись. Потребители: Supplies, SupplyTarget, DrinkWorkbench; проверка supplies включает реальные ray/идентичность/37 мл расхода/возврат/повторный перенос.
+
+## DA-088: шкаф и реальные бутылки
+
+ReferenceBar._build_bar_cabinet сохраняет обязательные ShelfBack/Lower/Upper и их Body для Main; добавляет каркас/карниз без изменения планировки бара. Статические Bottle/Neck отсутствуют. WorkbenchSupplies переводит стартовые позиции семи бутылок в локальные координаты BackCounter из мировых мест двух уровней шкафа; bottle_homes сохраняет эти места для возврата. Потребители: Main, Supplies, reference_bar_test, cabinet test. Реальные ray к каждой бутылке и отсутствие декора проверяет bar_cabinet_test; --cabinet-check доступен в Windows Validation.
