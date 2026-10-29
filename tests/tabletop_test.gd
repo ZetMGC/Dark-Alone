@@ -18,6 +18,10 @@ func snap(name: String) -> void:
 	get_viewport().get_texture().get_image().save_png(folder.path_join(name + ".png"))
 func run() -> void:
 	if "--small" in OS.get_cmdline_user_args(): get_window().size = Vector2i(960, 600)
+	var falling := TabletopMotion.new()
+	falling.release(Vector2(300,150), 0, Vector2.ZERO, 0.5)
+	falling.advance(0.1)
+	expect(falling.origin().y > 156, "Gravity makes a short drop noticeably quicker")
 	var slow := TabletopMotion.new()
 	slow.release(Vector2(200, 220), 0, Vector2.ZERO, 0.8)
 	expect(slow.origin().is_equal_approx(Vector2(200, 220)), "Release above table preserves exact visible pose")
@@ -167,6 +171,24 @@ func run() -> void:
 	expect(bench.resting_bottle_streams().size() == 1, "Left leaning bottle leaks too")
 	bench._angles[str(id)] = 0.0
 	expect(bench.resting_bottle_streams().is_empty(), "Standing bottle stops leaking")
+	# Регрессия скриншота: крышка отпущена над этикеткой, а затем должна оказаться сбоку.
+	for bottle_angle in [0.0, 90.0, -90.0]:
+		bench._angles[str(id)] = bottle_angle
+		bench._positions[str(id)] = Vector2(550,440)
+		var on_body := bench._bottle_transform(id) * Vector2(0, 85)
+		bench.cap_item.logical_position = on_body - BottleCapItem.DIMENSIONS / 2
+		bench.cap_item.press_pointer(on_body)
+		bench.cap_item._moving = true
+		bench.cap_item.release_pointer()
+		var before_slide := bench.cap_item.logical_position
+		bench.cap_item.advance(1.0 / 120.0)
+		expect(bench.cap_item.logical_position.distance_to(before_slide) < 10, "Cap slides off body without teleporting")
+		for step in 480: bench.cap_item.advance(1.0 / 120.0)
+		var local_cap := bench._bottle_transform(id).affine_inverse() * bench.cap_item.logical_rect().get_center()
+		expect(not Rect2(-25,30,50,118).grow(20).has_point(local_cap) and not bench.cap_item.motion.active, "Loose cap settles outside upright or lying bottle silhouette")
+		bench.queue_redraw()
+		await snap("da094-cap-beside-bottle-%d" % int(bottle_angle))
+	bench._angles[str(id)] = 0.0
 	# Hover is harmless, release over body cannot attach, release on rotated neck can.
 	bench.cap_item.press_pointer(bench.cap_item.logical_rect().get_center())
 	bench.cap_item.drag_pointer(bench._bottle_transform(id) * Vector2(0, 90))

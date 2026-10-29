@@ -75,7 +75,7 @@ func advance(delta: float) -> void:
 				active = false
 		else:
 			ground += velocity * dt
-			vertical_speed -= 850 * dt
+			vertical_speed -= 1200 * dt
 			elevation += vertical_speed * dt
 			if elevation <= 0:
 				elevation = 0
@@ -87,7 +87,7 @@ func advance(delta: float) -> void:
 				angle += spin * dt
 				spin *= exp(-(6.0 if elevation == 0 else 1.5) * dt)
 			else:
-				spin += ((_target_angle - angle) * 52 - spin * 11) * dt
+				spin += ((_target_angle - angle) * 70 - spin * 13) * dt
 				angle += spin * dt
 			if velocity.length() < 0.5 and elevation == 0 and absf(vertical_speed) < 1 and absf(spin) < 0.01 and (is_cap or absf(angle - _target_angle) < 0.002):
 				active = false

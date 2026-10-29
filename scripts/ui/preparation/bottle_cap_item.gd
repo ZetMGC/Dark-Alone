@@ -29,6 +29,7 @@ var _last_motion: int = 0
 var _rotation: float = 0
 var _return_rotation: float = 0
 var target_rotation: float = 0
+var bottle_obstacles: Callable
 
 func _ready() -> void:
 	motion.half_size = DIMENSIONS / 2
@@ -64,8 +65,9 @@ func start_motion(from: Vector2, to: Vector2, attach: bool, radians: float = 0) 
 func advance(delta: float) -> void:
 	if not is_finite(delta) or delta <= 0: return
 	if not animating:
-		if detached and not _pressed and motion.active:
+		if detached and not _pressed:
 			motion.advance(delta)
+			_slide_off_bottles(delta)
 			logical_position = motion.center() - DIMENSIONS / 2
 			_rotation = motion.angle
 			_sync()
@@ -81,6 +83,9 @@ func advance(delta: float) -> void:
 		animating = false
 		detached = not returning
 		visible = detached
+		if detached:
+			var at := logical_position + DIMENSIONS / 2 - Vector2(0, DIMENSIONS.y / 2).rotated(_rotation)
+			motion.release(at, _rotation, Vector2.ZERO, 0.008)
 		motion_finished.emit(returning)
 
 func cancel_drag() -> void:
@@ -171,3 +176,25 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _pressed:
 		drag_pointer((event.global_position - _view_origin) / _view_scale)
 		accept_event()
+
+
+func _slide_off_bottles(delta: float) -> void:
+	if not bottle_obstacles.is_valid(): return
+	# Крышка не может остановиться на экранном силуэте вертикальной стенки.
+	# Выход вдоль поперечной оси корпуса работает и для лежащей бутылки.
+	for obstacle in bottle_obstacles.call():
+		var transform: Transform2D = obstacle.transform
+		var bounds: Rect2 = obstacle.rect.grow(21)
+		var local := transform.affine_inverse() * motion.center()
+		if not bounds.has_point(local): continue
+		var left := transform * Vector2(bounds.position.x - 1, local.y)
+		var right := transform * Vector2(bounds.end.x + 1, local.y)
+		var safe := TabletopMotion.TABLE.grow(-22)
+		var target := left if local.x < bounds.get_center().x else right
+		if not safe.has_point(target): target = right if target == left else left
+		var displacement := target - motion.center()
+		var normal := displacement.normalized()
+		motion.ground += displacement.limit_length(360 * minf(delta, 0.05))
+		var inward := motion.velocity.dot(normal)
+		if inward < 0: motion.velocity -= normal * inward
+		motion.active = true

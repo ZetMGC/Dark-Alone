@@ -107,6 +107,7 @@ func _ready() -> void:
 	_cap_preview = SmallBottleVisual.make_preview(self, true)
 	cap_item = BottleCapItem.new()
 	cap_item.name = "StvorCap"
+	cap_item.bottle_obstacles = _cap_bottle_obstacles
 	cap_item.texture = _cap_preview.get_texture()
 	add_child(cap_item)
 	cap_item.return_requested.connect(func() -> void:
@@ -1480,3 +1481,12 @@ func resting_bottle_streams() -> Array[Dictionary]:
 		end = end.clamp(TabletopMotion.TABLE.position + Vector2.ONE * 3, TabletopMotion.TABLE.end - Vector2.ONE * 3)
 		streams.append({"id": id, "start": start, "velocity": velocity, "time": time, "end": end, "rate": rate, "hit": false})
 	return streams
+
+
+func _cap_bottle_obstacles() -> Array[Dictionary]:
+	var obstacles: Array[Dictionary] = []
+	for key in _ids:
+		var id := StringName(key)
+		if not has_supply(id): continue
+		obstacles.append({"transform": _bottle_transform(id), "rect": Rect2(-25, 30, 50, 118) if id == SmallBottleVisual.ID else Rect2(-34, 15, 68, 138)})
+	return obstacles

@@ -1,5 +1,7 @@
 # Контракты интеграции
 
+DA-094: BottleCapItem.bottle_obstacles — Callable от DrinkWorkbench, возвращает Array[Dictionary] с transform/rect корпуса. [ADR-0053](decisions/0053-cap-body-clearance.md).
+
 DA-093: dropped / start_motion(..., radians), двусторонний tilt_by и resting_bottle_streams — [ADR-0052](decisions/0052-bottle-stability-leaks.md). Заменяет click-to-return и отсутствие пролива из ADR-0051.
 
 DA-092: [жест крышки и tabletop motion](decisions/0051-tabletop-motion.md). Клик надетой крышки больше не открывает её; BottleCapItem принимает drag/release, DrinkWorkbench.advance_motion включает физику и подъём. Новые stand/is_lying/tabletop API, мировой масштаб supplies нормализован. Потребители/проверки перечислены в ADR.
