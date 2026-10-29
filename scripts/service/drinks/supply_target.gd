@@ -1,6 +1,7 @@
 extends Interactable3D
 var store: Node
 var supply_id: StringName
+var return_slot: bool = false
 var drawer: bool = false
 var opened: bool = false
 var held: bool = false
@@ -8,10 +9,13 @@ var contents: Node3D
 func is_available() -> bool:
 	return not held and store != null and store.available(self)
 func get_prompt() -> String:
+	if return_slot: return "E — поставить бутылку на полку"
 	return ("E — закрыть ящик" if opened else "E — открыть ящик") if drawer else "E — взять предмет"
 func interact() -> void:
 	if not is_available(): return
-	if drawer:
+	if return_slot:
+		store.return_bottle()
+	elif drawer:
 		opened = not opened
 		contents.visible = opened
 		for child in get_children():

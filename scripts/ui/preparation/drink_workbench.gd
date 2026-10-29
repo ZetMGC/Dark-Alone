@@ -1197,3 +1197,10 @@ func add_supply(id: StringName) -> bool:
 	_refresh_buttons()
 	queue_redraw()
 	return true
+
+
+func remove_bottle(id: StringName) -> bool:
+	if str(id) not in _ids or not supplied.has(id): return false
+	supplied.erase(id)
+	queue_redraw()
+	return true

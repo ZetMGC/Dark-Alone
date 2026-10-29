@@ -2,6 +2,8 @@ extends Node3D
 var main: Node
 var bench: DrinkWorkbench
 var carrier: Node
+var bottle_homes: Dictionary = {}
+var bottle_nodes: Dictionary = {}
 const TARGET = preload("res://scripts/service/drinks/supply_target.gd")
 func configure(owner_main: Node) -> void:
 	main = owner_main
@@ -41,11 +43,17 @@ func configure(owner_main: Node) -> void:
 			item.collision_layer = 0
 		drawer.contents.hide()
 	_box(self, Vector3(-0.08,1.65,0), Vector3(0.45,0.055,3.0), Color(0.19,0.16,0.11))
+	var shelf_root := Node3D.new()
+	add_child(shelf_root)
+	var shelf = _target("Полка бутылок", "Верните сюда бутылку из рабочей зоны", Vector3(0.12,1.67,0), Vector3(0.40,0.10,3.0), shelf_root)
+	shelf.return_slot = true
 	for index in bench._ids.size():
 		var id := StringName(bench._ids[index])
 		var data: Dictionary = bench._catalog.get_ingredient(id)
 		var item = _target(str(data.title).trim_prefix("[TEST] "), "Бутылка · 500 мл. Перенесите на стол", Vector3(0.02,1.82,-1.2 + index * 0.36), Vector3(0.12,0.29,0.16))
 		item.supply_id = id
+		bottle_homes[id] = item.transform
+		bottle_nodes[id] = item
 		_cylinder(item,0.047,0.22,Color(data.color[0],data.color[1],data.color[2]))
 		var neck := MeshInstance3D.new()
 		var mesh := CylinderMesh.new()
@@ -68,6 +76,8 @@ func _cylinder(parent: Node, radius: float, height: float, color: Color) -> void
 	mesh.top_radius=radius; mesh.bottom_radius=radius*0.85; mesh.height=height; mesh.radial_segments=10; node.mesh=mesh
 	var material := StandardMaterial3D.new(); material.albedo_color=color; material.roughness=0.8; node.material_override=material; parent.add_child(node)
 func available(target: Node3D) -> bool:
+	if target.return_slot:
+		return carrier.holding and carrier.portion == null and bottle_nodes.has(carrier.item.supply_id) and main.get_node("NarrativeSession").mode in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] and carrier.camera.global_position.distance_to(target.global_position) < 2.5
 	return main.get_node("NarrativeSession").mode in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] and carrier.camera.global_position.distance_to(target.global_position) < 2.5 and (target.drawer or not is_instance_valid(carrier.item))
 func take(target: Interactable3D) -> void:
 	if is_instance_valid(carrier.item) or not available(target): return
@@ -75,10 +85,34 @@ func take(target: Interactable3D) -> void:
 	target.global_basis = target.global_basis.orthonormalized()
 	carrier.item=target
 	carrier.portion=null
-	carrier.pick_up()
+	if carrier.pick_up() and bottle_nodes.has(target.supply_id):
+		bench.remove_bottle(target.supply_id)
 func deposit() -> bool:
 	if not carrier.holding or carrier.portion != null: return false
 	var id: StringName = carrier.item.supply_id
 	if not bench.add_supply(id): return false
-	carrier.consume()
+	if bottle_nodes.has(id):
+		var bottle = carrier.item
+		bottle.reparent(self, true)
+		bottle.transform = bottle_homes[id]
+		bottle.position = Vector3(-0.10,1.24,-1.1 + bench._ids.find(str(id)) * 0.36)
+		_release_bottle(bottle)
+	else:
+		carrier.consume()
+	return true
+
+func _release_bottle(bottle: Interactable3D) -> void:
+	bottle.set_held(false)
+	carrier.item = null
+	carrier.holding = false
+	carrier.portion = null
+	carrier.changed.emit()
+
+func return_bottle() -> bool:
+	if not carrier.holding or carrier.portion != null or not bottle_nodes.has(carrier.item.supply_id): return false
+	var bottle = carrier.item
+	bench.remove_bottle(bottle.supply_id)
+	bottle.reparent(self, true)
+	bottle.transform = bottle_homes[bottle.supply_id]
+	_release_bottle(bottle)
 	return true

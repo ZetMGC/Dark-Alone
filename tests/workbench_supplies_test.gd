@@ -61,6 +61,27 @@ func run() -> void:
 	expect(store.deposit() and bench.supplied.has(&"test_glass"), "Second vessel can be stored without deadlock")
 	store.take(bottles[0])
 	expect(store.deposit() and bench.has_supply(bottles[0].supply_id), "Bottle transfers to workbench")
+	var bottle = bottles[0]
+	var bottle_id: StringName = bottle.supply_id
+	var identity: int = bottle.get_instance_id()
+	expect(is_instance_valid(bottle) and bottle.get_parent()==store and not bottle.held, "Deposited bottle remains visible on 3D worktop")
+	bench.bottle_stock.withdraw(bottle_id, 37)
+	rig.body.global_position=carrier.home_position + Vector3(0,-1.13,0.8)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	rig.view.look_at(bottle.global_position)
+	await get_tree().physics_frame
+	expect(main.get_node("InteractionController").get_target()==bottle, "Worktop bottle is a real interaction target")
+	if DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("res://artifacts/da087-worktop.png")
+	store.take(bottle)
+	expect(carrier.item==bottle and not bench.has_supply(bottle_id), "Taking bottle removes it from 2D while held")
+	expect(store.return_bottle() and bottle.get_instance_id()==identity and bottle.transform.is_equal_approx(store.bottle_homes[bottle_id]), "Return preserves same bottle in original shelf slot")
+	expect(is_equal_approx(bench.get_bottle_remaining(bottle_id),463), "Return cannot refill stock")
+	store.take(bottle)
+	expect(store.deposit() and bench.has_supply(bottle_id) and bottle.get_instance_id()==identity, "Same bottle can be brought back to worktop")
+	expect(is_equal_approx(bench.get_bottle_remaining(bottle_id),463), "Repeated transfer preserves remaining volume")
 	rig.body.global_position=carrier.home_position + Vector3(0,-1.13,0.8)
 	await get_tree().physics_frame
 	await get_tree().process_frame
