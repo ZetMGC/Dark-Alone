@@ -20,6 +20,22 @@ func run() -> void:
 	var level: Node3D = main.get_node("BarLevel")
 	expect(level is ReferenceBar, "Reference layout enabled in normal entry")
 	expect(main._narrative_ready, "Narrative and workbench configured")
+	var audio: EnvironmentAudio = main.get_node("Presentation/EnvironmentAudio")
+	var rain: AudioStreamWAV = audio.get_node("Street").stream
+	expect(rain.loop_end == 11025 * 16 and rain.data.decode_s16(rain.loop_end * 2) == rain.data.decode_s16(0), "Rain loop has matching inclusive continuation sample")
+	audio.set_gain(0)
+	expect(not audio.get_node("Street").playing and not audio.get_node("Furniture").playing, "Night ambience respects master mute")
+	audio.set_gain(0.35)
+	var steady := level.get_node("GuestFill").light_energy as float
+	level.set_process(false)
+	var flicker_min := 10.0
+	var flicker_max := 0.0
+	for step in 240:
+		level._process(0.1)
+		flicker_min = minf(flicker_min, level._flicker.light_energy)
+		flicker_max = maxf(flicker_max, level._flicker.light_energy)
+	expect(flicker_min >= 1.35 * 0.879 and flicker_max <= 1.351 and level.get_node("GuestFill").light_energy == steady, "Only distant lamp dips gently; guest lighting stays steady")
+	level.set_process(true)
 	var leaves: Array[String] = []
 	var unwanted_table := false
 	for part in level.get_node("Geometry").get_children():
@@ -61,6 +77,7 @@ func run() -> void:
 		expect(main.open_service_menu(), "Preparation opens at relocated workbench")
 		main.get_node("NarrativeSession").close_service()
 		rig.leave_focus()
+	await capture(main, Vector3(-0.2, 1.65, -2.0), Vector3(-0.3, 1.25, -3.4), "workbench")
 	# Интеграция нового зала с физической подачей из актуального main.
 	var session: NarrativeSession = main.get_node("NarrativeSession")
 	expect(session.open_service(), "Open preparation for physical delivery in reference bar")
@@ -77,8 +94,11 @@ func run() -> void:
 	await capture(main, Vector3(2.65, 1.7, 1.6), Vector3(-2.8, 1.1, -0.5), "hall")
 	await capture(main, Vector3(0.6, 1.6, 1.6), Vector3(2.1, 1.1, -1.4), "passage")
 	await capture(main, Vector3(-2.3, 1.35, 0.2), Vector3(-3.4, 0.65, -1.9), "seating")
+	expect(session.start_dialogue(&"test_war_cinema_guest"), "Conversation remains available in night lighting")
+	await get_tree().create_timer(0.7).timeout
 	await capture(main, Vector3(-0.2, 1.65, -2.0), Vector3(-0.2, 1.43, -0.45), "support_front")
 	await capture(main, Vector3(-1.2, 1.5, -1.8), Vector3(-0.2, 1.32, -0.65), "support_side")
+	session.cancel_dialogue()
 	level.get_node("Geometry/Ceiling").hide()
 	await capture(main, Vector3(0, 13, 0.01), Vector3.ZERO, "plan", true)
 	behavior.request_departure()
@@ -105,9 +125,11 @@ func capture(main: Node, pos: Vector3, target: Vector3, label: String, plan: boo
 		camera.size = 12
 	camera.current = true
 	main.get_node("NavigationHUD/Screen").hide()
+	main.get_node("DialogueTrigger/ServedGlass/Label").hide()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	DirAccess.make_dir_recursive_absolute("res://artifacts/reference_bar")
 	get_viewport().get_texture().get_image().save_png("res://artifacts/reference_bar/%s.png" % label)
 	camera.queue_free()
+	main.get_node("AnchorCamera").view.make_current()

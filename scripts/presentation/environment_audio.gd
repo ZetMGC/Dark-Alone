@@ -4,6 +4,7 @@ extends Node3D
 
 static var _street_stream: AudioStreamWAV
 static var _creak_stream: AudioStreamWAV
+static var _rain_stream: AudioStreamWAV
 var _gain: float = 0.0
 var _active: bool = true
 var _events_paused: bool = false
@@ -28,6 +29,17 @@ func set_gain(value: float) -> void:
 	if not is_finite(value):
 		return
 	_gain = clampf(value, 0.0, 1.0)
+	_apply_gain()
+
+
+func configure_night_bar() -> void:
+	# Профиль новой локации; прежние меню/mute/пауза управляют теми же источниками.
+	if _rain_stream == null:
+		_rain_stream = _make_rain()
+	$Street.stop()
+	$Street.stream = _rain_stream
+	$Street.position = Vector3(-4.7, 1.8, 0)
+	$Furniture.position = Vector3(-3.45, 0.8, 1.55)
 	_apply_gain()
 
 
@@ -120,6 +132,33 @@ func _make_creak() -> AudioStreamWAV:
 		var value := (sin(phase) * 0.022 + sin(phase * 2.0) * 0.007) * envelope
 		pcm.encode_s16(index * 2, roundi(value * 32767.0))
 	return _pcm(pcm, RATE)
+
+
+func _make_rain() -> AudioStreamWAV:
+	const RATE := 11025
+	const COUNT := RATE * 16
+	var random := RandomNumberGenerator.new()
+	random.seed = 290104
+	var noise := PackedFloat32Array()
+	noise.resize(COUNT)
+	for i in COUNT:
+		noise[i] = random.randf_range(-1, 1)
+	var low := 0.0
+	for i in range(COUNT - 4096, COUNT):
+		low = lerpf(low, noise[i], 0.12)
+	var pcm := PackedByteArray()
+	pcm.resize((COUNT + 1) * 2)
+	for i in COUNT:
+		low = lerpf(low, noise[i], 0.12)
+		var swell := 0.95 + 0.05 * cos(TAU * float(i) / COUNT)
+		var value := (low * 0.11 + (noise[i] - low) * 0.012) * swell
+		pcm.encode_s16(i * 2, roundi(value * 32767))
+	# Дополнительный отсчёт для включительного декодирования стыка Godot.
+	pcm.encode_s16(COUNT * 2, pcm.decode_s16(0))
+	var stream := _pcm(pcm, RATE)
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_end = COUNT
+	return stream
 
 
 func _pcm(data: PackedByteArray, rate: int) -> AudioStreamWAV:

@@ -9,16 +9,18 @@ var brass: Material
 var leather: Material
 var tile: Material
 var dark: Material
+var _flicker: SpotLight3D
+var _light_time: float = 0.0
 
 
 func _ready() -> void:
 	geometry = Node3D.new()
 	geometry.name = "Geometry"
 	add_child(geometry)
-	wood = material(Color(0.28, 0.16, 0.075), 2)
-	plaster = material(Color(0.31, 0.28, 0.21), 0)
-	brass = material(Color(0.43, 0.32, 0.14), 0)
-	leather = material(Color(0.19, 0.065, 0.035), 3)
+	wood = material(Color(0.19, 0.155, 0.125), 2)
+	plaster = material(Color(0.27, 0.28, 0.255), 0)
+	brass = material(Color(0.30, 0.27, 0.19), 0)
+	leather = material(Color(0.135, 0.10, 0.09), 3)
 	tile = material(Color(0.29, 0.30, 0.26), 1)
 	dark = material(Color(0.065, 0.055, 0.038), 0)
 	box("Foundation", Vector3(0, -0.12, 0), Vector3(10, 0.24, 8), dark)
@@ -114,15 +116,40 @@ func _ready() -> void:
 		window.rotation.y = PI / 2
 	for x in [-4.9, -1.95, 1.5, 4.9]:
 		box("Beam", Vector3(x, 2.78, 0), Vector3(0.12, 0.20, 8), wood, false)
-	for pos in [Vector3(-3.4, 2.5, -2.7), Vector3(-3.4, 2.5, 1.5), Vector3(-1.6, 2.5, 1.4), Vector3(1.4, 2.5, 0.8), Vector3(-1.2, 2.5, -1.2), Vector3(0.7, 2.5, -1.2), Vector3(2.2, 2.5, -2.5), Vector3(4, 2.5, -2.5), Vector3(4, 2.5, 0.5), Vector3(3, 2.5, 3), Vector3(-0.6, 2.5, 3.4)]:
-		lamp(pos)
+	# Световые островки: два стола остаются без собственной лампы.
+	lamp(Vector3(-3.4, 2.5, -2.7), 1.8, 3.1)
+	_flicker = lamp(Vector3(-3.4, 2.5, 1.5), 1.35, 3.0)
+	lamp(Vector3(-1.6, 2.5, 1.4), 0.0, 2.4)
+	lamp(Vector3(-1.2, 2.5, -1.2), 1.25, 3.0)
+	lamp(Vector3(0.7, 2.5, -1.2), 1.25, 3.0)
+	lamp(Vector3(2.2, 2.5, -2.5), 0.65, 2.4, Color(0.72, 0.86, 0.77))
+	lamp(Vector3(4, 2.5, -2.5), 0.25, 2.0, Color(0.70, 0.78, 0.74))
+	lamp(Vector3(4, 2.5, 0.5), 0.4, 2.0, Color(0.72, 0.80, 0.76))
+	lamp(Vector3(3, 2.5, 3), 0.25, 2.0)
+	lamp(Vector3(-0.6, 2.5, 3.4), 0.35, 2.1)
+	# Узкий свет на полки/приготовление и мягкий отражённый свет на лицо гостя.
+	spot("WorkbenchLight", Vector3(-0.3, 2.55, -2.65), Vector3(-0.3, 1.1, -3.35), Color(0.94, 0.79, 0.58), 1.1, 2.8, 55)
+	spot("GuestFill", Vector3(-0.2, 2.2, -2.45), Vector3(-0.2, 1.45, -0.45), Color(0.90, 0.80, 0.65), 0.55, 3.1, 36)
+	spot("WindowWest", Vector3(-4.72, 1.85, -0.2), Vector3(-2.3, 0.1, 0.7), Color(0.39, 0.53, 0.74), 1.8, 4.4, 42)
+	spot("WindowNorth", Vector3(-3.5, 1.85, -3.70), Vector3(-2.8, 0.1, -1.2), Color(0.39, 0.53, 0.74), 1.4, 3.7, 34)
+	spot("WindowSouth", Vector3(-3.6, 1.85, 3.70), Vector3(-2.6, 0.1, 1.5), Color(0.39, 0.53, 0.74), 1.4, 3.7, 34)
+	_lived_in_details()
+	# Очень слабый отражённый свет: пол и маршрут различимы между световыми островками.
+	var bounce := OmniLight3D.new()
+	bounce.name = "HallBounce"
+	bounce.position = Vector3(-0.3, 1.25, 0.9)
+	bounce.light_color = Color(0.56, 0.62, 0.72)
+	bounce.light_energy = 0.28
+	bounce.omni_range = 3.6
+	bounce.shadow_enabled = true
+	add_child(bounce)
 	var environment := WorldEnvironment.new()
 	environment.environment = Environment.new()
 	environment.environment.background_mode = Environment.BG_COLOR
 	environment.environment.background_color = Color(0.04, 0.045, 0.05)
 	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.environment.ambient_light_color = Color(0.58, 0.55, 0.48)
-	environment.environment.ambient_light_energy = 0.6
+	environment.environment.ambient_light_color = Color(0.43, 0.49, 0.58)
+	environment.environment.ambient_light_energy = 0.30
 	add_child(environment)
 	var anchors := Node3D.new()
 	anchors.name = "Anchors"
@@ -266,13 +293,63 @@ func window_panel(pos: Vector3) -> MeshInstance3D:
 	return frame
 
 
-func lamp(pos: Vector3) -> void:
+func lamp(pos: Vector3, energy: float, reach: float, color: Color = Color(1.0, 0.82, 0.59)) -> SpotLight3D:
 	cylinder("LampShade", pos, 0.18, 0.14, brass)
 	cylinder("LampCable", Vector3(pos.x, 2.7, pos.z), 0.009, 0.4, dark)
-	var light := OmniLight3D.new()
-	light.position = pos - Vector3.UP * 0.13
-	light.light_color = Color(1, 0.72, 0.40)
-	light.light_energy = 1.1
-	light.omni_range = 3.3
+	if energy > 0:
+		var bulb := StandardMaterial3D.new()
+		bulb.albedo_color = color
+		bulb.emission_enabled = true
+		bulb.emission = color * 0.7
+		cylinder("LampBulb", pos-Vector3.UP*0.073, 0.115, 0.012, bulb)
+	return spot("PendantLight", pos - Vector3.UP * 0.10, pos - Vector3.UP, color, energy, reach, 58)
+
+
+func spot(label: String, pos: Vector3, target: Vector3, color: Color, energy: float, reach: float, angle: float) -> SpotLight3D:
+	var light := SpotLight3D.new()
+	light.name = label
+	light.position = pos
+	light.light_color = color
+	light.light_energy = energy
+	light.spot_range = reach
+	light.spot_angle = angle
+	light.spot_attenuation = 0.8
 	light.shadow_enabled = true
-	add_child(light)
+	light.shadow_bias = 0.035
+	add_child(light, true)
+	light.look_at(target, Vector3.FORWARD if absf((target-pos).normalized().dot(Vector3.UP)) > 0.99 else Vector3.UP)
+	return light
+
+
+func _process(delta: float) -> void:
+	_light_time += delta
+	# Только одна дальняя лампа: мягкое проседание на 12%, раз в ~23 с.
+	var phase := fposmod(_light_time, 23.7)
+	_flicker.light_energy = 1.35 * (1.0 - 0.12 * pow(sin((phase - 20.0) / 0.7 * PI), 2)) if phase > 20.0 and phase < 20.7 else 1.35
+
+
+func _lived_in_details() -> void:
+	var paper := material(Color(0.34, 0.32, 0.25), 0)
+	box("FoldedPaper", Vector3(-3.55, 0.838, -0.48), Vector3(0.22, 0.008, 0.16), paper, false).rotation.y = 0.23
+	box("LeftBook", Vector3(-2.95, 0.85, 3.25), Vector3(0.22, 0.04, 0.16), leather, false).rotation.y = -0.18
+	box("ForgottenCoaster", Vector3(0.95, 1.163, -1.35), Vector3(0.14, 0.005, 0.14), paper, false)
+	for pos in [Vector3(-3.25, 0.834, -2.7), Vector3(-3.6, 0.834, 1.55), Vector3(0.65, 1.162, -1.2)]:
+		var mark := MeshInstance3D.new()
+		mark.name = "GlassRing"
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.045
+		ring.outer_radius = 0.049
+		ring.rings = 24
+		ring.ring_segments = 6
+		mark.mesh = ring
+		mark.scale.y = 0.12
+		mark.position = pos
+		mark.material_override = material(Color(0.085, 0.075, 0.06), 0)
+		geometry.add_child(mark, true)
+	for pos in [Vector3(-1.5, 0.77, -0.35), Vector3(0.55, 0.77, -0.35), Vector3(-4.4, 0.583, 1.5)]:
+		box("SeatScuff", pos + Vector3(0, 0.037, 0), Vector3(0.12, 0.002, 0.045), material(Color(0.21, 0.18, 0.145), 3), false).rotation.y = 0.35
+	# Собственные условные выцветшие снимки зданий, без новых сюжетных фактов.
+	for z in [-1.45, 1.35]:
+		box("FadedPhoto", Vector3(-4.786, 1.8, z), Vector3(0.008, 0.39, 0.27), paper, false)
+		for i in 4:
+			box("PhotoSilhouette", Vector3(-4.779, 1.70 + (i%2)*0.025, z-0.09+i*0.06), Vector3(0.006, 0.13+(i%2)*0.05, 0.04), dark, false)

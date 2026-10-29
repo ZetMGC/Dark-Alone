@@ -41,6 +41,7 @@ var _counter_target: WorkstationTarget
 
 func _ready() -> void:
 	if reference_bar_enabled:
+		$Presentation/EnvironmentAudio.configure_night_bar()
 		var old_level := $BarLevel
 		remove_child(old_level)
 		old_level.queue_free()
