@@ -1,6 +1,7 @@
 extends Node
 var checks := 0
 var failures := 0
+var capture_root := "res://artifacts"
 func expect(value: bool, label: String) -> void:
 	checks += 1
 	if not value:
@@ -17,6 +18,9 @@ func click(bench: DrinkWorkbench, point: Vector2) -> void:
 		get_viewport().push_input(event, true)
 	await get_tree().process_frame
 func run() -> void:
+	if not OS.has_feature("editor"):
+		capture_root = "user://da090-captures"
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(capture_root))
 	if "--small" in OS.get_cmdline_user_args(): get_window().size = Vector2i(960, 600)
 	var main = load("res://scenes/main/reasoning_demo.tscn").instantiate()
 	main.visitor_behavior_enabled = false
@@ -50,7 +54,7 @@ func run() -> void:
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw
-		get_viewport().get_texture().get_image().save_png("res://artifacts/da090-closed.png")
+		get_viewport().get_texture().get_image().save_png(capture_root.path_join("da090-closed.png"))
 	bench.begin_drag(id, bench.get_item_position(id) + Vector2(0, 70))
 	bench._angles[str(id)] = 80.0
 	expect(bench.stream_info().is_empty(), "Closed bottle cannot pour")
@@ -64,7 +68,7 @@ func run() -> void:
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw
-		get_viewport().get_texture().get_image().save_png("res://artifacts/da090-open.png")
+		get_viewport().get_texture().get_image().save_png(capture_root.path_join("da090-open.png"))
 	bench.begin_drag(id, bench.get_item_position(id) + Vector2(0, 70))
 	bench._angles[str(id)] = 80.0
 	expect(not bench.stream_info().is_empty(), "Open bottle can pour")
@@ -110,7 +114,7 @@ func run() -> void:
 		camera.look_at(Vector3.ZERO)
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw
-		preview.get_texture().get_image().save_png("res://artifacts/da090-model.png")
+		preview.get_texture().get_image().save_png(capture_root.path_join("da090-model.png"))
 	print("%s: small bottle, %d checks, %d failures" % ["PASS" if failures == 0 else "FAIL", checks, failures])
 	main.queue_free()
 	await get_tree().process_frame
