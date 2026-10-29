@@ -377,3 +377,7 @@ WorkbenchSupplies хранит bottle_homes/bottle_nodes. Deposit перепод
 ## DA-088: шкаф и реальные бутылки
 
 ReferenceBar._build_bar_cabinet сохраняет обязательные ShelfBack/Lower/Upper и их Body для Main; добавляет каркас/карниз без изменения планировки бара. Статические Bottle/Neck отсутствуют. WorkbenchSupplies переводит стартовые позиции семи бутылок в локальные координаты BackCounter из мировых мест двух уровней шкафа; bottle_homes сохраняет эти места для возврата. Потребители: Main, Supplies, reference_bar_test, cabinet test. Реальные ray к каждой бутылке и отсутствие декора проверяет bar_cabinet_test; --cabinet-check доступен в Windows Validation.
+
+## DA-089: передняя рабочая поверхность
+
+ReferenceBar.BartenderWorkTop/Body — новая цель приготовления; старый BackCounter остаётся шкафом/ящиками. В reference layout Main привязывает CounterTarget только к новой поверхности, якорь back_counter смотрит к гостю из прохода. DrinkCarry.configure выбирает её верхнюю плоскость (y=.97), Supplies.deposit ставит бутылки туда (центр y=1.08). Для legacy-планировки прежние привязки сохранены. Публичные API прежние; потребители Main/DrinkCarry/Supplies, проверки reference_bar/supplies.

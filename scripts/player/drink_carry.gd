@@ -26,6 +26,8 @@ func configure(view: Camera3D, narrative: NarrativeSession, root: Node3D) -> voi
 	world_parent = root
 	var top := root.get_node_or_null("BackCounter/Top") as Node3D
 	home_position = top.to_global(Vector3(0.22, 0.5, 0)) if top != null else root.to_global(home_position)
+	var worktop := root.get_node_or_null("BarLevel/Geometry/BartenderWorkTop") as Node3D
+	if worktop != null: home_position = worktop.global_position + Vector3(0,0.035,0)
 	_baseline()
 
 func stage(preparation: DrinkPreparation) -> bool:

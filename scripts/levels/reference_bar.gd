@@ -52,7 +52,13 @@ func _ready() -> void:
 	room_floor(Vector3(4, 0.035, 0.45), Vector3(1.9, 0.03, 2.8))
 	room_floor(Vector3(-0.6, 0.035, 3.4), Vector3(1.7, 0.03, 1.1))
 	box("CounterBase", Vector3(-0.3, 0.5, -1.2), Vector3(3.15, 1, 0.62), dark)
-	box("CounterTop", Vector3(-0.3, 1.08, -1.2), Vector3(3.4, 0.16, 0.78), wood)
+	box("CounterTop", Vector3(-0.3, 1.08, -1.2), Vector3(3.4, 0.16, 0.94), wood)
+	# Клиентский прилавок 1.16 м, рабочая поверхность 0.97 м.
+	box("BartenderWorkTop",Vector3(-0.3,0.935,-1.97),Vector3(3.05,0.07,0.60),material(Color(0.23,0.24,0.20),2))
+	box("WorkTopApron",Vector3(-0.3,0.88,-2.27),Vector3(3.05,0.10,0.035),dark,false)
+	box("WorkTopBase",Vector3(-0.3,0.43,-1.94),Vector3(2.95,0.86,0.47),dark)
+	box("WorkSplashback",Vector3(-0.3,1.035,-1.66),Vector3(3.05,0.19,0.035),wood,false)
+	box("WorkRubberMat",Vector3(-0.45,0.974,-1.98),Vector3(1.15,0.008,0.43),material(Color(0.035,0.05,0.04),0),false)
 	box("CounterReturn", Vector3(-1.85, 0.5, -2.45), Vector3(0.5, 1, 2.4), dark)
 	box("ReturnTop", Vector3(-1.85, 1.08, -2.45), Vector3(0.65, 0.16, 2.4), wood)
 	for x in [-1.5, -0.85, 0.55, 1.2]:

@@ -98,6 +98,9 @@ func _ready() -> void:
 		_anchors_root.add_child(anchor)
 		anchor.global_transform = back.get_node("WorkPosition").global_transform
 		anchor.global_basis = anchor.global_basis.orthonormalized()
+		if reference_bar_enabled:
+			anchor.global_position = Vector3(-0.3,1.65,-2.65)
+			anchor.look_at(Vector3(-0.3,1.05,-1.3))
 	if not _rig.configure(_anchors_root, &"entry"):
 		_fail_setup("Ошибка локации: " + "; ".join(_rig.validation_errors))
 		return
@@ -115,7 +118,8 @@ func _ready() -> void:
 		_counter_target.monitoring = false
 		add_child(_counter_target)
 		_counter_target.activated.connect(_use_counter)
-		for part in ["BackCounter/Top/Body", "BackCounter/Cabinet/Body", "BarLevel/Geometry/ShelfBack/Body", "BarLevel/Geometry/ShelfUpper/Body", "BarLevel/Geometry/ShelfLower/Body"]:
+		var work_surfaces := ["BarLevel/Geometry/BartenderWorkTop/Body"] if reference_bar_enabled else ["BackCounter/Top/Body", "BackCounter/Cabinet/Body", "BarLevel/Geometry/ShelfBack/Body", "BarLevel/Geometry/ShelfUpper/Body", "BarLevel/Geometry/ShelfLower/Body"]
+		for part in work_surfaces:
 			var body := get_node_or_null(part) as CollisionObject3D
 			if not _interaction.register_surface(body, _counter_target):
 				_fail_setup("Не удалось связать поверхность стойки: " + part)

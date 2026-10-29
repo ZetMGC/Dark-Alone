@@ -105,6 +105,8 @@ func deposit() -> bool:
 		bottle.reparent(self, true)
 		bottle.transform = bottle_homes[id]
 		bottle.position = Vector3(-0.10,1.24,-1.1 + bench._ids.find(str(id)) * 0.36)
+		if main.reference_bar_enabled:
+			bottle.global_position = Vector3(-1.45 + bench._ids.find(str(id)) * 0.38,1.08,-1.85)
 		_release_bottle(bottle)
 	else:
 		carrier.consume()

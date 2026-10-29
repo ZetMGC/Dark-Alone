@@ -23,7 +23,7 @@ func run() -> void:
 	var carrier = main.drink_carry
 	expect(bench.supplied.is_empty() and not bench.has_supply(&"cup"), "Real entry begins empty")
 	expect(not bench.begin_drag(&"spoon", Vector2.ZERO), "Absent tool cannot be grabbed")
-	rig.body.global_position=carrier.home_position + Vector3(0, -1.13, 1)
+	rig.body.global_position=carrier.home_position + Vector3(0, -carrier.home_position.y, -0.70)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	var drawers: Array = []
@@ -66,7 +66,7 @@ func run() -> void:
 	var identity: int = bottle.get_instance_id()
 	expect(is_instance_valid(bottle) and bottle.get_parent()==store and not bottle.held, "Deposited bottle remains visible on 3D worktop")
 	bench.bottle_stock.withdraw(bottle_id, 37)
-	rig.body.global_position=carrier.home_position + Vector3(0,-1.13,0.8)
+	rig.body.global_position=carrier.home_position + Vector3(0,-carrier.home_position.y,-0.70)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	rig.view.look_at(bottle.global_position)
@@ -82,7 +82,7 @@ func run() -> void:
 	store.take(bottle)
 	expect(store.deposit() and bench.has_supply(bottle_id) and bottle.get_instance_id()==identity, "Same bottle can be brought back to worktop")
 	expect(is_equal_approx(bench.get_bottle_remaining(bottle_id),463), "Repeated transfer preserves remaining volume")
-	rig.body.global_position=carrier.home_position + Vector3(0,-1.13,0.8)
+	rig.body.global_position=carrier.home_position + Vector3(0,-carrier.home_position.y,-0.70)
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	main._use_counter()
