@@ -365,3 +365,7 @@ PNG assets/drinks/concepts/test_soda_bottle_v1.png рисуется у test_soda
 Main.workbench_supplies_enabled включён в reasoning_demo; базовый Main сохраняет legacy fixture. WorkbenchSupplies создаёт SupplyTarget для двух ящиков и предметов. SupplyTarget использует обычные context_title/description/action, дистанцию 2.5 м и режим exploration/dialogue. Предмет переходит в единственный слот DrinkCarry с portion=null; при подаче гостю учитываются только реальные напитки. Deposit вызывает DrinkWorkbench.add_supply, удаляет 3D-предмет только после успеха.
 
 DrinkWorkbench.supplies_required, supplied, has_supply(id), add_supply(id): отсутствующие предметы не рисуются/не берутся/не принимают струю. Посуда имеет отдельные DrinkPreparation и позиции; клик выбирает перенесённую посуду без потери содержимого. В старом режиме прежние кнопки/модель сохранены. Ящики/запасы/смеси существуют в текущей смене, checkpoint не расширен. Стойка в новом режиме сразу открывает service, без request_move/focus. Потребители: Main, DrinkCarry, ServicePanel, reasoning_demo; проверки supplies, legacy workbench, carry, общий check.
+
+## DA-086: колесо и подтверждение
+
+Уточнение владельца заменяет прежние указания hover/cursor: диалог никогда не включает dialogue_pointer. Колесо вызывает select_relative, ЛКМ/E — confirm. Строки не принимают mouse hover/GUI click, позиция клика не влияет на ответ. Меню/дневник/верстак сохраняют прежние режимы. Проверки: реальные wheel/click, перенос напитка.
