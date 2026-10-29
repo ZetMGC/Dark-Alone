@@ -8,7 +8,7 @@ PNG соды добавлен в assets/drinks/concepts с Godot import, под�
 
 ## Проверки
 
-Godot 4.7.2 Windows. check_workbench.ps1 -Graphics PASS: 144/0 headless, 156/0 GPU в обоих размерах. Скриншоты просмотрены, включая 960×600 с контекстным шейкером. Carry 33/0, release integration 23/0. Windows Desktop export из чистого source 99d3208ad50ed5c704688ddf637b160684074a3e PASS. Windows Validation GPU 144/0. Прежняя установка обновлена при закрытой игре: SHA256 каждого файла и графический startup exit 0 без ошибок PASS; существующий ярлык сохранён.
+Godot 4.7.2 Windows. check_workbench.ps1 -Graphics PASS: 144/0 headless, 156/0 GPU в обоих размерах. Скриншоты просмотрены, включая 960×600 с контекстным шейкером. Carry 33/0, release integration 23/0. Windows Desktop export из чистого source 6c408f9ad50ed5c704688ddf637b160684074a3e PASS. Windows Validation GPU 144/0. Прежняя установка обновлена при закрытой игре: SHA256 каждого файла и графический startup exit 0 без ошибок PASS; существующий ярлык сохранён.
 
 ## Решения и ограничения
 
@@ -17,3 +17,7 @@ Godot 4.7.2 Windows. check_workbench.ps1 -Graphics PASS: 144/0 headless, 156/0 G
 ## Продолжение
 
 Результат в main, прежняя установка обновлена; без нового ярлыка/релиза, ветки коллеги сохранены. Следующий шаг: ручная оценка управления владельцем. STATUS/BACKLOG done.
+
+## Совмещение с новым main коллеги
+
+Во время push появился origin/main 64c2c9e с новым баром и анимациями. Merge 6c408f9 сохраняет обе реализации; конфликты только STATUS/HANDOFF, сохранены обе записи. Reference bar GPU 23/0; полный объединённый check PASS, включая carry 33/0, release integration 23/0, playthrough 50/0. Финальная установка пересобрана из чистого 6c408f9ae45ff7ee537978467defb421fbd16820; хеши всех файлов и графический startup PASS. Ветки коллеги не удалялись.
