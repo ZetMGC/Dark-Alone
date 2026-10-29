@@ -59,6 +59,8 @@ var _gesture_distance: float = 0
 var _last_direction: int = 0
 var _reversals: int = 0
 var _message: String = "Возьмите посуду и бутылку"
+var _context_item: StringName = &""
+var _soda_texture: Texture2D = preload("res://assets/drinks/concepts/test_soda_bottle_v1.png")
 var _font: Font
 var _scale: float = 1
 var _origin := Vector2.ZERO
@@ -67,6 +69,7 @@ var _view := Transform2D.IDENTITY
 
 func _ready() -> void:
 	add_child(_notice)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = load("res://scenes/ui/prototype_theme.tres")
 	var font := SystemFont.new()
@@ -102,12 +105,12 @@ func _ready() -> void:
 	select_vessel(&"test_shot")
 	var footer := HBoxContainer.new()
 	footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	footer.offset_left = -314
+	footer.offset_left = -178
 	footer.offset_right = -18
 	footer.offset_top = -54
 	footer.offset_bottom = -14
 	add_child(footer)
-	for title in ["К стойке · Esc", "Меню"]:
+	for title in ["Выйти · Esc"]:
 		var button := Button.new()
 		button.text = title
 		button.name = "WorkbenchMenu" if title == "Меню" else "WorkbenchClose"
@@ -130,7 +133,7 @@ func _ready() -> void:
 	add_child(_delivery_button)
 	_shaker_lid_button = Button.new()
 	_shaker_lid_button.name = "ShakerLid"
-	_shaker_lid_button.pressed.connect(toggle_shaker_lid)
+	_shaker_lid_button.pressed.connect(_advance_shaker)
 	add_child(_shaker_lid_button)
 	_shaker_cap_button = Button.new()
 	_shaker_cap_button.name = "ShakerCap"
@@ -149,18 +152,18 @@ func _resize() -> void:
 	var index := 0
 	for id in _vessel_buttons:
 		var button: Button = _vessel_buttons[id]
-		button.position = logical_to_screen(Vector2(28 + index * 148, 587))
-		button.size = Vector2(140, 42) * _scale
+		button.position = logical_to_screen(Vector2(35 + index * 100, 587))
+		button.size = Vector2(90, 32) * _scale
 		button.add_theme_font_size_override("font_size", maxi(12, roundi(16 * _scale)))
 		index += 1
 	if _delivery_button != null:
 		_delivery_button.position = logical_to_screen(Vector2(950, 417))
 		_delivery_button.size = Vector2(260, 42) * _scale
 		_delivery_button.add_theme_font_size_override("font_size", maxi(12, roundi(18 * _scale)))
-	for entry in [[_shaker_lid_button, Vector2(335, 585)], [_shaker_cap_button, Vector2(550, 585)]]:
+	for entry in [[_shaker_lid_button, Vector2(450, 640)], [_shaker_cap_button, Vector2(550, 585)]]:
 		var button: Button = entry[0]
 		button.position = logical_to_screen(entry[1])
-		button.size = Vector2(205, 36) * _scale
+		button.size = Vector2(380, 36) * _scale
 		button.add_theme_font_size_override("font_size", maxi(12, roundi(15 * _scale)))
 	_refresh_buttons()
 	queue_redraw()
@@ -265,17 +268,22 @@ func request_delivery() -> bool:
 
 func _refresh_buttons() -> void:
 	if _shaker_lid_button != null:
-		_shaker_lid_button.text = "Открыть шейкер" if _shaker_closed else "Закрыть шейкер"
+		_shaker_lid_button.text = "[E] Закрыть для встряхивания" if not _shaker_closed else ("[E] Снять колпачок для налива" if _shaker_cap_on else "[E] Открыть для наполнения")
+		_shaker_lid_button.visible = _context_item == &"shaker" and _dragging == &"" and not _delivered
 		_shaker_lid_button.disabled = not _active or not _focused or _dragging != &"" or _delivered
-		_shaker_cap_button.visible = _shaker_closed
+		_shaker_cap_button.visible = false
 		_shaker_cap_button.text = "Снять колпачок" if _shaker_cap_on else "Надеть колпачок"
 		_shaker_cap_button.disabled = _shaker_lid_button.disabled
 	if _delivery_button != null:
 		_delivery_button.text = ("Завершить напиток" if world_output else "Подать гостю →") if is_ready_to_deliver() else "Поставьте сюда напиток"
 		_delivery_button.disabled = not is_ready_to_deliver()
+		_delivery_button.visible = is_ready_to_deliver() and _dragging == &""
+		if _delivery_button.visible:
+			_delivery_button.text = "[E] " + _delivery_button.text
+			_shaker_lid_button.hide()
 	for id in _vessel_buttons:
 		var current: bool = preparation != null and preparation.get_vessel().id == str(id)
-		_vessel_buttons[id].text = ("✓ Шот" if id == &"test_shot" else "✓ Стакан") if current else ("Взять шот" if id == &"test_shot" else "Взять стакан")
+		_vessel_buttons[id].text = ("✓ Шот" if id == &"test_shot" else "✓ Стакан") if current else ("Шот" if id == &"test_shot" else "Стакан")
 		_vessel_buttons[id].tooltip_text = "Для замены сначала опустошите посуду над сливом" if preparation != null and preparation.get_volume_ml() > 0 else "Взять чистую посуду на рабочий коврик"
 
 
@@ -475,7 +483,7 @@ func end_drag(commit_drop: bool = true) -> void:
 				if preparation.get_volume_ml() > 0:
 					_cup_on_tray = true
 					_positions["cup"] = Vector2(1100, 340)
-					_message = "Напиток готов к выдаче — нажмите «Подать гостю»"
+					_message = "Напиток на подносе — завершите его" if world_output else "Напиток готов к подаче"
 				else:
 					_message = "Стакан пуст"
 		elif item in [&"shaker", &"mixing"] and SINK.has_point(point) and (item != &"shaker" or get_shaker_state() != &"sealed"):
@@ -665,11 +673,17 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouse:
 		_pointer = (event.position - _origin) / _scale
 	if event is InputEventMouseMotion:
+		if _dragging == &"":
+			var hovered := _hit_item(_pointer)
+			if hovered != &"":
+				_context_item = hovered
+			_refresh_buttons()
 		drag_to(_pointer)
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				var item := _hit_item(_pointer)
+				_context_item = item
 				if item != &"":
 					begin_drag(item, _pointer)
 				elif Rect2(35, 425, 90, 190).has_point(_pointer):
@@ -722,6 +736,7 @@ func _process(delta: float) -> void:
 	if _message != _last_notice:
 		_last_notice = _message
 		_notice.show_hint(_message)
+	_refresh_buttons()
 	advance_motion(delta)
 	advance_pour(delta)
 
@@ -766,6 +781,14 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, 1280, 60), Color(0.065, 0.075, 0.065))
 	_text(Vector2(30, 38), "РАБОЧАЯ СТОЙКА", Color(0.85, 0.77, 0.56), 25)
 	_text(Vector2(30, 112), "БУТЫЛКИ")
+	var guidance := "Выберите посуду слева, затем перетащите к ней бутылку"
+	if _dragging != &"":
+		guidance = "Колесо — наклон · отпустите предмет, чтобы поставить" if _angles.has(str(_dragging)) else "Перетащите к нужной посуде и отпустите"
+	elif is_ready_to_deliver():
+		guidance = "Напиток на подносе — можно завершить"
+	elif _context_item == &"shaker":
+		guidance = "Закройте шейкер и двигайте им из стороны в сторону" if not _shaker_closed else ("Шейкер закрыт — можно встряхивать" if _shaker_cap_on else "Колпачок снят — можно переливать")
+	_text(Vector2(340, 37), guidance, Color(0.64, 0.65, 0.57), 15)
 	draw_rect(Rect2(45, 385, 665, 14), Color(0.14, 0.12, 0.09))
 	draw_rect(Rect2(640, 404, 410, 238), Color(0.065, 0.085, 0.075))
 	for x in range(650, 1050, 8):
@@ -829,6 +852,13 @@ func _draw_bottle(id: StringName) -> void:
 		draw_set_transform_matrix(_view * Transform2D(0, Vector2(31, 8), 0, ground))
 		draw_circle(Vector2.ZERO, 1, Color(0.02, 0.025, 0.02, 0.35))
 	draw_set_transform_matrix(_view * _bottle_transform(id))
+	if id == &"test_soda":
+		draw_texture_rect_region(_soda_texture, Rect2(-34, 0, 68, 153), Rect2(288, 20, 448, 1496))
+		var remaining := get_bottle_remaining(id) / BOTTLE_CAPACITY_ML
+		draw_rect(Rect2(27, 66, 3, 73), Color(0.035, 0.05, 0.03))
+		draw_rect(Rect2(27, 139 - remaining * 73, 3, remaining * 73), Color(0.40, 0.57, 0.57))
+		_local()
+		return
 	draw_colored_polygon(PackedVector2Array([Vector2(-12, 0), Vector2(12, 0), Vector2(12, 38), Vector2(34, 58), Vector2(34, 153), Vector2(-34, 153), Vector2(-34, 58), Vector2(-12, 38)]), Color(0.2, 0.27, 0.22))
 	var fill := get_bottle_remaining(id) / BOTTLE_CAPACITY_ML
 	var color := Color(item.color[0], item.color[1], item.color[2], 0.85)
@@ -1063,3 +1093,23 @@ func mark_world_staged() -> void:
 	_delivered = true
 	_refresh_buttons()
 	queue_redraw()
+
+
+func _advance_shaker() -> void:
+	if not _shaker_closed or not _shaker_cap_on:
+		toggle_shaker_lid()
+	else:
+		toggle_shaker_cap()
+
+
+func _input(event: InputEvent) -> void:
+	if not _active or not _focused or _dragging != &"" or event.is_echo():
+		return
+	if event is InputEventKey and event.pressed and (event.physical_keycode == KEY_E or event.keycode == KEY_E):
+		if is_ready_to_deliver():
+			request_delivery()
+		elif _context_item == &"shaker" and not _delivered:
+			_advance_shaker()
+		else:
+			return
+		get_viewport().set_input_as_handled()
