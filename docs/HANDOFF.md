@@ -1,6 +1,6 @@
 # Передача проекта
 
-DA-093: codex/da093-bottle-stability, база 8fb44a4. Реализация готова, завершить проверки и обновление прежней установки. [Решение](decisions/0052-bottle-stability-leaks.md).
+DA-093 завершена: codex/da093-bottle-stability, установлен чистый a1a0797. Устойчивость/двусторонний наклон/закрытие отпусканием на горлышке/пролив лёжа. Полный source check и Windows GPU 251/0, SHA256/startup PASS. Следующее: ручной проход владельцем с прежнего ярлыка. [Протокол](worklog/2026-10-29-12-bottle-stability.md). Merge/push не выполнялись.
 
 DA-092 завершена в codex/da092-tabletop-physics и прежней установке, source 0a5877d: исправлен стакан, физика/тени/жест крышки. Полный source check и Windows GPU 294/0, SHA256/startup PASS — [протокол](worklog/2026-10-29-11-tabletop-physics.md). Следующее: ручной проход владельцем. Merge/push не выполнялись.
 
