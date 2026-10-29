@@ -7,6 +7,8 @@ glossary_path = "res://content/glossary/test_war_cinema_terms.json"
 dialogue_paths = PackedStringArray("res://content/dialogues/test_war_cinema_guest.json")
 checkpoint_enabled = false
 preferences_enabled = true
+visitor_behavior_enabled = true
+reference_bar_enabled = true
 
 [node name="DialogueTrigger" parent="." index="7"]
 dialogue_id = &"test_war_cinema_guest"

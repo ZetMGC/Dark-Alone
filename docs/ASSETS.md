@@ -1,5 +1,7 @@
 # Ресурсы и права
 
+BAR-PLAN-01: docs/sources/bar-plan-reference.png — изображение участника, художественный/планировочный ориентир, происхождение прав сверх предоставления не установлено. В runtime не используется. Геометрия ReferenceBar собственная процедурная, материалы — существующий worn_surface. docs/art/bar-reference-*.png — собственные снимки игрового запуска.
+
 CHAR-03: assets/characters/test_visitor/{head_wrap_v3,head_blink_v3,clothing_atlas_v3}.png — встроенный imagegen, редактирование собственных V2 в согласованный рисованный стиль по CHARACTER_REFERENCE. Полные prompts в PROMPT_V3.md, импорт 512px/mipmaps/nearest. Новая геометрия прядей собственная, внешние скриншоты в runtime не включались. V2 сохранены.
 
 docs/sources/mouthwashing-character-reference.png — скриншот Mouthwashing из вложения пользователя, 2026-10-28; сохранён без изменений по прямому запросу как референс моделей. Только документация, в runtime/игровые материалы не включён. Разбор/границы использования — CHARACTER_REFERENCE.md; права на исходную игру принадлежат её правообладателям.
