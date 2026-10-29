@@ -1,5 +1,7 @@
 # Ресурсы и права
 
+DA-090: assets/drinks/stvor_label.svg и scripts/service/drinks/small_bottle_visual.gd — собственные векторный рисунок/процедурная геометрия, созданные в этой задаче. Вымышленный бренд разрешён владельцем. Предоставленная фотография и imagegen-концепт использованы как ориентиры формы, в runtime не включены. Кириллица Label3D использует встроенный шрифт Godot. [Решение](decisions/0049-shared-small-bottle.md).
+
 BAR-PLAN-01: docs/sources/bar-plan-reference.png — изображение участника, художественный/планировочный ориентир, происхождение прав сверх предоставления не установлено. В runtime не используется. Геометрия ReferenceBar собственная процедурная, материалы — существующий worn_surface. docs/art/bar-reference-*.png — собственные снимки игрового запуска.
 
 CHAR-03: assets/characters/test_visitor/{head_wrap_v3,head_blink_v3,clothing_atlas_v3}.png — встроенный imagegen, редактирование собственных V2 в согласованный рисованный стиль по CHARACTER_REFERENCE. Полные prompts в PROMPT_V3.md, импорт 512px/mipmaps/nearest. Новая геометрия прядей собственная, внешние скриншоты в runtime не включались. V2 сохранены.

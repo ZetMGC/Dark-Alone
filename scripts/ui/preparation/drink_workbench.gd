@@ -5,6 +5,11 @@ extends Control
 signal preparation_requested(preparation: DrinkPreparation)
 signal close_requested
 signal menu_requested
+signal bottle_cap_changed(id: StringName, capped: bool)
+
+var _stvor_capped: bool = true
+var _stvor_preview: SubViewport
+var _cap_preview: SubViewport
 
 const DESIGN := Vector2(1280, 720)
 const MATERIALS := "res://content/drinks/test_materials.json"
@@ -87,7 +92,9 @@ func _ready() -> void:
 	_ids = _catalog.get_ingredient_ids()
 	if "test_water" in _ids:
 		_ids.remove_at(_ids.find("test_water"))
-	bottle_stock.configure(_catalog, BOTTLE_CAPACITY_ML)
+	bottle_stock.configure(_catalog, BOTTLE_CAPACITY_ML, {str(SmallBottleVisual.ID): SmallBottleVisual.CAPACITY})
+	_stvor_preview = SmallBottleVisual.make_preview(self)
+	_cap_preview = SmallBottleVisual.make_preview(self, true)
 	spill_surface.configure(_catalog)
 	for index in _ids.size():
 		_positions[_ids[index]] = Vector2(100 + index * 105, 225)
@@ -529,6 +536,8 @@ func _next() -> StringName:
 
 
 func stream_info() -> Dictionary:
+	if _dragging == SmallBottleVisual.ID and _stvor_capped:
+		return {}
 	if not _angles.has(str(_dragging)) or (_dragging == &"shaker" and get_shaker_state() != &"straining"):
 		return {}
 	if str(_dragging) in _ids and get_bottle_remaining(_dragging) < DrinkPreparation.MIN_DOSE_ML:
@@ -540,6 +549,8 @@ func stream_info() -> Dictionary:
 	if rate <= 0:
 		return {}
 	var start := get_item_position(_dragging)
+	if _dragging == SmallBottleVisual.ID:
+		start += Vector2(0, 10).rotated(angle)
 	if _dragging == &"shaker":
 		start += Vector2(0, -23).rotated(angle)
 	elif _dragging == &"mixing":
@@ -701,6 +712,10 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
+				if _dragging == &"" and has_supply(SmallBottleVisual.ID) and get_bottle_cap_rect().has_point(_pointer):
+					toggle_bottle_cap(SmallBottleVisual.ID)
+					accept_event()
+					return
 				if supplies_required:
 					for vessel_id in _stored_cups:
 						if vessel_id != StringName(preparation.get_vessel().id) and Rect2(_cup_places[vessel_id] - Vector2(55,0), Vector2(110,175)).has_point(_pointer):
@@ -749,6 +764,9 @@ func _hit_present_item(point: Vector2) -> StringName:
 		return &"mixing"
 	for id in _ids:
 		var transform := _bottle_transform(StringName(id))
+		if id == str(SmallBottleVisual.ID):
+			if Rect2(-29, 7, 58, 145).has_point(transform.affine_inverse() * point): return SmallBottleVisual.ID
+			continue
 		if Rect2(-35, -12, 70, 170).has_point(transform.affine_inverse() * point):
 			return StringName(id)
 	return &""
@@ -898,6 +916,12 @@ func _draw_bottle(id: StringName) -> void:
 		draw_set_transform_matrix(_view * Transform2D(0, Vector2(31, 8), 0, ground))
 		draw_circle(Vector2.ZERO, 1, Color(0.02, 0.025, 0.02, 0.35))
 	draw_set_transform_matrix(_view * _bottle_transform(id))
+	if id == SmallBottleVisual.ID:
+		draw_texture_rect(_stvor_preview.get_texture(), Rect2(-45, 0, 90, 153), false)
+		_local()
+		if not _stvor_capped and _dragging != id:
+			draw_texture_rect(_cap_preview.get_texture(), get_bottle_cap_rect().grow(-2), false)
+		return
 	if id == &"test_soda":
 		draw_texture_rect_region(_soda_texture, Rect2(-34, 0, 68, 153), Rect2(288, 20, 448, 1496))
 		var remaining := get_bottle_remaining(id) / BOTTLE_CAPACITY_ML
@@ -1202,5 +1226,25 @@ func add_supply(id: StringName) -> bool:
 func remove_bottle(id: StringName) -> bool:
 	if str(id) not in _ids or not supplied.has(id): return false
 	supplied.erase(id)
+	queue_redraw()
+	return true
+
+
+func is_bottle_capped(id: StringName) -> bool:
+	return id == SmallBottleVisual.ID and _stvor_capped
+
+
+func get_bottle_cap_rect() -> Rect2:
+	var position := get_item_position(SmallBottleVisual.ID)
+	return Rect2(position + Vector2(-15, 0), Vector2(30, 25)) if _stvor_capped else Rect2(position + Vector2(27, 122), Vector2(29, 29))
+
+
+func toggle_bottle_cap(id: StringName) -> bool:
+	if id != SmallBottleVisual.ID or not _active or not _focused or _dragging != &"" or not has_supply(id): return false
+	_stvor_capped = not _stvor_capped
+	(_stvor_preview.get_node("Bottle") as SmallBottleVisual).set_capped(_stvor_capped)
+	_stvor_preview.render_target_update_mode = SubViewport.UPDATE_ONCE
+	bottle_cap_changed.emit(id, _stvor_capped)
+	_message = "Крышка надета" if _stvor_capped else "Крышка снята — можно наливать"
 	queue_redraw()
 	return true

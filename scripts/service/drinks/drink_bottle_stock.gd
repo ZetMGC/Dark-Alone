@@ -6,11 +6,14 @@ var _remaining: Dictionary = {}
 var _configured: bool = false
 
 
-func configure(catalog: DrinkMaterialCatalog, capacity_ml: float) -> bool:
+func configure(catalog: DrinkMaterialCatalog, capacity_ml: float, capacities: Dictionary = {}) -> bool:
 	if _configured or catalog == null or not catalog.is_loaded() or not is_finite(capacity_ml) or capacity_ml <= 0:
 		return false
+	for id in capacities:
+		if catalog.get_ingredient(StringName(id)).is_empty() or not DrinkMaterialCatalog.finite_number(capacities[id]) or float(capacities[id]) <= 0:
+			return false
 	for id in catalog.get_ingredient_ids():
-		_remaining[id] = capacity_ml
+		_remaining[id] = float(capacities.get(id, capacity_ml))
 	_configured = true
 	return true
 

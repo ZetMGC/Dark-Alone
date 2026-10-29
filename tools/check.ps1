@@ -57,6 +57,7 @@ Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res:
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/parallel/bar/workbench_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/bar_cabinet_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/workbench_supplies_test.tscn')
+Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/small_bottle_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/drink_carry_test.tscn')
 Invoke-GodotCheck -EngineArguments @('--headless', '--path', $projectRoot, 'res://tests/release_integration_test.tscn')
 $preferenceDirectory = 'user://preference_tests/process_' + [guid]::NewGuid().ToString('N')

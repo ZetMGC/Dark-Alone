@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="424" viewBox="0 0 256 424">
+<path fill="#c9bda0" d="M0 0h256v424H0z"/>
+<path fill="none" stroke="#344346" stroke-width="4" d="M18 30L30 18H226L238 30V394L226 406H30L18 394Z"/>
+<path fill="#435153" d="M25 167l52-74 34 43 42-61 79 92z"/>
+<path fill="#b7b298" d="M77 93l-15 43 16-10 15 14zm76-18-22 54 21-14 18 19z"/>
+<path fill="none" stroke="#435153" stroke-width="3" d="M36 181q91-25 182 0M53 191q80-16 145 0"/>
+<g fill="#293b40" font-family="serif" font-weight="bold" text-anchor="middle"><text x="128" y="240" font-size="27">СЕВЕРНЫЙ</text><text x="128" y="280" font-size="40">СТВОР</text><text x="128" y="373" font-size="25">0,25 л</text></g>
+<path stroke="#344346" fill="none" stroke-width="2" d="M52 316h152m-76-18v36m-14-28 28 20m-28 0 28-20"/>
+<path stroke="#e3d8bd" opacity=".5" d="M20 62l80 14m70 202 63 17M24 349l91 7M187 30l-8 92"/>
+</svg>

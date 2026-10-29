@@ -30,7 +30,7 @@ func run() -> void:
 		await get_tree().physics_frame
 		expect(bottle.is_available(), "Bottle within reach: " + str(bottle.supply_id))
 		expect(main.get_node("InteractionController").get_target()==bottle, "Ray reaches bottle: " + str(bottle.supply_id))
-	expect(main.supplies.bottle_nodes.size()==7, "Only seven actual inventory bottles")
+	expect(main.supplies.bottle_nodes.size()==8, "Eight actual inventory bottles including small Stvor")
 	if DisplayServer.get_name() != "headless":
 		rig.view.global_position=Vector3(0.7,1.85,-1.2)
 		rig.view.look_at(Vector3(-0.25,1.85,-3.65))

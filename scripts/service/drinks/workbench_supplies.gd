@@ -11,6 +11,7 @@ func configure(owner_main: Node) -> void:
 	carrier = main.drink_carry
 	bench.supplies_required = true
 	bench.queue_redraw()
+	bench.bottle_cap_changed.connect(_sync_bottle_cap)
 	var back := main.get_node("BackCounter") as Node3D
 	# Убрать прежний декор посуды; стол и физические опоры остаются.
 	for child in back.get_children():
@@ -63,6 +64,14 @@ func configure(owner_main: Node) -> void:
 		item.supply_id = id
 		bottle_homes[id] = item.transform
 		bottle_nodes[id] = item
+		if id == SmallBottleVisual.ID:
+			item.context_description = "Бутылка · 250 мл. Перенесите на стол"
+			var visual := SmallBottleVisual.new()
+			visual.name = "BottleVisual"
+			item.add_child(visual)
+			visual.position.y = -0.01
+			visual.set_capped(bench.is_bottle_capped(id))
+			continue
 		_cylinder(item,0.047,0.22,Color(data.color[0],data.color[1],data.color[2]))
 		var neck := MeshInstance3D.new()
 		var mesh := CylinderMesh.new()
@@ -76,6 +85,11 @@ func _target(title: String, description: String, at: Vector3, dimensions: Vector
 	var shape := BoxShape3D.new(); shape.size=dimensions; collision.shape=shape; target.add_child(collision)
 	parent.add_child(target)
 	return target
+
+func _sync_bottle_cap(id: StringName, capped: bool) -> void:
+	if bottle_nodes.has(id):
+		var visual := bottle_nodes[id].get_node_or_null("BottleVisual") as SmallBottleVisual
+		if visual != null: visual.set_capped(capped)
 func _box(parent: Node, at: Vector3, dimensions: Vector3, color: Color) -> void:
 	var node := MeshInstance3D.new(); var mesh := BoxMesh.new(); mesh.size=dimensions; node.mesh=mesh
 	var material := StandardMaterial3D.new(); material.albedo_color=color; material.roughness=0.9
