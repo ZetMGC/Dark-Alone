@@ -113,6 +113,7 @@ func _ready() -> void:
 		if not toggle_bottle_cap(SmallBottleVisual.ID):
 			_message = "Верните бутылку на рабочий стол"
 	)
+	cap_item.dropped.connect(_try_close_cap_at_neck)
 	cap_item.motion_finished.connect(_on_bottle_cap_motion_finished)
 	_glass_preview = FacetedGlassVisual.make_preview(self)
 	spill_surface.configure(_catalog)
@@ -502,7 +503,7 @@ func drag_to(point: Vector2) -> void:
 func tilt_by(degrees: float) -> void:
 	if not _active or not _focused or not is_finite(degrees) or not _angles.has(str(_dragging)):
 		return
-	_angles[str(_dragging)] = clampf(float(_angles[str(_dragging)]) + degrees, 0, 100)
+	_angles[str(_dragging)] = clampf(float(_angles[str(_dragging)]) + degrees, -100, 100)
 	queue_redraw()
 
 
@@ -647,6 +648,10 @@ func advance_pour(delta: float) -> void:
 	if not _active or not _focused or not is_finite(delta) or delta <= 0 or preparation == null:
 		return
 	var dt := minf(delta, 0.05)
+	for leak in resting_bottle_streams():
+		var amount := bottle_stock.withdraw(leak.id, float(leak.rate) * dt)
+		_spill_components({str(leak.id): amount}, leak.end)
+		queue_redraw()
 	var stream := stream_info()
 	if stream.is_empty():
 		_flush_pour()
@@ -745,7 +750,7 @@ func _spill_components(components: Dictionary, point: Vector2) -> void:
 	for amount in components.values():
 		_spilled += float(amount)
 	if not SINK.grow(-10).has_point(point):
-		spill_surface.add_spill(components, point.clamp(Vector2(22, 410), Vector2(1258, 620)))
+		spill_surface.add_spill(components, point.clamp(Vector2(22, 383), Vector2(1258, 627)))
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -856,6 +861,9 @@ func _process(delta: float) -> void:
 	if cap_item != null: cap_item.input_enabled = _active and _focused and _dragging == &""
 	if not _active or not _focused:
 		return
+	if cap_item.animating and cap_item.returning:
+		cap_item._to = _bottle_transform(SmallBottleVisual.ID) * Vector2(0, 12.5) - BottleCapItem.DIMENSIONS / 2
+		cap_item.target_rotation = deg_to_rad(get_item_angle(SmallBottleVisual.ID))
 	cap_item.advance(delta)
 	if _message != _last_notice:
 		_last_notice = _message
@@ -1172,7 +1180,12 @@ func _pour_hint(stream: Dictionary) -> String:
 
 
 func _draw_stream() -> void:
-	var stream := stream_info()
+	_draw_liquid_stream(stream_info(), _dragging)
+	for leak in resting_bottle_streams():
+		_draw_liquid_stream(leak, leak.id)
+
+
+func _draw_liquid_stream(stream: Dictionary, source_id: StringName) -> void:
 	if stream.is_empty():
 		return
 	var points := PackedVector2Array()
@@ -1186,11 +1199,11 @@ func _draw_stream() -> void:
 		var fraction: float = model.get_volume_ml() / float(model.get_vessel().capacity_ml)
 		points.append(Vector2(stream.end.x, rect.end.y - (rect.size.y - 8) * fraction - 4))
 	var color := Color(0.65, 0.53, 0.32)
-	if str(_dragging) in _ids:
-		var data := _catalog.get_ingredient(_dragging)
+	if str(source_id) in _ids:
+		var data := _catalog.get_ingredient(source_id)
 		color = Color(data.color[0], data.color[1], data.color[2]).lightened(0.1)
-	elif _container(_dragging) != null:
-		var data: Array = _container(_dragging).get_view().overall.color
+	elif _container(source_id) != null:
+		var data: Array = _container(source_id).get_view().overall.color
 		color = Color(data[0], data[1], data[2]).lightened(0.1)
 	# Один фактический расход определяет дозу, траекторию и вид струи.
 	var intensity := clampf(float(stream.rate) / 24.0, 0, 1)
@@ -1327,9 +1340,8 @@ func toggle_bottle_cap(id: StringName) -> bool:
 		bottle_cap_changed.emit(id, false)
 		cap_item.start_motion(neck, (get_item_position(id) + Vector2(32, 124)).clamp(Vector2(16, 165), Vector2(1235, 600)), false)
 	else:
-		if bottle_motion.has(str(id)) and stand_bottle(id):
-			neck = (bottle_motion[str(id)] as TabletopMotion).ground - Vector2(14.5, 148)
-		cap_item.start_motion(cap_item.logical_position, neck, true)
+		neck = _bottle_transform(id) * Vector2(0, 12.5) - BottleCapItem.DIMENSIONS / 2
+		cap_item.start_motion(cap_item.logical_position, neck, true, deg_to_rad(get_item_angle(id)))
 	queue_redraw()
 	return true
 
@@ -1441,3 +1453,30 @@ func _draw_item_shadows() -> void:
 
 func _motion_origin(id: StringName, motion: TabletopMotion) -> Vector2:
 	return motion.origin() - (Vector2(0, 6).rotated(motion.angle) if id == SmallBottleVisual.ID else Vector2.ZERO)
+
+
+func _try_close_cap_at_neck() -> void:
+	if not _active or not _focused or _stvor_capped or cap_item.animating or _dragging != &"" or not has_supply(SmallBottleVisual.ID): return
+	# Попадание в координатах бутылки: корпус не является горлышком.
+	var center := cap_item.logical_position + BottleCapItem.DIMENSIONS / 2
+	var local := _bottle_transform(SmallBottleVisual.ID).affine_inverse() * center
+	if Rect2(-21, -10, 42, 38).has_point(local):
+		toggle_bottle_cap(SmallBottleVisual.ID)
+
+
+func resting_bottle_streams() -> Array[Dictionary]:
+	var streams: Array[Dictionary] = []
+	for key in _ids:
+		var id := StringName(key)
+		if not has_supply(id) or id == _dragging or is_bottle_capped(id) or get_bottle_remaining(id) <= 0: continue
+		var angle := deg_to_rad(get_item_angle(id))
+		if absf(angle) < deg_to_rad(65): continue
+		var rate := 18.0 * clampf((absf(rad_to_deg(angle)) - 65) / 25.0, 0, 1)
+		var start := _bottle_transform(id) * Vector2(0, 10 if id == SmallBottleVisual.ID else 0)
+		var velocity := Vector2.UP.rotated(angle) * 65
+		var floor_y := clampf(start.y + 30, TabletopMotion.TABLE.position.y + 3, TabletopMotion.TABLE.end.y - 3)
+		var time := (-velocity.y + sqrt(maxf(0, velocity.y * velocity.y + 1300 * (floor_y - start.y)))) / 650.0
+		var end := start + velocity * time + Vector2(0, 325 * time * time)
+		end = end.clamp(TabletopMotion.TABLE.position + Vector2.ONE * 3, TabletopMotion.TABLE.end - Vector2.ONE * 3)
+		streams.append({"id": id, "start": start, "velocity": velocity, "time": time, "end": end, "rate": rate, "hit": false})
+	return streams

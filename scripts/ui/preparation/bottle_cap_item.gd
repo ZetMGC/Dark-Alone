@@ -1,8 +1,9 @@
 class_name BottleCapItem
 extends Control
-## Независимая крышка: остаётся на столе, переносится мышью, кликом возвращается к бутылке.
+## Независимая крышка: остаётся на столе, переносится мышью, закрывается при отпускании на горлышке.
 
 signal return_requested
+signal dropped
 signal motion_finished(attached: bool)
 const DURATION := 0.26
 const DIMENSIONS := Vector2(29, 29)
@@ -27,6 +28,7 @@ var _velocity := Vector2.ZERO
 var _last_motion: int = 0
 var _rotation: float = 0
 var _return_rotation: float = 0
+var target_rotation: float = 0
 
 func _ready() -> void:
 	motion.half_size = DIMENSIONS / 2
@@ -42,9 +44,13 @@ func set_view(origin: Vector2, scale_value: float) -> void:
 func logical_rect() -> Rect2:
 	return Rect2(logical_position, DIMENSIONS)
 
-func start_motion(from: Vector2, to: Vector2, attach: bool) -> void:
+func start_motion(from: Vector2, to: Vector2, attach: bool, radians: float = 0) -> void:
+	_pressed = false
+	_moving = false
+	external_drag = false
 	motion.active = false
 	_return_rotation = _rotation
+	target_rotation = radians
 	_from = from
 	_to = to
 	returning = attach
@@ -69,7 +75,7 @@ func advance(delta: float) -> void:
 	var eased := t * t * (3.0 - 2.0 * t)
 	# Короткая дуга: при снятии сначала поднимается, при возврате опускается на горлышко.
 	logical_position = _from.lerp(_to, eased) + Vector2(0, -sin(PI * eased) * 24)
-	_rotation = lerpf(_return_rotation, 0, eased)
+	_rotation = lerp_angle(_return_rotation, target_rotation, eased)
 	_sync()
 	if _elapsed >= DURATION:
 		animating = false
@@ -103,7 +109,8 @@ func _draw() -> void:
 		lift += 18
 	var view := Transform2D(Vector2(_view_scale, 0), Vector2(0, _view_scale), Vector2.ZERO)
 	TabletopMotion.shadow(self, view, Vector2(14.5, ground_y - logical_position.y), Vector2(10, 3), 0, lift, 0.35)
-	draw_set_transform(size / 2, _rotation)
+	var twist := sin((_elapsed / DURATION) * TAU * 2) * 0.12 if animating and returning else 0.0
+	draw_set_transform(size / 2, _rotation + twist)
 	draw_texture_rect(texture, Rect2(-size / 2 + Vector2.ONE * 2 * _view_scale, size - Vector2.ONE * 4 * _view_scale), false)
 
 func take_from_bottle(at: Vector2, pointer: Vector2, radians: float = 0) -> void:
@@ -144,9 +151,9 @@ func release_pointer() -> void:
 	if not _pressed: return
 	_pressed = false
 	external_drag = false
-	if not _moving:
-		return_requested.emit()
-	else:
+	dropped.emit()
+	if animating: return
+	if detached:
 		var speed := _velocity * clampf(1 - (Time.get_ticks_usec() - _last_motion) / 120000.0, 0, 1)
 		# Физическая поза строится из текущего центра, не меняя положение в кадре release.
 		var origin := logical_position + DIMENSIONS / 2 - Vector2(0, DIMENSIONS.y / 2).rotated(_rotation)

@@ -41,7 +41,7 @@ func release(at: Vector2, radians: float, cursor_velocity: Vector2, weight: floa
 	velocity = cursor_velocity.limit_length(1400) * 0.40 * response
 	vertical_speed = minf(180, cursor_velocity.length() * 0.10 * response)
 	var direction := signf(cursor_velocity.x) if absf(cursor_velocity.x) > 20 else (signf(angle) if absf(angle) > 0.05 else 1.0)
-	var falls := cursor_velocity.length() > 190 or absf(angle) > 0.40
+	var falls := absf(velocity.x) > 260 or absf(angle) > deg_to_rad(48)
 	_target_angle = direction * PI / 2 if falls and not is_cap else 0.0
 	spin = direction * minf(7, cursor_velocity.length() * 0.006 * response) if falls else 0.0
 	active = true

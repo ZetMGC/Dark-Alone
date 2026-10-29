@@ -51,6 +51,17 @@ func _button(button: MouseButton, pressed: bool) -> void:
 	await get_tree().process_frame
 
 
+func _stand_idle_bottles(bench: DrinkWorkbench) -> void:
+	# Изолировать баланс одного налива от независимого пролива ранее брошенных бутылок.
+	for id in bench._ids:
+		if StringName(id) == bench.get_held_item(): continue
+		if bench.bottle_motion.has(id):
+			bench.stand_bottle(StringName(id))
+		else:
+			bench._angles[id] = 0.0
+	bench.advance_tabletop(0.25)
+
+
 func _pour(bench: DrinkWorkbench, id: StringName) -> void:
 	# Изолировать сценарий налива от предыдущих бросков: физика проверяется отдельно.
 	bench.bottle_motion.erase(str(id))
@@ -431,6 +442,7 @@ func _test_controls() -> void:
 	bench.advance_tabletop(0.25)
 	bench.drag_to(Vector2(748, 310))
 	bench.tilt_by(90)
+	_stand_idle_bottles(bench)
 	var overflow_stock := bench.get_bottle_remaining(&"test_base")
 	var overflow_volume := bench.preparation.get_volume_ml()
 	var overflow_waste := bench.get_spilled_ml()
@@ -459,6 +471,7 @@ func _test_controls() -> void:
 	await _pour(bench, &"test_heavy")
 	await _pour(bench, &"test_light")
 	_expect(bench.preparation.get_snapshot().layers.size() == 1, "Direct gentle pour without spoon mixes compatible liquids")
+	_stand_idle_bottles(bench)
 	var stock := bench.get_bottle_remaining(&"test_heavy")
 	var volume := bench.preparation.get_volume_ml()
 	var waste := bench.get_spilled_ml()
@@ -510,6 +523,7 @@ func _test_controls() -> void:
 	bench.advance_pour(0.05)
 	await _snap("04-spill-on-surface")
 	bench.end_drag()
+	_stand_idle_bottles(bench)
 	stock = bench.get_bottle_remaining(&"test_base")
 	waste = bench.get_spilled_ml()
 	bench.begin_drag(&"test_base", bench.get_item_position(&"test_base"))

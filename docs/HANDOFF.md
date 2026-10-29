@@ -1,5 +1,7 @@
 # Передача проекта
 
+DA-093: codex/da093-bottle-stability, база 8fb44a4. Реализация готова, завершить проверки и обновление прежней установки. [Решение](decisions/0052-bottle-stability-leaks.md).
+
 DA-092 завершена в codex/da092-tabletop-physics и прежней установке, source 0a5877d: исправлен стакан, физика/тени/жест крышки. Полный source check и Windows GPU 294/0, SHA256/startup PASS — [протокол](worklog/2026-10-29-11-tabletop-physics.md). Следующее: ручной проход владельцем. Merge/push не выполнялись.
 
 DA-091 завершена в codex/da091-cap-motion-glass и прежней установке, source a927b4d. Крышка самостоятельно перемещается/анимируется, бутылка больше не возвращается на старое место; новый «Гранитоль» 240 мл. Все source/Windows проверки и SHA256/startup PASS — [протокол](worklog/2026-10-29-10-cap-motion-glass.md). Следующее: ручной проход владельцем с прежнего ярлыка. Merge/push не выполнялись.
