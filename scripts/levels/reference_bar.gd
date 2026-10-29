@@ -19,6 +19,7 @@ func _ready() -> void:
 	add_child(geometry)
 	wood = material(Color(0.19, 0.155, 0.125), 2)
 	plaster = material(Color(0.27, 0.28, 0.255), 0)
+	preload("res://scripts/presentation/environment_textures.gd").apply(plaster, "plaster")
 	brass = material(Color(0.30, 0.27, 0.19), 0)
 	leather = material(Color(0.135, 0.10, 0.09), 3)
 	tile = material(Color(0.29, 0.30, 0.26), 1)
@@ -180,6 +181,8 @@ func material(color: Color, kind: int) -> ShaderMaterial:
 	result.shader = preload("res://assets/shaders/worn_surface.gdshader")
 	result.set_shader_parameter("tint", color)
 	result.set_shader_parameter("surface_kind", kind)
+	if kind == 2 or kind == 3:
+		preload("res://scripts/presentation/environment_textures.gd").apply(result, "wood" if kind == 2 else "fabric")
 	return result
 
 

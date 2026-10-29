@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode diffuse_burley, specular_schlick_ggx;
+#include "res://assets/shaders/environment_texture.gdshaderinc"
 
 // Локальная метрическая проекция: рисунок остаётся на открывающейся дверце.
 uniform vec4 tint : source_color = vec4(0.4, 0.4, 0.4, 1.0);
@@ -46,7 +47,7 @@ void fragment() {
 		float warp = noise3(vec3(w * vec2(2.2, 0.9), 1.0));
 		float grain = noise3(vec3(w.x * 90.0 + warp * 7.0, w.y * 2.4, 3.0));
 		float rings = sin(w.x * 155.0 + warp * 14.0) * 0.5 + 0.5;
-		value *= 0.89 + grain * 0.13 + rings * 0.025;
+		if (!detail_enabled) value *= 0.89 + grain * 0.13 + rings * 0.025;
 		h = fine * 0.00025 + grain * 0.0004;
 		rough += grain * 0.12;
 	} else if (kind == 3) {
@@ -77,6 +78,11 @@ void fragment() {
 		h = 0.0;
 	}
 	ALBEDO = tint.rgb * value;
+	if (detail_enabled) {
+		vec3 detail = material_detail(uv);
+		ALBEDO *= detail;
+		rough += (1.0 - dot(detail, vec3(0.3333))) * 0.10;
+	}
 	ROUGHNESS = clamp(rough, 0.05, 1.0);
 	METALLIC = kind == 6 ? 0.72 : 0.0;
 	SPECULAR = kind == 8 ? 0.05 : 0.35;

@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode diffuse_lambert, specular_disabled;
+#include "res://assets/shaders/environment_texture.gdshaderinc"
 
 uniform vec4 tint : source_color = vec4(0.35, 0.35, 0.33, 1.0);
 // 0 — штукатурка, 1 — плитка, 2 — древесина, 3 — ткань.
@@ -7,12 +8,16 @@ uniform int surface_kind = 0;
 uniform float pixel_density = 48.0;
 varying vec3 world_position;
 varying vec3 world_normal;
+varying vec3 local_metric;
+varying vec3 local_normal;
 
 float grain(vec3 p) {
 	return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
 }
 
 void vertex() {
+	local_metric = VERTEX * vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
+	local_normal = NORMAL;
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 }
@@ -39,4 +44,13 @@ void fragment() {
 	}
 	ALBEDO = tint.rgb * value;
 	ROUGHNESS = 0.95;
+	if (detail_enabled) {
+		vec3 a = abs(local_normal);
+		vec2 uv = a.y > 0.6 ? local_metric.xz : (a.x > 0.6 ? local_metric.zy : local_metric.xy);
+		// Длинная ось досок пола/столешницы — X; вертикальных панелей — Y.
+		if (surface_kind == 2 && a.y > 0.6) uv = uv.yx;
+		vec3 detail = material_detail(uv);
+		ALBEDO *= detail;
+		ROUGHNESS = clamp(0.82 + (1.0-dot(detail, vec3(0.3333)))*0.10, 0.65, 0.98);
+	}
 }

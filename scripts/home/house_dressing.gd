@@ -13,6 +13,11 @@ func _mat(id: String, tint: Color, kind: int, roughness: float = 0.75) -> Shader
 	m.set_shader_parameter("tint", tint)
 	m.set_shader_parameter("kind", kind)
 	m.set_shader_parameter("roughness_value", roughness)
+	var surface := ""
+	if id in ["wood", "floor"]: surface = "wood"
+	if id == "plaster": surface = "plaster"
+	if id in ["cloth", "linen", "rug"]: surface = "fabric"
+	preload("res://scripts/presentation/environment_textures.gd").apply(m, surface)
 	mats[id] = m
 	return m
 
