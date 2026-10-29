@@ -1,6 +1,6 @@
 # Передача проекта
 
-DA-095 в codex/da095-shot-glass: закончить проверки и обновить прежнюю установку. [Протокол](worklog/2026-10-29-14-shot-glass.md).
+DA-095 завершена в codex/da095-shot-glass; установлен чистый ab4fc8b. Рюмка Кромка 60 мл во всех представлениях. Полный source check PASS, Windows GPU 239/0, SHA256/startup PASS. Далее ручная проверка владельцем и следующий прибор. [Протокол](worklog/2026-10-29-14-shot-glass.md).
 
 DA-094 завершена в codex/da094-cap-body-collision; установлен чистый a6144ad. Полный source check PASS, Windows GPU 225/0, SHA256/startup PASS. Далее ручной проход владельцем, затем следующая модель. [Протокол](worklog/2026-10-29-13-cap-body-clearance.md).
 
