@@ -10,6 +10,14 @@ DA-077: Interactable3D предоставляет context_title/description/pass
 
 DA-076: NoticeBubble.show_hint(message, key="", once=true) — пассивный пузырёк без перехвата ввода, 4.5 с, затухание/дедупликация в рамках экземпляра UI. Потребители: HUD, дом, речь, дневник, верстак. InteractionReticle использует существующие get_target/is_available, не меняет активацию объектов. DrinkWorkbench.get_hovered_bottle_info(point) принимает логические координаты поверхности, возвращает id/title/remaining_ml/strength либо пустой словарь при захвате/неактивности/промахе. Форматы save и игровые команды прежние.
 
+BAR-PLAN-02 / CHAR-10: [ADR-0039](decisions/0039-reference-bar-layout.md) уточняет внутренние wall_x/wall_z(..., door: bool=false), chair(pos, yaw) у ReferenceBar; потребитель только его генератор. [ADR-0038](decisions/0038-visitor-behavior.md) задаёт приоритет анимаций без изменения публичного VisitorModel/VisitorBehavior API. Проверки: reference_bar_test, visitor_behavior_test, visitor_model_test.
+
+CHAR-08 уточняет VisitorBehavior: автоматический уход по session.shift.finished после закрытия Runner/возврата стакана; dialogue_finished отдельной ветки его не запускает. [ADR-0038](decisions/0038-visitor-behavior.md). Публичные сигнатуры прежние.
+
+BAR-PLAN-01: Main.reference_bar_enabled включает ReferenceBar, VisitorBehavior.entrance/waypoints задают маршрут новой локации. Путь/ID поверхностей и якорей сохранены; рабочая точка и подача перенесены. [Контракт](BAR_REFERENCE.md), [ADR-0039](decisions/0039-reference-bar-layout.md).
+
+CHAR-07: опциональный Main.visitor_behavior_enabled, VisitorBehavior и ServiceGuest.drink_presented/motion_available, цели процедурных цепочек VisitorModel. [Полный контракт/потребители](decisions/0038-visitor-behavior.md), [инструкция](VISITOR_BEHAVIOR.md). Включено в reasoning_demo; данные диалога/дневника/заказа не меняются.
+
 DA-072–074: speech target/display разделены для плавного движения и hysteresis стороны, не меняя правила ответа. Новый временный UI-state крышки шейкера и API toggle/get — [барный контракт](parallel/bar/CONTRACTS.md). HUD.show_settings(bool)/close_settings()->bool — отдельная страница меню, Esc сначала обрабатывает возврат; пути % настроек прежние. Основная сцена вновь включает PreferenceStore, тестовые fixtures продолжают использовать отключение/изолированные хранилища. [Настройки](PLAYER_SETTINGS.md), [протокол](worklog/2026-10-28-09-speech-shaker-settings.md).
 
 DA-071: selected_index/submit_choice(index) в DialogueBubblePanel относятся к отфильтрованным **доступным видимым ответам**, нумерация 1…N; выбор сохраняется по choice_id при появлении вариантов после вывода. Terminal/no choices скрывают VoiceReplies, F завершает через VoiceHint. Потребители/исключение can_answer terminal — [DIALOGUE_BUBBLES](DIALOGUE_BUBBLES.md), [ADR-0033](decisions/0033-available-dialogue-replies.md). Модальный fallback/модель/сохранения прежние.

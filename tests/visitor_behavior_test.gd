@@ -1,0 +1,201 @@
+extends Node
+
+var checks := 0
+var failures := 0
+
+
+func expect(value: bool, message: String) -> void:
+	checks += 1
+	if not value:
+		failures += 1
+		printerr("FAIL: " + message)
+
+
+func _ready() -> void:
+	run.call_deferred()
+
+
+func run() -> void:
+	get_tree().create_timer(40, true, false, true).timeout.connect(func() -> void: get_tree().quit(1))
+	var main := preload("res://scenes/main/reasoning_demo.tscn").instantiate()
+	main.preferences_enabled = false
+	main.reference_bar_enabled = false
+	add_child(main)
+	var behavior: VisitorBehavior = main.get_node("VisitorBehavior")
+	var guest: ServiceGuest = main.get_node("DialogueTrigger")
+	var model := behavior.model
+	expect(behavior.state == &"arriving" and model.support_weight == 0, "Visit begins away from counter without hand support")
+	# Убрать игрока с маршрута: блокировку отдельно проверяем физическим препятствием.
+	main.get_node("AnchorCamera").body.global_position = Vector3(-4.8, 0, 0)
+	Engine.time_scale = 5
+	var captured := false
+	var deadline := Time.get_ticks_msec() + 12000
+	while behavior.state != &"docked" and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+		if model.travel_distance > 3.8 and not captured:
+			await capture(main, model, "walking")
+			captured = true
+	expect(behavior.state == &"docked", "Route reaches counter and settles: " + str(guest.global_position))
+	expect(model.travel_distance > 6.0 and model.walk_speed < 0.01, "Distance-based gait stops with actual movement")
+	expect(model.support_weight > 0.99, "Hand support enabled after arrival")
+	Engine.time_scale = 1
+	model.look_target = model.to_global(Vector3(1, 0.1, 1))
+	model.attention = true
+	behavior.set_physics_process(false)
+	model.set_process(false)
+	var dock_transform := guest.global_transform
+	model.walk_speed = 0.65
+	model._walking = 1
+	model.support_weight = 0
+	model.travel_distance = 0
+	model._foot_locks.clear()
+	var foot_error := 0.0
+	for frame in 30:
+		guest.global_position += guest.global_basis * Vector3.RIGHT * 0.0065
+		model.travel_distance += 0.0065
+		model._pose(0.01)
+		var foot := model.to_global(model.skeleton.get_bone_global_pose(model.skeleton.find_bone("FootL")).origin)
+		foot_error = maxf(foot_error, foot.distance_to(model._foot_locks["L"]))
+	expect(foot_error < 0.015, "Planted foot remains at world contact point: " + str(foot_error))
+	var elbows_back := true
+	for frame in 90:
+		model.travel_distance = frame / 90.0 * 0.86
+		model._pose(0.01)
+		for suffix in ["L", "R"]:
+			var shoulder := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("UpperArm" + suffix)).origin
+			var elbow := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("Forearm" + suffix)).origin
+			var wrist := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("Hand" + suffix)).origin
+			var axis := (wrist - shoulder).normalized()
+			var bend := elbow - shoulder - axis * (elbow - shoulder).dot(axis)
+			elbows_back = elbows_back and bend.z < -0.015
+	expect(elbows_back, "Both walking elbows bend backwards throughout the full stride")
+	# Даже едва заметный вес ходьбы/глотка не должен менять плоскость плеча скачком.
+	model.walk_speed = 0
+	model._walking = 0
+	model.support_weight = 1
+	model.talking = false
+	model._pose(0)
+	var arm := model.skeleton.find_bone("UpperArmR")
+	var dock_arm := model.skeleton.get_bone_pose_rotation(arm)
+	model.support_weight = 0.999
+	model._pose(0)
+	expect(dock_arm.angle_to(model.skeleton.get_bone_pose_rotation(arm)) < 0.01, "Tiny locomotion blend cannot flip shoulder")
+	model.support_weight = 1
+	model.drink_target = model.to_global(Vector3(0.14, -0.23, 0.22))
+	model.drink_weight = 0.002
+	model._pose(0)
+	expect(dock_arm.angle_to(model.skeleton.get_bone_pose_rotation(arm)) < 0.015, "Sip starts without elbow-plane jump")
+	model.drink_weight = 1
+	model._pose(0)
+	var sip_elbow := model.skeleton.get_bone_global_pose(model.skeleton.find_bone("ForearmR")).origin
+	var sip_shoulder := model.skeleton.get_bone_global_pose(arm).origin
+	expect(sip_elbow.y < sip_shoulder.y - 0.10 and sip_elbow.x > sip_shoulder.x, "Drinking elbow stays below shoulder, outside chest: " + str(sip_elbow - sip_shoulder))
+	var sip_pose: Array[Quaternion] = []
+	for index in model.skeleton.get_bone_count():
+		sip_pose.append(model.skeleton.get_bone_pose_rotation(index))
+	model.talking = true
+	model.speaking = true
+	model._gesture = 1
+	model._motion = Vector3.ONE
+	model.react(&"interested")
+	model.reaction_time = 1
+	model._pose(0)
+	var no_overlay := true
+	for index in model.skeleton.get_bone_count():
+		no_overlay = no_overlay and sip_pose[index].angle_to(model.skeleton.get_bone_pose_rotation(index)) < 0.002
+	expect(no_overlay, "Speech, reaction and idle cannot override full drinking pose")
+	var smooth_arms := true
+	var previous_arm := model.skeleton.get_bone_pose_rotation(arm)
+	for frame in 121:
+		model.drink_weight = 1.0 - frame / 120.0
+		model._pose(1.0 / 60)
+		var current_arm := model.skeleton.get_bone_pose_rotation(arm)
+		smooth_arms = smooth_arms and previous_arm.angle_to(current_arm) < 0.09
+		previous_arm = current_arm
+	expect(smooth_arms, "Return from sip to speech has no arm snap")
+	model.talking = false
+	model.speaking = false
+	model._motion = Vector3.ZERO
+	model._gesture = 0
+	model.react(&"neutral")
+	guest.global_transform = dock_transform
+	model.walk_speed = 0
+	model._walking = 0
+	model.support_weight = 1
+	model._pose(0.1)
+	model.set_process(true)
+	for frame in 120:
+		model._pose(1.0 / 60)
+	expect(model._look.x > 0.3 and model._look.x <= 0.61, "Head follows nearby player within neck limit")
+	model.look_target = model.to_global(Vector3(0, 0, -3))
+	for frame in 120:
+		model._pose(1.0 / 60)
+	expect(absf(model._look.x) < 0.01, "Head does not turn backwards")
+	for kind in [&"interested", &"thoughtful", &"tense", &"disagree"]:
+		model.react(kind)
+		model._pose(0.3)
+		expect(model.reaction == kind and model.skeleton.get_bone_global_pose(2).origin.is_finite(), "Finite authored reaction: " + str(kind))
+	behavior._on_line(&"test_war_cinema_guest", &"arms_reply")
+	expect(model.reaction == &"disagree", "Specific reply chooses authored reaction")
+	behavior.set_physics_process(true)
+	var glass: Node3D = guest.get_node("ServedGlass")
+	guest.show_served("[TEST] Напиток")
+	guest.show_prepared({"vessel": {"id": "test_glass", "capacity_ml": 240}, "layers": [{"volume_ml": 170, "color": [0.55, 0.25, 0.08]}]}, glass.global_position + Vector3(0.04, -0.09, 0))
+	var home := glass.global_transform
+	expect(behavior._glass_home.is_equal_approx(home), "Prepared serving position overrides initial served signal")
+	await get_tree().create_timer(2.4).timeout
+	expect(glass.global_position.y > home.origin.y + 0.15, "Glass reaches raised hand near face")
+	await capture(main, model, "sip")
+	await get_tree().create_timer(2.6).timeout
+	expect(glass.global_transform.is_equal_approx(home) and model.drink_weight == 0, "Glass returns exactly to original serving position")
+	var previous := guest.global_position
+	get_tree().paused = true
+	await get_tree().create_timer(0.15, true).timeout
+	expect(guest.global_position == previous, "Pause freezes visitor")
+	get_tree().paused = false
+	var session: NarrativeSession = main.get_node("NarrativeSession")
+	expect(session.start_dialogue(&"test_war_cinema_guest"), "Start full conversation")
+	session.runner.choose(&"more")
+	session.runner.choose(&"leave")
+	expect(session.finish_for_node(session.runner.current_dialogue_id, session.runner.current_node_id), "Finish individual dialogue branch")
+	await get_tree().create_timer(0.35).timeout
+	expect(behavior.state == &"docked" and not behavior._leaving, "NPC stays after individual conversation while shift has remaining events")
+	expect(session.start_dialogue(&"test_war_cinema_guest"), "NPC remains available for another conversation")
+	session.cancel_dialogue()
+	await get_tree().physics_frame
+	expect(behavior.state == &"docked", "Cancellation does not send NPC away")
+	session.open_service()
+	session.serve_drink(&"test_water")
+	await get_tree().create_timer(5.0).timeout
+	expect(session.shift.finished, "Departure is gated by completed shift")
+	expect(behavior.state == &"releasing", "Departure releases support before walking")
+	Engine.time_scale = 5
+	deadline = Time.get_ticks_msec() + 12000
+	while behavior.state != &"absent" and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+	expect(behavior.state == &"absent" and not guest.visible, "Visitor follows exit route and disappears inside entrance: %s %s" % [behavior.state, guest.global_position])
+	Engine.time_scale = 1
+	print("%s: visitor behavior, %d checks, %d failures" % ["PASS" if failures == 0 else "FAIL", checks, failures])
+	get_tree().quit(0 if failures == 0 else 1)
+
+
+func capture(main: Node, model: VisitorModel, label: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var camera := Camera3D.new()
+	main.add_child(camera)
+	camera.fov = 43
+	var point := model.to_global(Vector3(0, -0.65, 0))
+	camera.global_position = point + model.global_basis.orthonormalized() * Vector3(1.1, 0.3, 2.8)
+	if label == "walking":
+		camera.global_position = point + Vector3(2.6, 0.3, 1.8)
+	main.get_node("DialogueTrigger/ServedGlass/Label").hide()
+	camera.look_at(point)
+	camera.current = true
+	main.get_node("NavigationHUD/Screen").hide()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	DirAccess.make_dir_recursive_absolute("res://artifacts/visitor")
+	get_viewport().get_texture().get_image().save_png("res://artifacts/visitor/behavior_%s.png" % label)
+	camera.queue_free()

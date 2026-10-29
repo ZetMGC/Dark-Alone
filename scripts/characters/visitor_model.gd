@@ -25,6 +25,151 @@ var _open_texture: Texture2D
 var _closed_texture: Texture2D
 var _gesture: float = 0.0
 var _hand_frames: Dictionary = {}
+var behavior_enabled: bool = false
+var walk_speed: float = 0.0
+var travel_distance: float = 0.0
+var support_weight: float = 1.0
+var look_target: Vector3 = Vector3.ZERO
+var attention: bool = false
+var reaction: StringName = &"neutral"
+var reaction_time: float = 0.0
+var drink_weight: float = 0.0
+var drink_target: Vector3 = Vector3.ZERO
+var _look: Vector2 = Vector2.ZERO
+var _walking: float = 0.0
+var _foot_locks: Dictionary = {}
+var _foot_swing: Dictionary = {}
+var _idle_time: float = 0.0
+var _idle_next: float = 7.3
+var _idle_variant: int = 0
+
+
+func react(kind: StringName) -> void:
+	if kind not in [&"interested", &"thoughtful", &"tense", &"disagree", &"neutral"]:
+		return
+	reaction = kind
+	reaction_time = 0.0
+
+
+func hand_transform() -> Transform3D:
+	return skeleton.global_transform * skeleton.get_bone_global_pose(_bones.HandR)
+
+
+func _aim_bone(index: int, rest_direction: Vector3, direction: Vector3) -> void:
+	var parent := skeleton.get_bone_parent(index)
+	var parent_basis := skeleton.get_bone_global_pose(parent).basis if parent >= 0 else Basis.IDENTITY
+	var desired := Basis(Quaternion(rest_direction.normalized(), direction.normalized()))
+	skeleton.set_bone_pose_rotation(index, (parent_basis.inverse() * desired).get_rotation_quaternion())
+	skeleton.force_update_all_bone_transforms()
+
+
+func _limb(upper: String, lower: String, end: String, target: Vector3, pole: Vector3) -> void:
+	var root := skeleton.get_bone_global_pose(_bones[upper]).origin
+	var a := _origin(lower) - _origin(upper)
+	var b := _origin(end) - _origin(lower)
+	var axis := (target - root).normalized()
+	var distance := clampf(root.distance_to(target), 0.02, (a.length() + b.length()) * 0.997)
+	var along := (a.length_squared() - b.length_squared() + distance * distance) / (2.0 * distance)
+	var bend := (pole - axis * pole.dot(axis)).normalized()
+	var elbow := root + axis * along + bend * sqrt(maxf(0, a.length_squared() - along * along))
+	_aim_bone(_bones[upper], a, elbow - root)
+	_aim_bone(_bones[lower], b, root + axis * distance - elbow)
+
+
+func _behavior_pose(delta: float) -> void:
+	var stationary := support_weight * (1.0 - _walking)
+	var sipping := clampf(drink_weight, 0, 1) * stationary
+	var conversational := stationary * (1.0 - sipping)
+	var gait := travel_distance / 0.86 * TAU
+	skeleton.set_bone_pose_position(_bones.Pelvis, skeleton.get_bone_rest(_bones.Pelvis).origin - Vector3.UP * (0.075 + cos(gait * 2) * 0.004) * _walking)
+	skeleton.force_update_all_bone_transforms()
+	var local_look := to_local(look_target) - skeleton.get_bone_global_pose(_bones.Head).origin
+	var yaw := atan2(local_look.x, local_look.z)
+	var desired := Vector2(clampf(yaw, -0.60, 0.60), clampf(-atan2(local_look.y, Vector2(local_look.x, local_look.z).length()), -0.18, 0.20)) if attention and absf(yaw) < 1.5 else Vector2.ZERO
+	_look = _look.lerp(desired, 1.0 - exp(-delta * 4))
+	reaction_time += delta
+	var response := sin(clampf(reaction_time / 2.2, 0, 1) * PI) * conversational
+	var listening := talking and not speaking
+	var head := skeleton.get_bone_pose_rotation(_bones.Head).get_euler()
+	head += Vector3(_look.y, _look.x, 0)
+	if listening:
+		head.x += 0.035 * sin(_time * 1.1) * conversational
+		head.z += 0.04 * conversational
+	if reaction == &"disagree":
+		head.y += sin(reaction_time * 8) * response * 0.12
+	elif reaction == &"thoughtful":
+		head += Vector3(0.015, 0.16, 0.06) * response
+	elif reaction == &"tense":
+		head.x -= response * 0.06
+	elif reaction == &"interested":
+		head.x += response * 0.06
+	skeleton.set_bone_pose_rotation(_bones.Head, Quaternion.from_euler(head))
+	var chest := skeleton.get_bone_pose_rotation(_bones.Chest).get_euler()
+	chest.x += (0.04 if reaction == &"interested" else -0.025 if reaction == &"tense" else 0.0) * response
+	chest.x += _gesture * 0.012 * conversational
+	_idle_time += delta
+	if _idle_time > _idle_next and not talking and walk_speed < 0.01:
+		_idle_time = 0.0
+		_idle_variant += 1
+		_idle_next = 6.8 + fmod(_idle_variant * 4.73, 6.0)
+	var idle := sin(clampf(_idle_time / 2.0, 0, 1) * PI) if not talking else 0.0
+	chest.z += idle * 0.012 * (-1 if _idle_variant % 2 else 1) * conversational
+	skeleton.set_bone_pose_rotation(_bones.Chest, Quaternion.from_euler(chest))
+	skeleton.force_update_all_bone_transforms()
+	# Контакт — часть исходной позы; IK напитка/ходьбы плавно заменяет её.
+	_place_support_hand(stationary * (1.0 - sipping))
+	var phase := travel_distance / 0.86 * TAU
+	for side in [-1, 1]:
+		var suffix := "L" if side < 0 else "R"
+		var upper: String = "UpperArm" + suffix
+		var lower: String = "Forearm" + suffix
+		var hand: String = "Hand" + suffix
+		var arm_target := skeleton.get_bone_global_pose(_bones[upper]).origin + Vector3(side * 0.035, -0.49, sin(phase + (PI if side > 0 else 0.0)) * 0.10)
+		var arm_blend := maxf(_walking, 1.0 - support_weight)
+		if arm_blend > 0.001:
+			# +Z — лицо: опущенный локоть направлен назад и немного наружу.
+			_blend_arm(upper, lower, hand, arm_target, Vector3(side * 0.15, 0, -1), arm_blend)
+		var thigh: String = "Thigh" + suffix
+		var shin: String = "Shin" + suffix
+		var foot: String = "Foot" + suffix
+		var rest := _origin(foot)
+		var fraction := fposmod(travel_distance / 0.86 + (0.5 if side > 0 else 0.0), 1.0)
+		var ground := to_global(rest)
+		if not _foot_locks.has(suffix):
+			_foot_locks[suffix] = ground
+		if fraction < 0.6:
+			_foot_swing[suffix] = _foot_locks[suffix]
+		else:
+			var progress := (fraction - 0.6) / 0.4
+			var landing := to_global(rest + Vector3(0, 0, 0.22))
+			_foot_locks[suffix] = (_foot_swing.get(suffix, ground) as Vector3).lerp(landing, smoothstep(0, 1, progress)) + Vector3.UP * sin(progress * PI) * 0.07
+		if _walking > 0.001:
+			var target_foot := rest.lerp(to_local(_foot_locks[suffix]), _walking)
+			_limb(thigh, shin, foot, target_foot, Vector3(0, 0, 1))
+			skeleton.set_bone_pose_rotation(_bones[foot], skeleton.get_bone_global_pose(_bones[shin]).basis.inverse().get_rotation_quaternion())
+		else:
+			_foot_locks[suffix] = ground
+			for bone in [thigh, shin, foot]:
+				skeleton.set_bone_pose_rotation(_bones[bone], Quaternion.IDENTITY)
+	if sipping > 0:
+		_blend_arm("UpperArmR", "ForearmR", "HandR", to_local(drink_target), Vector3(0.65, -1.0, 0.12), sipping, true)
+
+
+func _blend_arm(upper: String, lower: String, hand: String, target: Vector3, pole: Vector3, weight: float, keep_palm: bool = false) -> void:
+	# Смешиваем готовые повороты цепочки, а не цель с другим полюсом локтя.
+	# Иначе даже 1% ходьбы мгновенно выворачивал плечо в другую плоскость.
+	var upper_from := skeleton.get_bone_pose_rotation(_bones[upper])
+	var lower_from := skeleton.get_bone_pose_rotation(_bones[lower])
+	var hand_from := skeleton.get_bone_pose_rotation(_bones[hand])
+	var palm := skeleton.get_bone_global_pose(_bones[hand]).basis
+	_limb(upper, lower, hand, target, pole)
+	var hand_to := hand_from
+	if keep_palm:
+		hand_to = (skeleton.get_bone_global_pose(_bones[lower]).basis.inverse() * palm).get_rotation_quaternion()
+	skeleton.set_bone_pose_rotation(_bones[upper], upper_from.slerp(skeleton.get_bone_pose_rotation(_bones[upper]), weight))
+	skeleton.set_bone_pose_rotation(_bones[lower], lower_from.slerp(skeleton.get_bone_pose_rotation(_bones[lower]), weight))
+	skeleton.set_bone_pose_rotation(_bones[hand], hand_from.slerp(hand_to, weight))
+	skeleton.force_update_all_bone_transforms()
 
 
 func _ready() -> void:
@@ -49,8 +194,8 @@ func _ready() -> void:
 		var suffix := "L" if side < 0 else "R"
 		_bone("UpperArm" + suffix, "Chest", Vector3(side * 0.205, 0.16, -0.005))
 		_bone("Forearm" + suffix, "UpperArm" + suffix, Vector3(side * 0.035, -0.265, 0.065))
-		# Одна рука у живота, другая на стойке: разные жесты и контуры рук.
-		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(0.20, 0.035, 0.12) if side < 0 else Vector3(-0.045, 0.010, 0.235))
+		# Свободная рука направлена вперёд на своей стороне, вторая опирается на стойку.
+		_bone("Hand" + suffix, "Forearm" + suffix, Vector3(0.075, 0.040, 0.220) if side < 0 else Vector3(-0.045, 0.010, 0.235))
 		_bone("Thigh" + suffix, "Pelvis", Vector3(side * 0.095, 0, -0.005))
 		_bone("Shin" + suffix, "Thigh" + suffix, Vector3(side * 0.017, -0.34, 0.030 if side < 0 else 0.005))
 		_bone("Foot" + suffix, "Shin" + suffix, Vector3(side * 0.008, -0.32, -0.045 if side < 0 else -0.010))
@@ -91,7 +236,7 @@ func _cache_support_points() -> void:
 				_support_points.append(inverse * vertices[index])
 
 
-func _place_support_hand() -> void:
+func _place_support_hand(weight: float = 1.0) -> void:
 	# Контакт для TEST-позы у стойки высотой 1.16 м от пола гостя.
 	# Поднимается предплечье целиком: кисть не отрывается от манжеты.
 	var forearm: int = _bones.ForearmR
@@ -103,7 +248,7 @@ func _place_support_hand() -> void:
 		bottom = minf(bottom, (hand_world * point).y)
 	var surface_y: float = get_parent().to_global(Vector3(0, FLOOR_Y + 1.16, 0)).y + 0.003
 	var parent_world := skeleton.global_transform * skeleton.get_bone_global_pose(skeleton.get_bone_parent(forearm))
-	var correction := parent_world.basis.inverse() * Vector3(0, clampf(surface_y - bottom, -0.08, 0.08), 0)
+	var correction := parent_world.basis.inverse() * Vector3(0, clampf(surface_y - bottom, -0.08, 0.08) * weight, 0)
 	skeleton.set_bone_pose_position(forearm, skeleton.get_bone_rest(forearm).origin + correction)
 	skeleton.force_update_all_bone_transforms()
 
@@ -279,9 +424,9 @@ func _build_arm(side: int) -> void:
 		_ring(shoulder.lerp(elbow, 0.72), 0.072, 0.070, upper, forearm, 0.1, 0.43),
 		_ring(elbow, 0.074, 0.075, upper, forearm, 0.5, 0.53),
 		_ring(elbow.lerp(hand, 0.20), 0.073, 0.067, upper, forearm, 0.95, 0.63),
-		_ring(elbow.lerp(hand, 0.55), 0.064, 0.061, forearm, "", 0, 0.77),
-		_ring(elbow.lerp(hand, 0.91), 0.050, 0.047, forearm, wrist, 0.05, 0.94),
-		_ring(hand, 0.051, 0.045, forearm, wrist, 0.15, 1.0)]
+		_ring(elbow.lerp(hand, 0.55), 0.058 if side < 0 else 0.064, 0.049 if side < 0 else 0.061, forearm, "", 0, 0.77),
+		_ring(elbow.lerp(hand, 0.91), 0.041 if side < 0 else 0.050, 0.028 if side < 0 else 0.047, forearm, wrist, 0.05, 0.94),
+		_ring(hand, 0.039 if side < 0 else 0.051, 0.025 if side < 0 else 0.045, forearm, wrist, 0.15, 1.0)]
 	_loft("Clothing", _cloth_material, sleeve, 12, Rect2(0.008, 0.508, 0.484, 0.484))
 	# Запястье заходит внутрь манжеты, чтобы при жесте не открывалась щель.
 	var palm := [_ring(hand + Vector3(0, 0, -0.035), 0.031, 0.017, wrist, "", 0, 0), _ring(hand, 0.033, 0.017, wrist, "", 0, 0.15), _ring(hand + Vector3(0, -0.009, 0.039), 0.038, 0.018, wrist, "", 0, 0.4), _ring(hand + Vector3(0, -0.015, 0.076), 0.034, 0.014, wrist, "", 0, 1)]
@@ -390,7 +535,15 @@ func _hair_lock(tool: SurfaceTool, root: Vector3, tip: Vector3, width: float, ou
 
 
 func _pose(delta: float) -> void:
-	_gesture = move_toward(_gesture, 1.0 if talking and speaking else 0.0, delta * 2.5)
+	# Каждый кадр начинается с rest: результат предыдущего IK не накапливается.
+	skeleton.reset_bone_poses()
+	var conversational := 1.0
+	if behavior_enabled:
+		_walking = lerpf(_walking, clampf(walk_speed / 0.65, 0, 1), 1.0 - exp(-delta * 7.0))
+		if walk_speed < 0.001 and _walking < 0.001:
+			_walking = 0
+		conversational = support_weight * (1.0 - _walking) * (1.0 - clampf(drink_weight, 0, 1))
+	_gesture = move_toward(_gesture, conversational if talking and speaking else 0.0, delta * 2.5)
 	if talking and speaking:
 		_speech_time += delta
 	var cycle := _speech_time / 2.2
@@ -398,9 +551,9 @@ func _pose(delta: float) -> void:
 	var envelope := pow(sin(fmod(cycle, 1.0) * PI), 2) * _gesture
 	var target := Vector3(envelope if variant == 0 else 0.0, envelope if variant == 1 else 0.0, envelope if variant == 2 else 0.0)
 	_motion = _motion.lerp(target, 1.0 - exp(-delta * 10.0))
-	var explain := _motion.x
-	var emphasize := _motion.y
-	var consider := _motion.z
+	var explain := _motion.x * conversational
+	var emphasize := _motion.y * conversational
+	var consider := _motion.z * conversational
 	skeleton.set_bone_pose_rotation(_bones.Pelvis, Quaternion.from_euler(Vector3(0, 0.018, -0.025)))
 	skeleton.set_bone_pose_rotation(_bones.Chest, Quaternion.from_euler(Vector3(0.035 + sin(_time * 1.25) * 0.006, -0.025 + explain * 0.025, 0.014)))
 	skeleton.set_bone_pose_rotation(_bones.Head, Quaternion.from_euler(Vector3(-0.025 + sin(_time * 0.75) * 0.009 + emphasize * 0.075, 0.025 + sin(_time * 0.38) * 0.035 - explain * 0.06, -0.018 + consider * 0.07)))
@@ -410,7 +563,10 @@ func _pose(delta: float) -> void:
 	skeleton.set_bone_pose_rotation(_bones.ForearmL, Quaternion.from_euler(Vector3(-emphasize * 0.10, explain * 0.10, explain * 0.24 + emphasize * 0.12)))
 	# Ладонь уже ориентирована по предплечью в rest-геометрии; большой поворот ломал запястье.
 	skeleton.set_bone_pose_rotation(_bones.HandL, Quaternion.from_euler(Vector3(0.015 + emphasize * 0.045, -0.025 - explain * 0.10, 0.02 - explain * 0.08)))
-	_place_support_hand()
+	if behavior_enabled:
+		_behavior_pose(delta)
+	if not behavior_enabled:
+		_place_support_hand()
 	# Два совпадающих UV-кадра дают короткое закрытие глаз без накладок.
 	var phase := fmod(_time + 1.5, 4.8)
 	var blink_now := phase < 0.13
