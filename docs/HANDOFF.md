@@ -1,6 +1,6 @@
 # Передача проекта
 
-DA-094 в codex/da094-cap-body-collision: завершить проверки и прежнюю установку. [Протокол](worklog/2026-10-29-13-cap-body-clearance.md).
+DA-094 завершена в codex/da094-cap-body-collision; установлен чистый a6144ad. Полный source check PASS, Windows GPU 225/0, SHA256/startup PASS. Далее ручной проход владельцем, затем следующая модель. [Протокол](worklog/2026-10-29-13-cap-body-clearance.md).
 
 DA-093 завершена: codex/da093-bottle-stability, установлен чистый a1a0797. Устойчивость/двусторонний наклон/закрытие отпусканием на горлышке/пролив лёжа. Полный source check и Windows GPU 251/0, SHA256/startup PASS. Следующее: ручной проход владельцем с прежнего ярлыка. [Протокол](worklog/2026-10-29-12-bottle-stability.md). Merge/push не выполнялись.
 
