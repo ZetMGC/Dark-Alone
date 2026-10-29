@@ -11,6 +11,10 @@ const MATERIALS := "res://content/drinks/test_materials.json"
 const SERVE_ZONE := Rect2(930, 285, 300, 185)
 const SINK := Rect2(1080, 490, 150, 130)
 const BOTTLE_CAPACITY_ML: float = 500.0
+var supplies_required: bool = false
+var supplied: Dictionary = {}
+var _stored_cups: Dictionary = {}
+var _cup_places: Dictionary = {&"test_shot": Vector2(810,440), &"test_glass": Vector2(650,440)}
 var preparation: DrinkPreparation
 var _mixing: DrinkPreparation
 var _shaker: DrinkPreparation
@@ -180,18 +184,29 @@ func set_active(value: bool) -> void:
 
 
 func select_vessel(id: StringName) -> bool:
+	if supplies_required and not supplied.has(id): return false
 	if _delivered or (preparation != null and (not _active or not _focused)) or not _catalog.is_loaded() or _catalog.get_vessel(id).is_empty() or _dragging != &"":
 		return false
-	if preparation != null and preparation.get_volume_ml() > 0:
+	if not supplies_required and preparation != null and preparation.get_volume_ml() > 0:
 		_message = "Сначала опустошите посуду над сливом — напиток внутри"
 		queue_redraw()
 		return false
+	if supplies_required and preparation != null and supplied.has(&"cup"):
+		_stored_cups[StringName(preparation.get_vessel().id)] = preparation
+		_cup_places[StringName(preparation.get_vessel().id)] = get_item_position(&"cup")
+	if supplies_required and _stored_cups.has(id):
+		preparation = _stored_cups[id]
+		_positions["cup"] = _cup_places[id]
+		_cup_on_tray = false
+		_refresh_buttons()
+		queue_redraw()
+		return true
 	_serial += 1
 	preparation = DrinkPreparation.new()
 	if not preparation.configure(_catalog, id, StringName("wb_%d_%d" % [Time.get_ticks_usec(), _serial])):
 		return false
 	_cup_on_tray = false
-	_positions["cup"] = Vector2(810, 440)
+	_positions["cup"] = _cup_places[id] if supplies_required else Vector2(810, 440)
 	_message = "Поставьте бутылку над стаканом"
 	_refresh_buttons()
 	queue_redraw()
@@ -220,6 +235,7 @@ func get_container_snapshot(id: StringName) -> Dictionary:
 
 
 func get_container_rect(id: StringName) -> Rect2:
+	if not has_supply(id): return Rect2(-10000, -10000, 0, 0)
 	if id == &"cup":
 		return get_cup_rect()
 	if id == &"shaker":
@@ -283,6 +299,7 @@ func _refresh_buttons() -> void:
 			_delivery_button.text = "[E] " + _delivery_button.text
 			_shaker_lid_button.hide()
 	for id in _vessel_buttons:
+		_vessel_buttons[id].visible = not supplies_required
 		var current: bool = preparation != null and preparation.get_vessel().id == str(id)
 		_vessel_buttons[id].text = ("✓ Шот" if id == &"test_shot" else "✓ Стакан") if current else ("Шот" if id == &"test_shot" else "Стакан")
 		_vessel_buttons[id].tooltip_text = "Для замены сначала опустошите посуду над сливом" if preparation != null and preparation.get_volume_ml() > 0 else "Взять чистую посуду на рабочий коврик"
@@ -354,6 +371,7 @@ func logical_to_screen(point: Vector2) -> Vector2:
 
 
 func begin_drag(id: StringName, point: Vector2) -> bool:
+	if not has_supply(id): return false
 	if not _active or not _focused or preparation == null or not preparation.get_result().is_empty() or _delivered or not _positions.has(str(id)) or _dragging != &"" or not point.is_finite():
 		return false
 	_dragging = id
@@ -683,6 +701,11 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
+				if supplies_required:
+					for vessel_id in _stored_cups:
+						if vessel_id != StringName(preparation.get_vessel().id) and Rect2(_cup_places[vessel_id] - Vector2(55,0), Vector2(110,175)).has_point(_pointer):
+							select_vessel(vessel_id)
+							break
 				var item := _hit_item(_pointer)
 				_context_item = item
 				if item != &"":
@@ -702,6 +725,10 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _hit_item(point: Vector2) -> StringName:
+	var hit := _hit_present_item(point)
+	return hit if has_supply(hit) else &""
+
+func _hit_present_item(point: Vector2) -> StringName:
 	if point.distance_to(Vector2(275, 535)) < 27:
 		return &"ice"
 	var spoon := _spoon_position()
@@ -711,7 +738,7 @@ func _hit_item(point: Vector2) -> StringName:
 		_positions["spoon"] = spoon
 		return &"spoon"
 	var cup_point := (point - get_item_position(&"cup")).rotated(-deg_to_rad(get_item_angle(&"cup"))) + get_item_position(&"cup")
-	if get_cup_rect().grow(10).has_point(cup_point):
+	if has_supply(&"cup") and get_cup_rect().grow(10).has_point(cup_point):
 		return &"cup"
 	if hits_spoon:
 		_positions["spoon"] = spoon
@@ -771,13 +798,15 @@ func _draw() -> void:
 	_local()
 	draw_rect(Rect2(0, 0, 1280, 720), Color(0.12, 0.14, 0.12))
 	_surface(Rect2(0, 60, 1280, 340), Vector2i(1, 0), Color(0.50, 0.53, 0.48))
-	_surface(Rect2(0, 380, 1280, 340), Vector2i(0, 0), Color(0.72, 0.70, 0.65))
+	_surface(Rect2(0, 380, 1280, 266), Vector2i(0, 0), Color(0.72, 0.70, 0.65))
+	_surface(Rect2(0, 649, 1280, 71), Vector2i(0, 0), Color(0.32, 0.30, 0.26))
+	draw_rect(Rect2(0, 644, 1280, 6), Color(0.025,0.03,0.02))
 	# Край столешницы отделяет предметы от задника без яркой рамки.
 	draw_line(Vector2(0, 399), Vector2(1280, 399), Color(0.08, 0.07, 0.05), 5)
 	draw_rect(Rect2(0, 0, 1280, 60), Color(0.065, 0.075, 0.065))
 	_text(Vector2(30, 38), "РАБОЧАЯ СТОЙКА", Color(0.85, 0.77, 0.56), 25)
 	_text(Vector2(30, 112), "БУТЫЛКИ")
-	var guidance := "Выберите посуду слева, затем перетащите к ней бутылку"
+	var guidance := "Возьмите посуду из ящика и бутылки с полки" if supplies_required and supplied.is_empty() else "Перенесите бутылку к горлышку посуды и наклоните колесом"
 	if _dragging != &"":
 		guidance = "Колесо — наклон · отпустите предмет, чтобы поставить" if _angles.has(str(_dragging)) else "Перетащите к нужной посуде и отпустите"
 	elif is_ready_to_deliver():
@@ -802,6 +831,13 @@ func _draw() -> void:
 	draw_circle(SINK.get_center(), 15, Color(0.025, 0.035, 0.03))
 	_text(SINK.position + Vector2(42, -12), "СЛИВ")
 	_draw_rack()
+	for object_id in _positions:
+		if not has_supply(StringName(object_id)) or StringName(object_id) == _dragging: continue
+		var base: Vector2 = _positions[object_id] + Vector2(0, 153 if object_id in _ids else (get_cup_rect().size.y if object_id == "cup" else 125))
+		if object_id in ["spoon", "ice"]: continue
+		draw_set_transform_matrix(_view * Transform2D(0, Vector2(32, 5), 0, base))
+		draw_circle(Vector2.ZERO, 1, Color(0.015, 0.02, 0.015, 0.65))
+	_local()
 	for patch in spill_surface.get_patches():
 		var radius := DrinkSpillSurface.radius(patch)
 		draw_set_transform_matrix(_view * Transform2D(0, Vector2(radius, radius * 0.3), 0, patch.position))
@@ -815,14 +851,25 @@ func _draw() -> void:
 			_draw_bottle(StringName(id))
 	_draw_shaker()
 	_draw_mixing()
-	_surface(Rect2(246, 518, 58, 52), Vector2i(1, 1), Color(0.50, 0.57, 0.53))
-	_text(Vector2(247, 511), "ЛЁД", Color(0.7, 0.82, 0.83), 14)
-	var ice_position := get_item_position(&"ice")
-	draw_rect(Rect2(ice_position - Vector2(12, 12), Vector2(24, 24)), Color(0.65, 0.82, 0.86, 0.8))
+	if has_supply(&"ice"):
+		_surface(Rect2(246, 518, 58, 52), Vector2i(1, 1), Color(0.50, 0.57, 0.53))
+		_text(Vector2(247, 511), "ЛЁД", Color(0.7, 0.82, 0.83), 14)
+		var ice_position := get_item_position(&"ice")
+		draw_rect(Rect2(ice_position - Vector2(12, 12), Vector2(24, 24)), Color(0.65, 0.82, 0.86, 0.8))
 	if not _spoon_attached:
 		_draw_spoon()
 	if not _delivered:
 		_draw_cup()
+		if supplies_required:
+			var active_cup := preparation
+			var active_position := get_item_position(&"cup")
+			for vessel_id in _stored_cups:
+				if vessel_id == StringName(active_cup.get_vessel().id): continue
+				preparation = _stored_cups[vessel_id]
+				_positions["cup"] = _cup_places[vessel_id]
+				_draw_cup()
+			preparation = active_cup
+			_positions["cup"] = active_position
 	if _spoon_attached:
 		_draw_spoon()
 	if str(_dragging) in _ids:
@@ -834,6 +881,7 @@ func _draw() -> void:
 
 
 func _draw_rack() -> void:
+	if supplies_required: return
 	_text(Vector2(35, 420), "ЧИСТАЯ ПОСУДА")
 	for index in 2:
 		var base := Vector2(75 + index * 100, 475)
@@ -843,6 +891,7 @@ func _draw_rack() -> void:
 
 
 func _draw_bottle(id: StringName) -> void:
+	if not has_supply(id): return
 	var item := _catalog.get_ingredient(id)
 	if _dragging == id:
 		var ground := Vector2(get_item_position(id).x, clampf(get_item_position(id).y + 160, 410, 620))
@@ -876,6 +925,7 @@ func _draw_bottle(id: StringName) -> void:
 
 
 func _draw_cup() -> void:
+	if not has_supply(&"cup"): return
 	var rect := get_cup_rect()
 	var origin := get_item_position(&"cup")
 	_local(origin, deg_to_rad(get_item_angle(&"cup")))
@@ -892,11 +942,16 @@ func _draw_cup() -> void:
 	_draw_ice_and_foam(state, rect)
 	draw_polyline(PackedVector2Array([rect.position, Vector2(rect.position.x + 5, rect.end.y), rect.end - Vector2(5, 0), Vector2(rect.end.x, rect.position.y)]), Color(0.65, 0.75, 0.7), 3)
 	var stream := stream_info()
-	draw_line(rect.position - Vector2(3, 0), Vector2(rect.end.x + 3, rect.position.y), Color(0.95, 0.85, 0.6) if not stream.is_empty() and stream.hit else Color(0.75, 0.8, 0.72), 3)
+	var rim := PackedVector2Array()
+	for segment in 25:
+		var angle := TAU * segment / 24.0
+		rim.append(Vector2(rect.get_center().x + cos(angle) * rect.size.x * 0.5, rect.position.y + sin(angle) * 8))
+	draw_polyline(rim, Color(0.95, 0.85, 0.6) if not stream.is_empty() and stream.hit else Color(0.75,0.8,0.72), 2)
 	_local()
 
 
 func _draw_spoon() -> void:
+	if not has_supply(&"spoon"): return
 	var position := _spoon_position()
 	_local(position, deg_to_rad(get_item_angle(&"spoon")))
 	draw_line(Vector2.ZERO, Vector2(-65, 75), Color(0.63, 0.66, 0.62), 5)
@@ -906,6 +961,7 @@ func _draw_spoon() -> void:
 
 
 func _draw_shaker() -> void:
+	if not has_supply(&"shaker"): return
 	_local(get_item_position(&"shaker"), deg_to_rad(get_item_angle(&"shaker")))
 	# Гранёный металл и статичная шлифовка читаются в ретро-изображении без внешней текстуры.
 	var outline := PackedVector2Array([Vector2(-38, 4), Vector2(38, 4), Vector2(28, 115), Vector2(-28, 115)])
@@ -963,6 +1019,7 @@ func _draw_ellipse_rim(center: Vector2) -> void:
 
 
 func _draw_mixing() -> void:
+	if not has_supply(&"mixing"): return
 	var position := get_item_position(&"mixing")
 	_local(position, deg_to_rad(get_item_angle(&"mixing")))
 	var rect := Rect2(-52, 0, 104, 170)
@@ -1117,3 +1174,26 @@ func _surface(rect: Rect2, tile: Vector2i, tint: Color = Color.WHITE) -> void:
 	# Отступ убирает соседний материал на стыке атласа.
 	var region := Rect2(Vector2(tile) * half + Vector2(3, 3), half - Vector2(6, 6))
 	draw_texture_rect_region(_surface_texture, rect, region, tint)
+
+
+func has_supply(id: StringName) -> bool:
+	return not supplies_required or supplied.has(id)
+
+func add_supply(id: StringName) -> bool:
+	if supplied.has(id): return false
+	if id in [&"test_shot", &"test_glass"]:
+		supplied[id] = true
+		# Пустая посуда выбирается при переносе, до открытия интерфейса.
+		var active_before := _active
+		_active = true
+		var accepted := select_vessel(id)
+		_active = active_before
+		if not accepted:
+			supplied.erase(id)
+			return false
+		supplied[&"cup"] = true
+	else:
+		supplied[id] = true
+	_refresh_buttons()
+	queue_redraw()
+	return true

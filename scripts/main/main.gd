@@ -9,6 +9,8 @@ const RUN_HANDOFF := &"dark_alone_journal_handoff"
 @export var checkpoint_enabled: bool = true
 @export var free_roam_enabled: bool = true
 @export var drink_workbench_enabled: bool = true
+@export var workbench_supplies_enabled: bool = false
+var supplies: Node
 @export var physical_drinks_enabled: bool = true
 var drink_carry: Node
 @export var preferences_enabled: bool = true
@@ -212,6 +214,9 @@ func _ready() -> void:
 		$ServicePanel.workbench.world_output = true
 		_trigger.carry_delivery = _deliver_carried_drink
 
+	if workbench_supplies_enabled and drink_carry != null:
+		supplies = preload("res://scripts/service/drinks/workbench_supplies.gd").new()
+		supplies.configure(self)
 	_session.mode_changed.connect(_on_mode_changed)
 	_session.journal_changed.connect(func(_count: int) -> void: _refresh_navigation())
 	_session.service_completed.connect(_on_service_completed)
@@ -371,10 +376,14 @@ func _guest_in_reach() -> bool:
 func _use_counter() -> void:
 	if not _narrative_ready or _session.mode not in [NarrativeSession.EXPLORATION, NarrativeSession.DIALOGUE] or _rig.is_transitioning:
 		return
+	if supplies != null and supplies.deposit():
+		return
 	if drink_carry != null and drink_carry.holding:
 		drink_carry.place()
 		return
-	if (_rig as FreeRoamCamera).focus_active:
+	if supplies != null:
+		open_service_menu()
+	elif (_rig as FreeRoamCamera).focus_active:
 		open_service_menu()
 	else:
 		_rig.request_move(&"back_counter")
@@ -404,7 +413,7 @@ func open_service_menu() -> bool:
 		return false
 	if not _narrative_ready or _rig.is_transitioning or (_session.mode != NarrativeSession.EXPLORATION and not (free_roam_enabled and _session.mode == NarrativeSession.DIALOGUE)):
 		return false
-	if _rig.current_anchor_id != (&"back_counter" if free_roam_enabled else _trigger.required_anchor):
+	if (supplies == null and _rig.current_anchor_id != (&"back_counter" if free_roam_enabled else _trigger.required_anchor)) or (supplies != null and _rig.view.global_position.distance_to(drink_carry.home_position) > 2.5):
 		_hud.show_notice("Подойдите к стойке, чтобы обслужить гостя.")
 		return false
 	if _session.service.served:
@@ -484,16 +493,16 @@ func _refresh_navigation() -> void:
 	_interaction.pointer_mode = free_roam_enabled and enabled and (_rig as FreeRoamCamera).focus_active
 	for anchor in _rig.get_anchors():
 		anchor.set_available(not free_roam_enabled and _rig.can_move_to(anchor.anchor_id))
-	_trigger.carry_mode = drink_carry != null and drink_carry.holding
+	_trigger.carry_mode = drink_carry != null and drink_carry.holding and drink_carry.portion != null
 	_trigger.set_available((exploration or (walking_dialogue and _trigger.carry_mode)) and enabled and (not _trigger.carry_mode or _session.can_open_service()) and (_guest_in_reach() if free_roam_enabled else _rig.current_anchor_id == _trigger.required_anchor))
 	if _counter_target != null:
 		_counter_target.available = enabled and (_session.can_open_service() if focused else _rig.can_move_to(&"back_counter"))
-		_counter_target.prompt = ("E — готовить напиток" if drink_workbench_enabled else "E — выбрать напиток") if focused else "E — открыть рабочую стойку у полок"
+		_counter_target.prompt = ("E — готовить напиток" if drink_workbench_enabled else "E — выбрать напиток") if focused else ("E — готовить напиток" if supplies != null else "E — открыть рабочую стойку у полок")
 		if drink_carry != null and is_instance_valid(drink_carry.item) and not drink_carry.holding and focused:
 			_counter_target.available = false
 		if drink_carry != null and drink_carry.holding:
 			_counter_target.available = enabled and _rig.view.global_position.distance_to(drink_carry.home_position) < 2.5
-			_counter_target.prompt = "E — поставить напиток"
+			_counter_target.prompt = "E — добавить в рабочую зону" if supplies != null and drink_carry.portion == null else "E — поставить напиток"
 		_counter_target.blocked_prompt = ("Гость уже обслужен" if _session.service.served else "Осталось одно деление: сначала завершите разговор") if focused else "Подойдите к рабочей стойке у полок"
 	_hud.update_navigation(_rig)
 	_hud.update_narrative(_trigger.is_available(), enabled, _session.journal.get_known_term_ids().size(), _session.journal.get_unread_count())
