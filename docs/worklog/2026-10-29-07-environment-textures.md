@@ -6,7 +6,7 @@
 
 Созданы три albedo: орех, штукатурка, обивка. Применены к соответствующим материалам существующих бара и дома. Подобраны цветовой баланс и метрический масштаб; включены mipmaps и отражённое повторение. [Манифест, точные prompts, ограничения и снимки](../ENVIRONMENT_TEXTURES.md). Планировка, мебель, свет и gameplay не изменены.
 
-Файлы: assets/textures/environment/*; assets/shaders/environment_texture.gdshaderinc (+uid), house_surface.gdshader, worn_surface.gdshader; scripts/presentation/environment_textures.gd (+uid); scripts/home/house_dressing.gd; scripts/levels/reference_bar.gd. Документация: ENVIRONMENT_TEXTURES, ASSETS, TEXTURE_DIRECTION, STATUS, HANDOFF, BACKLOG, ADR-0046, этот протокол и два снимка docs/art/textures-v1-*.png.
+Файлы: assets/textures/environment/*; assets/shaders/environment_texture.gdshaderinc (+uid), house_surface.gdshader, worn_surface.gdshader; scripts/presentation/environment_textures.gd (+uid); scripts/home/house_dressing.gd; scripts/levels/reference_bar.gd. Документация: ENVIRONMENT_TEXTURES, ASSETS, TEXTURE_DIRECTION, STATUS, HANDOFF, BACKLOG, ADR-0051, этот протокол и два снимка docs/art/textures-v1-*.png.
 
 ## Проверки
 
@@ -24,7 +24,7 @@ Godot 4.7.2, Windows, Compatibility/OpenGL, RTX 4070. Команды ниже з
 
 ## Решения и ограничения
 
-[ADR-0046](../decisions/0046-environment-textures.md). Три материала — первый комплект, остальные поверхности не объявляются готовыми новыми текстурами. Исходные карты сохранены; импорт уменьшает их до 512px. Отдельных normal/AO/roughness PNG нет. Ранее локально изменённые project.godot и content/drinks/test_materials.json не относятся к TEX-01 и сохранены отдельно. Публикация, main и установленный EXE в это поручение не входят.
+[ADR-0051](../decisions/0051-environment-textures.md). Три материала — первый комплект, остальные поверхности не объявляются готовыми новыми текстурами. Исходные карты сохранены; импорт уменьшает их до 512px. Отдельных normal/AO/roughness PNG нет. Ранее локально изменённые project.godot и content/drinks/test_materials.json не относятся к TEX-01 и сохранены отдельно. Публикация, main и установленный EXE в это поручение не входят.
 
 ## Продолжение
 

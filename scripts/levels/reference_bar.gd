@@ -55,7 +55,13 @@ func _ready() -> void:
 	room_floor(Vector3(4, 0.035, 0.45), Vector3(1.9, 0.03, 2.8))
 	room_floor(Vector3(-0.6, 0.035, 3.4), Vector3(1.7, 0.03, 1.1))
 	box("CounterBase", Vector3(-0.3, 0.5, -1.2), Vector3(3.15, 1, 0.62), dark)
-	box("CounterTop", Vector3(-0.3, 1.08, -1.2), Vector3(3.4, 0.16, 0.78), wood)
+	box("CounterTop", Vector3(-0.3, 1.08, -1.2), Vector3(3.4, 0.16, 0.94), wood)
+	# Клиентский прилавок 1.16 м, рабочая поверхность 0.97 м.
+	box("BartenderWorkTop",Vector3(-0.3,0.935,-1.97),Vector3(3.05,0.07,0.60),material(Color(0.23,0.24,0.20),2))
+	box("WorkTopApron",Vector3(-0.3,0.88,-2.27),Vector3(3.05,0.10,0.035),dark,false)
+	box("WorkTopBase",Vector3(-0.3,0.43,-1.94),Vector3(2.95,0.86,0.47),dark)
+	box("WorkSplashback",Vector3(-0.3,1.035,-1.66),Vector3(3.05,0.19,0.035),wood,false)
+	box("WorkRubberMat",Vector3(-0.45,0.974,-1.98),Vector3(1.15,0.008,0.43),material(Color(0.035,0.05,0.04),0),false)
 	box("CounterReturn", Vector3(-1.85, 0.5, -2.45), Vector3(0.5, 1, 2.4), dark)
 	box("ReturnTop", Vector3(-1.85, 1.08, -2.45), Vector3(0.65, 0.16, 2.4), wood)
 	for x in [-1.5, -0.85, 0.55, 1.2]:
@@ -63,14 +69,7 @@ func _ready() -> void:
 	for x in [-1.55, -0.8, 0, 0.75]:
 		box("CounterPanel", Vector3(x, 0.52, -0.876), Vector3(0.66, 0.72, 0.025), wood, false)
 	box("FootRail", Vector3(-0.3, 0.22, -0.64), Vector3(3.1, 0.035, 0.035), brass, false)
-	box("ShelfBack", Vector3(-0.25, 1.95, -3.88), Vector3(3.1, 1.6, 0.12), dark)
-	box("ShelfLower", Vector3(-0.25, 1.65, -3.66), Vector3(3.1, 0.08, 0.42), wood)
-	box("ShelfUpper", Vector3(-0.25, 2.25, -3.66), Vector3(3.1, 0.08, 0.42), wood)
-	for shelf_y in [1.86, 2.46]:
-		for i in 17:
-			var pos := Vector3(-1.65 + i * 0.17, shelf_y, -3.65)
-			cylinder("Bottle", pos, 0.047, 0.28, material(Color(0.11 + (i % 3) * 0.06, 0.18, 0.09), 0))
-			cylinder("Neck", pos + Vector3.UP * 0.18, 0.02, 0.12, brass)
+	_build_bar_cabinet()
 	for z in [-2.7, 1.55]:
 		sofa(Vector3(-4.5, 0, z))
 		table(Vector3(-3.45, 0, z), Vector2(1.0, 1.2))
@@ -366,3 +365,29 @@ func _lived_in_details() -> void:
 		box("FadedPhoto", Vector3(-4.786, 1.8, z), Vector3(0.008, 0.39, 0.27), paper, false)
 		for i in 4:
 			box("PhotoSilhouette", Vector3(-4.779, 1.70 + (i%2)*0.025, z-0.09+i*0.06), Vector3(0.006, 0.13+(i%2)*0.05, 0.04), dark, false)
+
+
+func _build_bar_cabinet() -> void:
+	# Самостоятельный шкаф: утопленная спинка, три открытые секции и карниз.
+	var aged := material(Color(0.16,0.18,0.12), 2)
+	var recess := material(Color(0.075,0.09,0.065), 2)
+	var edge := material(Color(0.21,0.22,0.15), 2)
+	box("ShelfBack", Vector3(-0.25,2.03,-3.89), Vector3(3.3,1.64,0.10), recess)
+	box("ShelfLower", Vector3(-0.25,1.40,-3.65), Vector3(3.3,0.08,0.48), aged)
+	box("ShelfUpper", Vector3(-0.25,2.05,-3.65), Vector3(3.3,0.08,0.48), aged)
+	for x in [-1.92,1.42]:
+		box("CabinetSide",Vector3(x,2.02,-3.65),Vector3(0.13,1.65,0.51),aged)
+		box("CabinetPilaster",Vector3(x,2.03,-3.36),Vector3(0.19,1.63,0.08),edge,false)
+		box("CabinetFoot",Vector3(x,1.23,-3.35),Vector3(0.24,0.14,0.12),aged,false)
+	for x in [-0.80,0.30]:
+		box("CabinetDivider",Vector3(x,2.06,-3.65),Vector3(0.075,1.32,0.45),aged)
+		box("CabinetDividerEdge",Vector3(x,2.06,-3.39),Vector3(0.10,1.32,0.055),edge,false)
+	for x in [-1.65,-1.38,-1.11,-0.56,-0.29,-0.02,0.54,0.81,1.08]:
+		box("CabinetBackPlank",Vector3(x,2.03,-3.82),Vector3(0.014,1.48,0.018),aged,false)
+	box("CabinetCrown",Vector3(-0.25,2.87,-3.62),Vector3(3.65,0.16,0.64),aged)
+	box("CabinetCornice",Vector3(-0.25,2.76,-3.59),Vector3(3.48,0.075,0.57),edge,false)
+	box("CabinetFrieze",Vector3(-0.25,2.63,-3.40),Vector3(3.34,0.18,0.09),aged,false)
+	for x in [-1.55,-0.90,-0.25,0.40,1.05]:
+		box("CabinetFriezeInset",Vector3(x,2.63,-3.345),Vector3(0.53,0.11,0.018),recess,false)
+	for y in [1.35,1.44,2.00,2.09]:
+		box("CabinetShelfLip",Vector3(-0.25,y,-3.38),Vector3(3.3,0.025,0.04),edge,false)

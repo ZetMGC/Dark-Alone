@@ -1,8 +1,8 @@
 # Контракты интеграции
 
-HOME-03: публичный API HOME-02 прежний. HouseInterior после построения основы создаёт локальный VisualDressing и вызывает build(source: Node3D)->void. Единственный игровой потребитель — HouseInterior. Декор не добавляет коллизий/состояний прогресса; накладки следуют старым петлям, ткань — размерам/положению старой шторы, источники — выключателям. Environment назначена только домашней камере. [ADR-0045](decisions/0045-house-visual-layer.md), house_visual_test/house_layout_test.
+HOME-03: публичный API HOME-02 прежний. HouseInterior после построения основы создаёт локальный VisualDressing и вызывает build(source: Node3D)->void. Единственный игровой потребитель — HouseInterior. Декор не добавляет коллизий/состояний прогресса; накладки следуют старым петлям, ткань — размерам/положению старой шторы, источники — выключателям. Environment назначена только домашней камере. [ADR-0050](decisions/0050-house-visual-layer.md), house_visual_test/house_layout_test.
 
-BAR-NIGHT-01: EnvironmentAudio.configure_night_bar()->void переключает Street на тихий 16-секундный дождь и переносит Street/Furniture к окну/посадочным местам новой локации. Вызывает только Main при reference_bar_enabled. set_gain/set_context и схема предпочтений прежние. [ADR-0044](decisions/0044-night-bar-atmosphere.md); проверяет reference_bar_test, старый профиль — environment_camera_test.
+BAR-NIGHT-01: EnvironmentAudio.configure_night_bar()->void переключает Street на тихий 16-секундный дождь и переносит Street/Furniture к окну/посадочным местам новой локации. Вызывает только Main при reference_bar_enabled. set_gain/set_context и схема предпочтений прежние. [ADR-0049](decisions/0049-night-bar-atmosphere.md); проверяет reference_bar_test, старый профиль — environment_camera_test.
 
 DA-080: ReplyChoiceRow body содержит только авторский caption; hovered/activated позволяют выбрать и выполнить строку без номеров. DialogueBubblePanel принимает E и клик, цифровые/колёсные shortcut-ветки удалены. FreeRoamCamera.set_dialogue_pointer(bool) освобождает курсор только для доступных ответов, не блокируя ходьбу; скрытие панели/закрытие режима возвращает прежний захват. Повторная проверка can_answer и актуальной цели сохранена. Подпись мыши на экране не выводится. Исторические записи о номерах ниже не являются текущим управлением.
 
@@ -357,3 +357,31 @@ NarrativeSession.can_stage_preparation()->bool проверяет готовно
 ## DA-082: мышь при ответах
 
 ЛКМ при захваченном обзоре вызывает confirm и сохраняет захват мыши до смены режима выбора. Клик по фону при открытых ответах возвращает камеру без подтверждения. Автоматический курсор подавлен до новой реплики или отведения взгляда; E и наведение/клик по строкам сохраняются. Потребители: DialogueBubblePanel, FreeRoamCamera; публичные API не менялись.
+
+## DA-083: контекстное управление
+
+PNG assets/drinks/concepts/test_soda_bottle_v1.png рисуется у test_soda с nearest filtering и прежними hitbox/наливом/остатком. Это TEST-дизайн, не утверждение бренда канона. Исходник получен imagegen по поручению владельца, без стороннего бренда. Остальные бутылки пока процедурные.
+
+Постоянны только компактный выбор посуды и выход. Шейкер при наведении выбирает контекст, одно действие [E] проходит open → sealed → straining → open. Уход к другому предмету меняет контекст; при удержании действие скрыто. Закрыть/открыть крышку и снять/надеть колпачок программно по-прежнему можно через прежние API. DeliverDrink видим только при is_ready_to_deliver без удерживаемого предмета, E и клик завершают/подают через прежнюю модель. Меню доступно после выхода через Esc, отдельная кнопка убрана. Публичные API состава/подачи не менялись; потребители Main/ServicePanel/legacy tests сохранены.
+
+## DA-085: подготовка рабочей зоны
+
+Main.workbench_supplies_enabled включён в reasoning_demo; базовый Main сохраняет legacy fixture. WorkbenchSupplies создаёт SupplyTarget для двух ящиков и предметов. SupplyTarget использует обычные context_title/description/action, дистанцию 2.5 м и режим exploration/dialogue. Предмет переходит в единственный слот DrinkCarry с portion=null; при подаче гостю учитываются только реальные напитки. Deposit вызывает DrinkWorkbench.add_supply, удаляет 3D-предмет только после успеха.
+
+DrinkWorkbench.supplies_required, supplied, has_supply(id), add_supply(id): отсутствующие предметы не рисуются/не берутся/не принимают струю. Посуда имеет отдельные DrinkPreparation и позиции; клик выбирает перенесённую посуду без потери содержимого. В старом режиме прежние кнопки/модель сохранены. Ящики/запасы/смеси существуют в текущей смене, checkpoint не расширен. Стойка в новом режиме сразу открывает service, без request_move/focus. Потребители: Main, DrinkCarry, ServicePanel, reasoning_demo; проверки supplies, legacy workbench, carry, общий check.
+
+## DA-086: колесо и подтверждение
+
+Уточнение владельца заменяет прежние указания hover/cursor: диалог никогда не включает dialogue_pointer. Колесо вызывает select_relative, ЛКМ/E — confirm. Строки не принимают mouse hover/GUI click, позиция клика не влияет на ответ. Меню/дневник/верстак сохраняют прежние режимы. Проверки: реальные wheel/click, перенос напитка.
+
+## DA-087: обратимый перенос бутылок
+
+WorkbenchSupplies хранит bottle_homes/bottle_nodes. Deposit переподчиняет ту же бутылку стойке и освобождает переносчик без queue_free. Взятие удаляет supplied через DrinkWorkbench.remove_bottle; stock не сбрасывается. SupplyTarget.return_slot на верхней полке вызывает return_bottle. Предмет на полке/в руке отсутствует в 2D. Посуда/инструменты сохраняют путь DA-085; публичные API напитка не менялись. Потребители: Supplies, SupplyTarget, DrinkWorkbench; проверка supplies включает реальные ray/идентичность/37 мл расхода/возврат/повторный перенос.
+
+## DA-088: шкаф и реальные бутылки
+
+ReferenceBar._build_bar_cabinet сохраняет обязательные ShelfBack/Lower/Upper и их Body для Main; добавляет каркас/карниз без изменения планировки бара. Статические Bottle/Neck отсутствуют. WorkbenchSupplies переводит стартовые позиции семи бутылок в локальные координаты BackCounter из мировых мест двух уровней шкафа; bottle_homes сохраняет эти места для возврата. Потребители: Main, Supplies, reference_bar_test, cabinet test. Реальные ray к каждой бутылке и отсутствие декора проверяет bar_cabinet_test; --cabinet-check доступен в Windows Validation.
+
+## DA-089: передняя рабочая поверхность
+
+ReferenceBar.BartenderWorkTop/Body — новая цель приготовления; старый BackCounter остаётся шкафом/ящиками. В reference layout Main привязывает CounterTarget только к новой поверхности, якорь back_counter смотрит к гостю из прохода. DrinkCarry.configure выбирает её верхнюю плоскость (y=.97), Supplies.deposit ставит бутылки туда (центр y=1.08). Для legacy-планировки прежние привязки сохранены. Публичные API прежние; потребители Main/DrinkCarry/Supplies, проверки reference_bar/supplies.

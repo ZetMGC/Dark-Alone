@@ -36,6 +36,13 @@ func run() -> void:
 		flicker_max = maxf(flicker_max, level._flicker.light_energy)
 	expect(flicker_min >= 1.35 * 0.879 and flicker_max <= 1.351 and level.get_node("GuestFill").light_energy == steady, "Only distant lamp dips gently; guest lighting stays steady")
 	level.set_process(true)
+	var worktop = level.get_node("Geometry/BartenderWorkTop")
+	expect(is_equal_approx(worktop.position.y + worktop.scale.y * 0.5,0.97), "Working height is 0.97m")
+	expect(is_equal_approx(level.get_node("Geometry/CounterTop").scale.z,0.94), "Customer counter is deeper")
+	expect(main.drink_carry.home_position.is_equal_approx(Vector3(-0.3,0.97,-1.97)), "Prepared drinks use lowered front workspace")
+	await get_tree().physics_frame
+	var blocked: Dictionary = main.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(-0.3,1.3,-0.5),Vector3(-0.3,0.98,-1.97),1))
+	expect(not blocked.is_empty(), "Raised customer counter partly conceals work surface")
 	var leaves: Array[String] = []
 	var unwanted_table := false
 	for part in level.get_node("Geometry").get_children():
@@ -84,7 +91,7 @@ func run() -> void:
 	var bench: DrinkWorkbench = main.get_node("ServicePanel").workbench
 	expect(bench.preparation.pour(&"reference_carry", &"test_base", 20) and main._stage_physical_drink(bench.preparation), "Stage physical drink at relocated work surface")
 	expect(main.drink_carry.pick_up(), "Pick up staged drink in new layout")
-	rig.body.global_position = Vector3(-0.2, 0, -2.0)
+	rig.body.global_position = Vector3(-0.2, 0, -2.65)
 	await get_tree().physics_frame
 	main._refresh_navigation()
 	behavior.guest.interact()
@@ -101,6 +108,8 @@ func run() -> void:
 	await capture(main, Vector3(-0.2, 1.65, -2.0), Vector3(-0.2, 1.43, -0.45), "support_front")
 	await capture(main, Vector3(-1.2, 1.5, -1.8), Vector3(-0.2, 1.32, -0.65), "support_side")
 	session.cancel_dialogue()
+	await capture(main,Vector3(0.95,1.7,-2.75),Vector3(-0.35,1.03,-1.8),"work_bartender")
+	await capture(main,Vector3(1.1,1.65,0.0),Vector3(-0.3,1.04,-1.8),"work_customer")
 	level.get_node("Geometry/Ceiling").hide()
 	await capture(main, Vector3(0, 13, 0.01), Vector3.ZERO, "plan", true)
 	behavior.request_departure()
@@ -135,3 +144,4 @@ func capture(main: Node, pos: Vector3, target: Vector3, label: String, plan: boo
 	get_viewport().get_texture().get_image().save_png("res://artifacts/reference_bar/%s.png" % label)
 	camera.queue_free()
 	main.get_node("AnchorCamera").view.make_current()
+

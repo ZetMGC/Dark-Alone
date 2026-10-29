@@ -105,23 +105,13 @@ func _run() -> void:
 		rig.reset_look()
 		# Восстановить набор для прежней проверки E; это та же реплика.
 		panel._typed = 0
-		panel._reply_pointer_dismissed = false
 	await _key(KEY_E)
 	_expect(session.runner.current_node_id == &"opening" and panel.is_line_complete() and panel.can_answer(), "First E reveals without choosing")
 	await _key(KEY_F)
 	_expect(session.runner.current_node_id == &"opening", "Old F binding no longer confirms replies")
 	_expect(panel.get_node("%VoiceChoices").get_child(0).text.contains("[E]"), "Selected dialogue reply shows E binding")
 	if DisplayServer.get_name() != "headless":
-		_expect(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "E keeps cursor available for hovering replies")
-		var background := InputEventMouseButton.new()
-		background.button_index = MOUSE_BUTTON_LEFT
-		background.pressed = true
-		background.position = Vector2(5, 5)
-		get_viewport().push_input(background, true)
-		await get_tree().process_frame
-		_expect(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and session.runner.current_node_id == &"opening", "Background click resumes camera without submitting reply")
-		await get_tree().process_frame
-		_expect(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED, "Replies do not recapture mouse on next frame")
+		_expect(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED, "E reveals answers while camera mouse stays captured")
 	await _snap("02-replies")
 	var position := rig.body.global_position
 	Input.action_press("move_forward")
@@ -156,10 +146,10 @@ func _run() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_expect(panel.can_answer() and not panel.edge_mode, "Looking back restores same line and replies")
-	panel._hover_choice(1)
-	_expect(panel.selected_index == 1, "Hover selects next response")
-	panel._hover_choice(0)
-	_expect(panel.selected_index == 0, "Hover selects previous response")
+	await _wheel(MOUSE_BUTTON_WHEEL_DOWN)
+	_expect(panel.selected_index == 1, "Wheel selects next response")
+	await _wheel(MOUSE_BUTTON_WHEEL_UP)
+	_expect(panel.selected_index == 0, "Wheel selects previous response")
 	await _key(KEY_E, true)
 	_expect(session.runner.current_node_id == &"opening", "Held key echo ignored")
 	await _key(KEY_E)
@@ -194,7 +184,7 @@ func _run() -> void:
 	session.close_journal()
 	_expect(text.visible_characters == count, "Return keeps reading progress")
 	await _key(KEY_E)
-	panel.get_node("%VoiceChoices").get_child(0).activated.emit()
+	await _click_reply(panel, 0)
 	_expect(session.runner.current_node_id == &"goodbye", "Click chooses available reply")
 	await _key(KEY_E)
 	_expect(session.runner.active, "Terminal first F only reveals")
@@ -382,16 +372,17 @@ func _test_reasoning_replies(main: Node, rig: FreeRoamCamera) -> void:
 	await _key(KEY_1)
 	await _key(KEY_2)
 	_expect(emitted.is_empty(), "Digit keys cannot submit replies")
-	var click := InputEventMouseButton.new()
-	click.button_index = MOUSE_BUTTON_LEFT
-	click.pressed = true
-	await _click_reply(bubble, 0)
-	_expect(emitted == [&"props"], "Click submits corresponding reply")
+	await _wheel(MOUSE_BUTTON_WHEEL_UP)
+	_expect(bubble.selected_index == 0 and emitted.is_empty(), "Wheel selects previous answer without submitting")
 	await _click_reply(bubble, 1)
-	_expect(emitted.back() == &"leave", "Click submits fallback")
-	bubble._hover_choice(0)
+	_expect(emitted == [&"props"], "Left click confirms wheel selection regardless of pointer position")
+	await _wheel(MOUSE_BUTTON_WHEEL_DOWN)
+	await _click_reply(bubble, 0)
+	_expect(emitted.back() == &"leave", "Wheel next and left click confirm fallback")
+	await _wheel(MOUSE_BUTTON_WHEEL_DOWN)
+	_expect(bubble.selected_index == 0, "Wheel wraps through available replies")
 	await _key(KEY_E)
-	_expect(bubble.selected_index == 0 and emitted.back() == &"props", "Hover and E use the same reply after conclusion")
+	_expect(emitted.back() == &"props", "E confirms the same wheel selection")
 	runner.choose(&"props")
 	bubble.render(runner, journal)
 	bubble.reveal_text()
@@ -449,3 +440,4 @@ func _click_reply(bubble: DialogueBubblePanel, index: int) -> void:
 		click.global_position = point
 		get_viewport().push_input(click, true)
 	await get_tree().process_frame
+
