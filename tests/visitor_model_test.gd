@@ -105,6 +105,7 @@ func _run() -> void:
 	_expect(jaw_transition_depth > mouth_depth - 0.012, "No deep notch between lower lip and chin")
 	var wrist := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("HandL")).origin
 	var elbow := model.skeleton.get_bone_global_rest(model.skeleton.find_bone("ForearmL")).origin
+	_expect(wrist.x < -0.12 and wrist.z - elbow.z > 0.20, "Free forearm reaches forward on its own side instead of crossing abdomen")
 	_expect(palm_count > 20 and (palm_sum / maxf(palm_count, 1) - wrist).normalized().dot((wrist - elbow).normalized()) > 0.90, "Palm geometry follows forearm instead of sideways wrist")
 	_expect(model.skeleton.get_bone_pose_rotation(model.skeleton.find_bone("HandL")).get_angle() < 0.2, "Resting wrist has no excessive pose twist")
 	_expect(vertex_count < 15000, "Prototype vertex budget remains bounded")
@@ -160,19 +161,18 @@ func _run() -> void:
 	var forearm_left := model.skeleton.find_bone("ForearmL")
 	var resting_arm := model.skeleton.get_bone_pose_rotation(forearm_left)
 	var contact_valid := true
-	var palm_flat := true
+	var free_hand_bottom := INF
 	var arm_range := 0.0
 	var head_range := 0.0
 	var resting_head := model.skeleton.get_bone_pose_rotation(2)
 	for frame in 420:
 		model._pose(1.0 / 60.0)
 		contact_valid = contact_valid and absf(_support_bottom(model) - 1.163) < 0.001
-		var palm_basis: Basis = model.skeleton.global_basis * model.skeleton.get_bone_global_pose(model.skeleton.find_bone("HandR")).basis * model._hand_frames.HandR
-		palm_flat = palm_flat and palm_basis.y.normalized().dot(Vector3.UP) > 0.999
+		free_hand_bottom = minf(free_hand_bottom, _support_bottom(model, "HandL"))
 		arm_range = maxf(arm_range, resting_arm.angle_to(model.skeleton.get_bone_pose_rotation(forearm_left)))
 		head_range = maxf(head_range, resting_head.angle_to(model.skeleton.get_bone_pose_rotation(2)))
 	_expect(contact_valid, "Entire support hand stays above tabletop across all three gestures")
-	_expect(palm_flat, "Support palm stays flat instead of inheriting sleeve and shoulder tilt")
+	_expect(free_hand_bottom >= 1.16, "Reposed free fingers stay above tabletop throughout all speech gestures: " + str(free_hand_bottom))
 	_expect(arm_range > 0.20 and head_range > 0.05, "Conversation moves free arm and head through distinct poses")
 	var panel: DialogueBubblePanel = main.get_node("DialoguePanel")
 	panel.bubble_enabled = true
@@ -251,9 +251,9 @@ func _run() -> void:
 	get_tree().quit(0 if _failures == 0 else 1)
 
 
-func _support_bottom(model: VisitorModel) -> float:
+func _support_bottom(model: VisitorModel, bone_name: String = "HandR") -> float:
 	var mesh: Mesh = model.get_node("CharacterMesh").mesh
-	var hand := model.skeleton.find_bone("HandR")
+	var hand := model.skeleton.find_bone(bone_name)
 	var transform := model.skeleton.global_transform * model.skeleton.get_bone_global_pose(hand) * model.skeleton.get_bone_global_rest(hand).affine_inverse()
 	var bottom := INF
 	for surface in mesh.get_surface_count():
