@@ -61,6 +61,7 @@ var _reversals: int = 0
 var _message: String = "Возьмите посуду и бутылку"
 var _context_item: StringName = &""
 var _soda_texture: Texture2D = preload("res://assets/drinks/concepts/test_soda_bottle_v1.png")
+var _surface_texture: Texture2D = preload("res://assets/drinks/workbench/worn_materials_v1.png")
 var _font: Font
 var _scale: float = 1
 var _origin := Vector2.ZERO
@@ -769,15 +770,10 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.055, 0.065, 0.06))
 	_local()
 	draw_rect(Rect2(0, 0, 1280, 720), Color(0.12, 0.14, 0.12))
-	for x in range(0, 1280, 120):
-		draw_line(Vector2(x, 65), Vector2(x, 360), Color(0.09, 0.11, 0.09), 4)
-	draw_rect(Rect2(0, 380, 1280, 340), Color(0.24, 0.215, 0.175))
-	for y in range(380, 720, 38):
-		draw_line(Vector2(0, y), Vector2(1280, y), Color(0.18, 0.17, 0.14), 2)
-	for index in 34:
-		var x := float((index * 173) % 1240)
-		var y := float(400 + (index * 47) % 220)
-		draw_line(Vector2(x, y), Vector2(x + 24 + index % 17, y + 1), Color(0.3, 0.27, 0.21, 0.4))
+	_surface(Rect2(0, 60, 1280, 340), Vector2i(1, 0), Color(0.50, 0.53, 0.48))
+	_surface(Rect2(0, 380, 1280, 340), Vector2i(0, 0), Color(0.72, 0.70, 0.65))
+	# Край столешницы отделяет предметы от задника без яркой рамки.
+	draw_line(Vector2(0, 399), Vector2(1280, 399), Color(0.08, 0.07, 0.05), 5)
 	draw_rect(Rect2(0, 0, 1280, 60), Color(0.065, 0.075, 0.065))
 	_text(Vector2(30, 38), "РАБОЧАЯ СТОЙКА", Color(0.85, 0.77, 0.56), 25)
 	_text(Vector2(30, 112), "БУТЫЛКИ")
@@ -790,18 +786,19 @@ func _draw() -> void:
 		guidance = "Закройте шейкер и двигайте им из стороны в сторону" if not _shaker_closed else ("Шейкер закрыт — можно встряхивать" if _shaker_cap_on else "Колпачок снят — можно переливать")
 	_text(Vector2(340, 37), guidance, Color(0.64, 0.65, 0.57), 15)
 	draw_rect(Rect2(45, 385, 665, 14), Color(0.14, 0.12, 0.09))
-	draw_rect(Rect2(640, 404, 410, 238), Color(0.065, 0.085, 0.075))
-	for x in range(650, 1050, 8):
-		draw_line(Vector2(x, 413), Vector2(x, 634), Color(0.11, 0.13, 0.11), 2)
+	draw_rect(Rect2(637, 401, 416, 244), Color(0.035, 0.045, 0.035))
+	_surface(Rect2(640, 404, 410, 238), Vector2i(0, 1), Color(0.62, 0.67, 0.62))
 	var hover: bool = _dragging == &"cup" and SERVE_ZONE.has_point(get_item_position(&"cup"))
 	draw_rect(SERVE_ZONE, Color(0.55, 0.49, 0.30) if hover or _cup_on_tray else Color(0.35, 0.33, 0.27))
-	draw_rect(SERVE_ZONE.grow(-6), Color(0.21, 0.22, 0.19))
+	_surface(SERVE_ZONE.grow(-6), Vector2i(1, 1), Color(0.50, 0.53, 0.47))
+	# Спокойная подложка помогает читать текст на металле.
+	draw_rect(Rect2(SERVE_ZONE.position + Vector2(10, 8), Vector2(280, 118)), Color(0.055, 0.065, 0.05, 0.48))
 	_text(SERVE_ZONE.position + Vector2(18, 25), "ГОТОВЫЙ НАПИТОК" if world_output else "ВЫДАЧА → ГОСТЮ", Color(0.9, 0.82, 0.61), 18)
 	if not _cup_on_tray:
 		_text(SERVE_ZONE.position + Vector2(18, 78), "Перетащите сюда стакан", Color(0.83, 0.78, 0.63), 16)
 		_text(SERVE_ZONE.position + Vector2(18, 104), "Затем завершите напиток" if world_output else "Затем нажмите «Подать»", Color(0.83, 0.78, 0.63), 16)
-	draw_rect(SINK, Color(0.43, 0.44, 0.39))
-	draw_rect(SINK.grow(-10), Color(0.075, 0.09, 0.08))
+	_surface(SINK, Vector2i(1, 1), Color(0.78, 0.82, 0.75))
+	_surface(SINK.grow(-10), Vector2i(1, 1), Color(0.24, 0.28, 0.25))
 	draw_circle(SINK.get_center(), 15, Color(0.025, 0.035, 0.03))
 	_text(SINK.position + Vector2(42, -12), "СЛИВ")
 	_draw_rack()
@@ -818,7 +815,7 @@ func _draw() -> void:
 			_draw_bottle(StringName(id))
 	_draw_shaker()
 	_draw_mixing()
-	draw_rect(Rect2(246, 518, 58, 52), Color(0.25, 0.31, 0.30))
+	_surface(Rect2(246, 518, 58, 52), Vector2i(1, 1), Color(0.50, 0.57, 0.53))
 	_text(Vector2(247, 511), "ЛЁД", Color(0.7, 0.82, 0.83), 14)
 	var ice_position := get_item_position(&"ice")
 	draw_rect(Rect2(ice_position - Vector2(12, 12), Vector2(24, 24)), Color(0.65, 0.82, 0.86, 0.8))
@@ -1113,3 +1110,10 @@ func _input(event: InputEvent) -> void:
 		else:
 			return
 		get_viewport().set_input_as_handled()
+
+
+func _surface(rect: Rect2, tile: Vector2i, tint: Color = Color.WHITE) -> void:
+	var half := _surface_texture.get_size() * 0.5
+	# Отступ убирает соседний материал на стыке атласа.
+	var region := Rect2(Vector2(tile) * half + Vector2(3, 3), half - Vector2(6, 6))
+	draw_texture_rect_region(_surface_texture, rect, region, tint)
