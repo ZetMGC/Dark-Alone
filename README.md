@@ -1,6 +1,6 @@
 # Dark Alone
 
-Текущий выпуск: [v0.1.0-alpha.4](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.4) — выводы в дневнике, TEST-разговор, шейкер и настройки. [Заметки](docs/releases/v0.1.0-alpha.4.md), [проверки/передача](docs/worklog/2026-10-28-10-alpha4-integration.md).
+Текущий выпуск: [v0.1.0-alpha.5](https://github.com/ZetMGC/Dark-Alone/releases/tag/v0.1.0-alpha.5) — обновлённый бар/дом, предметы, перенос напитков и физика стола. [Заметки](docs/releases/v0.1.0-alpha.5.md), [проверки](docs/worklog/2026-10-30-01-alpha5-release.md).
 
 Новые правки DA-072–074: плавное движение речи позади, понятный металлический шейкер с крышкой/колпачком, короткое Esc-меню и отдельные настройки. **Сохранение настроек основного запуска восстановлено**; игровые checkpoints TEST-разговора по-прежнему отключены. [Шейкер](docs/parallel/bar/WORKBENCH.md), [настройки](docs/PLAYER_SETTINGS.md), [проверки/передача](docs/worklog/2026-10-28-09-speech-shaker-settings.md). Перезапустить обычный ярлык.
 
