@@ -32,7 +32,7 @@ func run() -> void:
 		if child is Area3D:
 			if child.drawer: drawers.append(child)
 			else: bottles.append(child)
-	expect(drawers.size()==2 and bottles.size()==7, "Two drawers and seven shelf bottles")
+	expect(drawers.size()==2 and bottles.size()==8, "Two drawers and eight shelf bottles")
 	var drawer=drawers[0]
 	rig.body.global_position=drawer.global_position + Vector3(0, -drawer.global_position.y, 0.8)
 	await get_tree().physics_frame

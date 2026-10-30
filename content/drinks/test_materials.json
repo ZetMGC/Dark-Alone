@@ -2,6 +2,7 @@
   "schema_version": 1,
   "test_content": true,
   "ingredients": [
+    {"id":"test_stvor","title":"[TEST] Северный створ · 0,25 л","density":0.95,"viscosity":0.03,"color":[0.68,0.75,0.65,0.4],"strength":0.4,"taste":{"sweet":0,"sour":0,"bitter":0.15},"mix_group":"test_aqueous","tags":[]},
     {"id":"test_soda","title":"[TEST] Газированный компонент","density":1.01,"viscosity":0.02,"color":[0.40,0.60,0.68,0.5],"strength":0,"taste":{"sweet":0.1,"sour":0.1,"bitter":0},"mix_group":"test_aqueous","tags":["test_carbonated"]},
     {"id":"test_water","title":"[TEST] Талая вода","density":1.0,"viscosity":0.01,"color":[0.65,0.78,0.85,0.25],"strength":0,"taste":{"sweet":0,"sour":0,"bitter":0},"mix_group":"test_aqueous","tags":["test_water"]},
     {
@@ -136,12 +137,12 @@
     {"id": "test_shaker", "title": "[TEST] Шейкер", "capacity_ml": 500},
     {
       "id": "test_shot",
-      "title": "[TEST] Шот",
+      "title": "[TEST] Рюмка «Кромка»",
       "capacity_ml": 60
     },
     {
       "id": "test_glass",
-      "title": "[TEST] Стакан",
+      "title": "[TEST] Стакан «Гранитоль»",
       "capacity_ml": 240
     }
   ]

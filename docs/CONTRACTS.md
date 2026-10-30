@@ -4,6 +4,18 @@ HOME-03: публичный API HOME-02 прежний. HouseInterior после
 
 BAR-NIGHT-01: EnvironmentAudio.configure_night_bar()->void переключает Street на тихий 16-секундный дождь и переносит Street/Furniture к окну/посадочным местам новой локации. Вызывает только Main при reference_bar_enabled. set_gain/set_context и схема предпочтений прежние. [ADR-0049](decisions/0049-night-bar-atmosphere.md); проверяет reference_bar_test, старый профиль — environment_camera_test.
 
+DA-095: FacetedGlassVisual.new(shot=false) / make_preview(parent,shot=false), размеры vessel_height/vessel_radius. Рюмка и стакан в мире/подаче используют общие пути GlassVisual/Contents и DrinkGlassVisual/Contents. [ADR-0054](decisions/0054-shared-shot-glass.md).
+
+DA-094: BottleCapItem.bottle_obstacles — Callable от DrinkWorkbench, возвращает Array[Dictionary] с transform/rect корпуса. [ADR-0053](decisions/0053-cap-body-clearance.md).
+
+DA-093: dropped / start_motion(..., radians), двусторонний tilt_by и resting_bottle_streams — [ADR-0052](decisions/0052-bottle-stability-leaks.md). Заменяет click-to-return и отсутствие пролива из ADR-0051.
+
+DA-092: [жест крышки и tabletop motion](decisions/0051-tabletop-motion.md). Клик надетой крышки больше не открывает её; BottleCapItem принимает drag/release, DrinkWorkbench.advance_motion включает физику и подъём. Новые stand/is_lying/tabletop API, мировой масштаб supplies нормализован. Потребители/проверки перечислены в ADR.
+
+DA-091: [анимированная самостоятельная крышка и общий стакан](decisions/0050-cap-motion-and-faceted-glass.md). toggle_bottle_cap начинает переход; is_bottle_capped становится true после завершения. Cap hover API, FacetedGlassVisual, новые внутренние узлы готового стакана; публичный ServiceGuest.show_prepared сохранён. Потребители и тесты перечислены в ADR.
+
+DA-090: [общая 3D/2D бутылка, API крышки и запасы по ID](decisions/0049-shared-small-bottle.md). Потребители: DrinkWorkbench, WorkbenchSupplies, профильные тесты. Checkpoint прежний.
+
 DA-080: ReplyChoiceRow body содержит только авторский caption; hovered/activated позволяют выбрать и выполнить строку без номеров. DialogueBubblePanel принимает E и клик, цифровые/колёсные shortcut-ветки удалены. FreeRoamCamera.set_dialogue_pointer(bool) освобождает курсор только для доступных ответов, не блокируя ходьбу; скрытие панели/закрытие режима возвращает прежний захват. Повторная проверка can_answer и актуальной цели сохранена. Подпись мыши на экране не выводится. Исторические записи о номерах ниже не являются текущим управлением.
 
 DA-079: ReplyChoiceRow — HBoxContainer с key_label/body, set_choice(caption,index,count,chosen,font,font_size), set_selected(bool), natural_width() и читаемым text. Потребители: DialogueBubblePanel и ObjectContextBubble. ReplyPanelLayout.rect(choices,area) возвращает компактную общую область над нижним краем. Индексы выбора и сигналы ответа прежние. speech_hold_seconds=3.0 / speech_fade_seconds=1.2 управляют только VoiceBubble: после завершения последней страницы alpha уменьшается, без изменения Runner/VoiceReplies/can_answer. Новая страница сбрасывает alpha/таймер; скрытая панель и потеря фокуса останавливают отсчёт. Промежуточная страница не исчезает до E.

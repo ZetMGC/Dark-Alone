@@ -76,6 +76,10 @@ if ($Graphics) {
   Invoke-BuildCheck -Executable $validationExe -Log (Join-Path $validationRoot 'image-detail.log') -ExtraArguments @('--', '--image-detail-check') -ExpectPlaythrough $false -ExpectedMarker 'PASS: image detail,' -Graphical $true
 }
 $integrationProfiles = @(
+  @{ Name = 'small-bottle'; Flag = '--small-bottle-check'; Marker = 'PASS: small bottle,' },
+  @{ Name = 'shot-glass'; Flag = '--shot-glass-check'; Marker = 'PASS: shot glass,' },
+  @{ Name = 'faceted-glass'; Flag = '--faceted-glass-check'; Marker = 'PASS: faceted glass,' },
+  @{ Name = 'tabletop'; Flag = '--tabletop-check'; Marker = 'PASS: tabletop physics,' },
   @{ Name = 'drink-carry'; Flag = '--drink-carry-check'; Marker = 'PASS: drink carry,' },
   @{ Name = 'release-integration'; Flag = '--release-integration-check'; Marker = 'PASS: release integration,' },
   @{ Name = 'workbench'; Flag = '--workbench-check'; Marker = 'PASS: drink workbench,' },
