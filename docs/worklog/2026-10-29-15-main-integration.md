@@ -20,3 +20,8 @@ Fetch выявил новые оформление/текстуры бара и 
 Merge 2a6670b создан в локальном main. Шесть веток codex/da090-small-bottle, da091-cap-motion-glass, da092-tabletop-physics, da093-bottle-stability, da094-cap-body-collision, da095-shot-glass удалены безопасным git branch -d после проверки ancestry. Вся история сохранена в main. Удалённых копий этих шести веток в origin нет; ветки других направлений сохранены.
 
 Git push origin main отклонён: Permission to ZetMGC/Dark-Alone.git denied to elfarr, HTTP 403. git credential-manager github list показывает только elfarr. Требуется авторизация учётной записью с write-доступом либо предоставление прав этой записи, затем git push origin main. Force push не нужен. Это единственное незавершённое действие; main на GitHub пока df26650. Рабочие файлы/изменения сохранены в локальном main.
+
+
+## Доступ восстановлен 2026-10-30
+
+Владелец авторизовал ZetMGC в Git Credential Manager. Команда git -c credential.username=ZetMGC push origin main успешно отправила main df26650 → 9934fec. Ограничение 403 устранено; задача завершена. Локально осталась только main, все шесть веток DA-090–095 удалены ранее.
