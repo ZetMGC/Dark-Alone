@@ -13,3 +13,10 @@ Fetch выявил новые оформление/текстуры бара и 
 ## Продолжение
 
 Завершить проверки/push/очистку, записать SHA и результат. Установленная игра остаётся проверенной сборкой DA-095 ab4fc8b; новый EXE/релиз не запрошен.
+
+
+## Завершение 2026-10-30
+
+Merge 2a6670b создан в локальном main. Шесть веток codex/da090-small-bottle, da091-cap-motion-glass, da092-tabletop-physics, da093-bottle-stability, da094-cap-body-collision, da095-shot-glass удалены безопасным git branch -d после проверки ancestry. Вся история сохранена в main. Удалённых копий этих шести веток в origin нет; ветки других направлений сохранены.
+
+Git push origin main отклонён: Permission to ZetMGC/Dark-Alone.git denied to elfarr, HTTP 403. git credential-manager github list показывает только elfarr. Требуется авторизация учётной записью с write-доступом либо предоставление прав этой записи, затем git push origin main. Force push не нужен. Это единственное незавершённое действие; main на GitHub пока df26650. Рабочие файлы/изменения сохранены в локальном main.
